@@ -1,0 +1,31 @@
+
+
+const TempVerifyEmail = () => {
+    const handleResendVerification = async () => {
+        try {
+            const response = await axios.post(
+                'http://localhost:8000/api/users/resend-verification/',
+                { email: userEmail }
+            );
+            if (response.status === 200) {
+                alert('Verification email resent. Please check your inbox.');
+            }
+        } catch (error) {
+            console.error('Error resending verification email:', error);
+        }
+    };
+
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <div className="bg-white p-6 rounded-lg shadow-md w-96">
+        <h2 className="text-2xl font-bold mb-4">Verify Your Email</h2>
+        <p className="mb-4">A verification link has been sent to your email address. Please check your inbox and click the link to verify your email.</p>
+        <button onClick={handleResendVerification} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+          Resend Verification Email
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default TempVerifyEmail;
