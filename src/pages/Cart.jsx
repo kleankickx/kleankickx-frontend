@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
+import { AuthContext } from '../context/AuthContext'; // Assuming you have an AuthContext
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart } = useContext(CartContext);
   const [services, setServices] = useState([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated } = useContext(AuthContext); // Assuming you have an AuthContext
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,7 +48,24 @@ const Cart = () => {
   };
 
   const handleCheckout = () => {
-    alert('Proceeding to checkout (feature coming soon)!');
+    // Check if user is authenticated
+    if (isAuthenticated) {
+      navigate('/checkout');
+    } else {
+      toast.warn('You need to be logged in to proceed to checkout.', {
+        position: 'top-right',
+      });
+      navigate('/login?continue=/checkout');
+    }
+
+    // check if cart is empty
+    if (cart.length === 0) {
+      toast.error('Your cart is empty. Please add items before checking out.', {
+        position: 'top-right',
+      });
+      return;
+    }
+
   };
 
   if (isLoading) {
@@ -201,7 +220,7 @@ const Cart = () => {
               </div>
               <button
                 onClick={handleCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded text-center font-medium"
+                className="w-full cursor-pointer bg-green-600 hover:bg-green-700 text-white py-2 rounded text-center font-medium"
               >
                 Proceed to Checkout
               </button>

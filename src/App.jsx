@@ -1,28 +1,70 @@
 // src/App.jsx
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CartProvider } from './context/CartContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
 import Register from './components/Register';
-import VerifyEmail from './components/VerifyEmail';
+import VerifyEmail from './pages/VerifyEmail';
 import Dashboard from './components/Dashboard';
-import Services from './components/Services';
-import Cart from './components/Cart';
+import Services from './pages/Services';
+import Cart from './pages/Cart';
 import Login from './components/Login';
-import TempVerifyEmail from './components/TempVerifyEmail';
-import { AuthProvider } from './context/AuthContext';
+import TempVerifyEmail from './pages/TempVerifyEmail';
+import Checkout from './pages/Checkout';
+import RateAndServices from './pages/RateAndServices';
+import Home from './pages/Home';
+import About from './pages/About';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import { useContext } from 'react';
 
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useContext(AuthContext);
+  return isAuthenticated ? children : <Navigate to="/login?continue=/checkout" replace />;
+};
 
-function Home() {
+const AppContent = () => {
+  const location = useLocation();
+  const hideNavbarOn = ['/login', '/register'];
+  const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
+
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <h2 className="text-2xl mb-4">Welcome to KleanKickx</h2>
-      <p>Discover our premium shoe cleaning and repair services.</p>
+    <div className="flex flex-col min-h-screen">
+      {!shouldHideNavbar && <Navbar />}
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/temp-verify-email" element={<TempVerifyEmail />} />
+          <Route path="/rate-and-services" element={<RateAndServices />} />
+          <Route path="/about-us" element={<About />} />
+          <Route
+            path="/checkout"
+            element={
+              <ProtectedRoute>
+                <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </main>
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
-}
+};
 
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -32,18 +74,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <Router>
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/verify-email/:key" element={<VerifyEmail />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/login" element={<Login />} />
-              <Route path='/temp-verify-email' element={<TempVerifyEmail />} />
-            </Routes>
-            <ToastContainer position="top-right" autoClose={3000} />
+            <AppContent />
           </Router>
         </CartProvider>
       </AuthProvider>

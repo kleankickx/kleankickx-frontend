@@ -2,4 +2,11 @@
 
 @theme {
     --default-font-family: 'League Spartan', sans-serif;
+    --color-primary: #007F03; /* Green */
+    --color-secondary: #20B13F; /* Light Gray */
+    --color-deep-gray: #1E1E1E; /* Deep Gray */
+}
+
+.input-style {
+  @apply w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400;
 }

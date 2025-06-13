@@ -28,14 +28,14 @@ const Services = () => {
     fetchServices();
   }, []);
 
-  const handleAddToCart = (serviceId, serviceName) => {
+  const handleAddToCart = (serviceId, serviceName, servicePrice) => {
     const isInCart = cart.some(item => item.service_id === serviceId);
     if (isInCart) {
       toast.info(`${serviceName} is already in your cart!`, {
         position: 'top-right',
       });
     } else {
-      addToCart(serviceId);
+      addToCart(serviceId, serviceName, servicePrice);
       toast.success(`${serviceName} has been added to your cart!`, {
         position: 'top-right',
       });
@@ -87,7 +87,7 @@ const Services = () => {
                 </div>
 
                 <button
-                  onClick={() => handleAddToCart(service.id, service.name)}
+                  onClick={() => handleAddToCart(service.id, service.name, service.price)}
                   className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium cursor-pointer transition duration-200 focus:outline-none"
                   aria-label={`Add ${service.name} to cart`}
                 >

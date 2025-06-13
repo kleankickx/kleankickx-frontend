@@ -106,7 +106,7 @@ const Register = () => {
   return (
     <div className="bg-[#edf1f4] py-16 px-4 min-h-screen">
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
-        <h2 className="text-2xl font-bold text-green-700 mb-6 text-center">
+        <h2 className="text-2xl font-bold text-black mb-6">
           Register
         </h2>
         {error && (
@@ -115,11 +115,14 @@ const Register = () => {
         <form onSubmit={handleEmailRegister} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
+              Email <span className="text-red-500">*</span>
             </label>
             <input
               id="email"
               type="email"
+              placeholder="Enter your email address"
+              autoComplete="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-600 focus:border-green-600"
@@ -129,11 +132,13 @@ const Register = () => {
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
+              Password <span className="text-red-500">*</span>
             </label>
             <input
               id="password"
               type="password"
+              placeholder="Enter your password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-600 focus:border-green-600"
@@ -143,11 +148,14 @@ const Register = () => {
           </div>
           <div>
             <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-              First Name
+              First Name <span className="text-red-500">*</span>
             </label>
             <input
               id="firstName"
               type="text"
+              placeholder="Enter your first name"
+              autoComplete="given-name"
+              required
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-600 focus:border-green-600"
@@ -156,12 +164,15 @@ const Register = () => {
             />
           </div>
           <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-              Last Name
+            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 ">
+              Last Name <span className="text-red-500">*</span>
             </label>
             <input
               id="lastName"
               type="text"
+              placeholder="Enter your last name"
+              autoComplete="family-name"
+              required
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-600 focus:border-green-600"

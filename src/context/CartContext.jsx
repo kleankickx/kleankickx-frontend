@@ -77,23 +77,8 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart]);
 
-  // const mergeCarts = (localCart, backendCart) => {
-  //   console.log('mergeCarts: localCart=', localCart, 'backendCart=', backendCart);
-  //   if (!Array.isArray(backendCart)) return localCart;
-  //   const merged = [...localCart];
-  //   backendCart.forEach(backendItem => {
-  //     const existing = merged.find(item => item.service_id === backendItem.service_id);
-  //     if (existing) {
-  //       existing.quantity += backendItem.quantity;
-  //     } else {
-  //       merged.push({ ...backendItem });
-  //     }
-  //   });
-  //   console.log('mergeCarts: Merged cart=', merged);
-  //   return merged;
-  // };
-
-  const addToCart = (serviceId, quantity = 1) => {
+  
+  const addToCart = (serviceId, serviceName, servicePrice, quantity = 1) => {
     setCart(prevCart => {
       const safeCart = Array.isArray(prevCart) ? prevCart : [];
       const existingItem = safeCart.find(item => item.service_id === serviceId);
@@ -105,7 +90,7 @@ export const CartProvider = ({ children }) => {
             : item
         );
       } else {
-        newCart = [...safeCart, { service_id: serviceId, quantity }];
+        newCart = [...safeCart, { service_id: serviceId, quantity: quantity, service_name: serviceName, price: servicePrice * quantity }];
       }
       console.log('addToCart: Updated cart=', newCart);
       return newCart;
@@ -144,55 +129,6 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  // const syncCartWithBackend = async (accessToken) => {
-  //   try {
-  //     console.log('syncCartWithBackend: Sending cart=', cart);
-  //     const response = await axios.post(
-  //       'http://127.0.0.1:8000/api/users/cart/',
-  //       { cart },
-  //       {
-  //         headers: {
-  //           'Authorization': `Bearer ${accessToken}`,
-  //           'Content-Type': 'application/json',
-  //         },
-  //         withCredentials: true,
-  //       }
-  //     );
-  //     const newCart = Array.isArray(response.data.cart) ? response.data.cart : [];
-  //     setCart(newCart);
-  //     console.log('syncCartWithBackend: Received cart=', newCart);
-  //     return newCart;
-  //   } catch (err) {
-  //     console.error('syncCartWithBackend: Failed:', err);
-  //     toast.error('Failed to sync cart with server.', { position: 'top-right' });
-  //     throw err;
-  //   }
-  // };
-
-  // const fetchCartFromBackend = async (accessToken) => {
-  //   try {
-  //     console.log('fetchCartFromBackend: Fetching cart');
-  //     const response = await axios.get('http://127.0.0.1:8000/api/users/cart/', {
-  //       headers: {
-  //         'Authorization': `Bearer ${accessToken}`,
-  //         'Content-Type': 'application/json',
-  //       },
-  //       withCredentials: true,
-  //     });
-  //     const backendCart = Array.isArray(response.data.cart) ? response.data.cart : [];
-  //     console.log('fetchCartFromBackend: Received cart=', backendCart);
-  //     if (!cartExpired) {
-  //       const mergedCart = mergeCarts(cart, backendCart);
-  //       setCart(mergedCart);
-  //       return mergedCart;
-  //     }
-  //     return backendCart;
-  //   } catch (err) {
-  //     console.error('fetchCartFromBackend: Failed:', err);
-  //     toast.error('Failed to fetch cart from server.', { position: 'top-right' });
-  //     throw err;
-  //   }
-  // };
 
   console.log('CartProvider: Current cart state=', cart);
 
@@ -204,8 +140,6 @@ export const CartProvider = ({ children }) => {
         addToCart,
         updateQuantity,
         removeFromCart,
-        // syncCartWithBackend,
-        // fetchCartFromBackend,
       }}
     >
       {children}

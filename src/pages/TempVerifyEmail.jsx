@@ -1,17 +1,19 @@
-
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const TempVerifyEmail = () => {
     const handleResendVerification = async () => {
         try {
             const response = await axios.post(
-                'http://localhost:8000/api/users/resend-verification/',
+                'http://localhost:8000/api/users/resend-verification-email/',
                 { email: userEmail }
             );
             if (response.status === 200) {
-                alert('Verification email resent. Please check your inbox.');
+                toast.success('Verification email resent. Please check your inbox.');
             }
         } catch (error) {
             console.error('Error resending verification email:', error);
+            toast.error('Error resending verification email. Please try again later.');
         }
     };
 
