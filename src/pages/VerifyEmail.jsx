@@ -1,6 +1,6 @@
 // src/components/VerifyEmail.jsx
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { CartContext } from '../context/CartContext';
@@ -13,6 +13,7 @@ const VerifyEmail = () => {
   const { cartExpired, } = useContext(CartContext);
   const { login } = useContext(AuthContext);
   const hasVerified = useRef(false);
+  const { key } = useParams();  
 
   useEffect(() => {
     if (hasVerified.current) return;
@@ -22,8 +23,7 @@ const VerifyEmail = () => {
       try {
         // Verify email
         await axios.post(
-          `http://127.0.0.1:8000/api/users/verify-email/`,
-          { key },
+          `http://127.0.0.1:8000/api/users/verify-email/${key}/`,
           { withCredentials: true }
         );
         // Retrieve pending credentials
@@ -52,7 +52,7 @@ const VerifyEmail = () => {
         // await syncCartWithBackend(access);
         setMessage('Email verified successfully!');
         toast.success('Email verified and logged in successfully!', { position: 'top-right' });
-        setTimeout(() => navigate('/services'), 1000);
+        setTimeout(() => navigate('/cart'), 1000);
       } catch (error) {
         const errorMsg = error.response?.data?.detail || error.message || 'Verification failed. Please try again.';
         setError(errorMsg);
@@ -65,9 +65,9 @@ const VerifyEmail = () => {
   }, [navigate, cartExpired, login]);
 
   return (
-    <div className="p-4 max-w-md mx-auto bg-[#edf1f4] min-h-screen">
+    <div className="bg-[#edf1f4] min-h-screen px-4 lg:px-24 py-10 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-green-700 mb-6 text-center border-b-4 border-green-600 inline-block">
+        <h2 className="text-2xl font-bold text-green-700 mb-6 text-center">
           Email Verification
         </h2>
         {message && <p className="text-green-500 text-center">{message}</p>}

@@ -9,6 +9,8 @@ import { AuthContext } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'; // Ensure you have heroicons installed
 import 'react-toastify/dist/ReactToastify.css'; // Ensure toast styles are imported
 
+
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -103,6 +105,8 @@ const Login = () => {
 
   return (
     <div className="bg-[#edf1f4] py-16 px-4 min-h-screen  ">
+     
+
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
         <h2 className="text-2xl font-bold text-black mb-6 inline-block">
           Login
@@ -156,7 +160,7 @@ const Login = () => {
           </div>
           <button
             type="submit"
-            className="w-full bg-primary hover:bg-green-700 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
+            className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
             disabled={loading}
             aria-label="Login with email and password"
           >
@@ -211,10 +215,22 @@ const Login = () => {
         </div>
         <p className="mt-4 text-center text-sm text-gray-600">
           Don’t have an account?{' '}
-          <Link to="/register" className="text-green-600 hover:underline">
+          <Link to="/register" className="text-primary hover:underline">
             Register
           </Link>
         </p>
+      </div>
+
+      {/* terms and conditions */}
+      <div className="max-w-md mx-auto mt-8 text-center text-xs text-gray-500">
+        By logging in, you agree to our{' '}
+        <Link  className="text-primary hover:underline">
+          Terms of Service
+        </Link>{' '}
+        and{' '}
+        <Link  className="text-primary hover:underline">
+          Privacy Policy
+        </Link>.
       </div>
     </div>
   );

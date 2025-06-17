@@ -1,234 +1,168 @@
-// src/components/Cart.jsx
+// Modern Cart.jsx – polished responsive design with fixed tooltip
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CartContext } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { AuthContext } from '../context/AuthContext'; // Assuming you have an AuthContext
+import { TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 
+/* ------------------ Tooltip ------------------ */
+const Tooltip = ({ message, position = 'top', children }) => {
+  const pos = {
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  }[position] || 'bottom-full left-1/2 -translate-x-1/2 mb-2';
+
+  return (
+    <div className="relative inline-flex group">
+      {children}
+      <span
+        className={`pointer-events-none absolute whitespace-nowrap bg-gray-800 text-white text-xs z-10 rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${pos}`}
+      >
+        {message}
+      </span>
+    </div>
+  );
+};
+
+/* ------------------ Main Cart component ------------------ */
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart } = useContext(CartContext);
+  const { isAuthenticated } = useContext(AuthContext);
   const [services, setServices] = useState([]);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const { isAuthenticated } = useContext(AuthContext); // Assuming you have an AuthContext
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchServices = async () => {
+    (async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/services/');
-        setServices(response.data);
-      } catch (err) {
-        setError('Failed to load services.');
+        const { data } = await axios.get('http://127.0.0.1:8000/api/services/');
+        setServices(data);
+      } catch {
+        toast.error('Failed to load services');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
-    };
-    fetchServices();
+    })();
   }, []);
 
-  const getServiceDetails = (serviceId) => {
-    return services.find(service => service.id === serviceId) || {};
-  };
+  const getService = (id) => services.find((s) => s.id === id) || {};
+  const total = cart
+    .reduce((t, it) => t + (getService(it.service_id).price || 0) * it.quantity, 0)
+    .toFixed(2);
 
-  const calculateTotal = () => {
-    return cart.reduce((total, item) => {
-      const service = getServiceDetails(item.service_id);
-      return total + (service.price || 0) * item.quantity;
-    }, 0).toFixed(2);
-  };
-
-  const handleRemoveFromCart = (serviceId) => {
-    removeFromCart(serviceId);
-    toast.success('Item removed from cart!', {
-      position: 'top-right',
-      autoClose: 3000,
-    });
+  const handleRemove = (id) => {
+    removeFromCart(id);
+    toast.info('Item removed');
   };
 
   const handleCheckout = () => {
-    // Check if user is authenticated
-    if (isAuthenticated) {
-      navigate('/checkout');
-    } else {
-      toast.warn('You need to be logged in to proceed to checkout.', {
-        position: 'top-right',
-      });
-      navigate('/login?continue=/checkout');
+    if (!cart.length) return toast.error('Your cart is empty');
+    if (!isAuthenticated) {
+      toast.warn('Login required');
+      return navigate('/login?continue=/checkout');
     }
-
-    // check if cart is empty
-    if (cart.length === 0) {
-      toast.error('Your cart is empty. Please add items before checking out.', {
-        position: 'top-right',
-      });
-      return;
-    }
-
+    navigate('/checkout');
   };
 
-  if (isLoading) {
-    {/* proper loading screen */}
+  if (loading)
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600"></div>
+      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-green-50 to-white">
+        <span className="animate-spin h-10 w-10 border-4 border-green-600 border-t-transparent rounded-full" />
       </div>
     );
-  }
 
   return (
-    <div className="bg-gray-100 py-8 h-[100vh] px-4 md:px-12 lg:px-24 mt-[4rem]">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white shadow rounded p-6 border-l-4 border-green-600 mb-6">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-800">
-              {/* closeable alert */}
-              <strong className="text-green-600">Cart</strong> - You have {cart.length} item{cart.length !== 1 ? 's' : ''} in your cart.
-            </p>
-            <button
-              onClick={() => navigate('/services')}
-              className="bg-green-600 cursor-pointer hover:bg-green-700 text-white py-1 px-4 rounded text-sm"
-            >
-              Continue Shopping
-            </button>
-          </div>
-        </div>
-
-        {cart.length === 0 ? (
-          <div className="text-center mt-16">
-            <p className="text-lg mb-4">Your cart is empty.</p>
-            <button
-              onClick={() => navigate('/services')}
-              className="bg-blue-600 text-white px-6 py-2 rounded cursor-pointer hover:bg-blue-700"
-            >
-              Continue Shopping
-            </button>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Cart Items */}
-            <div className="md:col-span-2 space-y-6">
-              <div className="bg-white border  rounded">
-                <div className="grid grid-cols-6 p-4 border-b font-semibold text-sm text-gray-600 ">
-                  <p className="col-span-2">Product</p>
-                  <p>Price</p>
-                  <p>Quantity</p>
-                  <p>Subtotal</p>
-                  <p>Action</p>
-                </div>
-
-                {cart.map(item => {
-                  const service = getServiceDetails(item.service_id);
-                  return (
-                    <div key={item.service_id} className="grid grid-cols-6 items-center p-4 border-b ">
-                      <div className="col-span-2 flex items-center gap-4">
-                        <img
-                          src={service.image || 'https://via.placeholder.com/64'}
-                          alt={service.name}
-                          className="w-20 h-20 object-contain rounded border border-gray-200 shadow-sm"
-                        />
-                        <div>
-                          <p className="font-semibold text-green-600">{service.name}</p>
-                          
-                        </div>
-                      </div>
-                      <p>₵{parseFloat(service.price || 0).toFixed(2)}</p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateQuantity(item.service_id, -1)}
-                          className="w-6 h-6 cursor-pointer bg-gray-200 rounded hover:bg-gray-300"
-                        >
-                          -
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.service_id, 1)}
-                          className="w-6 h-6 cursor-pointer bg-gray-200 rounded hover:bg-gray-300"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <p>₵{(parseFloat(service.price || 0) * item.quantity).toFixed(2)}</p>
-                      <button
-                        onClick={() => handleRemoveFromCart(item.service_id)}
-                        className="bg-red-500 text-white w-[5rem] cursor-pointer py-2 rounded hover:bg-red-700 text-sm"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  );
-                })}
-
-                {/* Coupon + Update */}
-                <div className="flex flex-col md:flex-row items-center justify-between p-4">
-                  <div className="flex gap-2 w-full md:w-auto">
-                    <input
-                      type="text"
-                      placeholder="Coupon Code"
-                      className="border rounded p-2 w-full md:w-64 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled
-                    />
-                    <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                      Apply Coupon
-                    </button>
-                  </div>
-                  {/* <button className="text-green-700 text-sm font-semibold mt-4 md:mt-0 hover:underline" disabled>
-                    Update Cart
-                  </button> */}
-                </div>
-              </div>
-            </div>
-
-            {/* Cart Total */}
-            <div className="bg-white border rounded shadow p-6 space-y-4 h-[371px]">
-              <h3 className="text-lg font-semibold">Cart Total</h3>
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>₵{calculateTotal()}</span>
-              </div>
-              {/* dasheses divider */}
-              <hr className="border-t border-gray-300 my-2" />
-
-              {/* <div className="text-sm text-gray-600">
-                <p><strong>Shipping</strong></p>
-                <p>Free shipping</p>
-                <p>Shipping to Ghana, Accra,<br />Accra, Greater Accra, 00233.</p>
-                <button className="text-green-600 font-medium hover:underline mt-1 text-sm">
-                  Change Address
-                </button>
-              </div> */}
-              <div className="space-y-2 text-sm text-gray-700 h-32 overflow-y-auto">
-                <h4 className="font-medium mb-2">Summary</h4>
-                {cart.map(item => {
-                  const service = getServiceDetails(item.service_id);
-                  const subtotal = (service.price || 0) * item.quantity;
-                  return (
-                    <div key={item.service_id} className="flex justify-between">
-                      <span>{service.name} × {item.quantity}</span>
-                      <span>₵{parseFloat(subtotal).toFixed(2)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <hr className="border-t border-gray-300 my-2" />
-
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
-                <span>₵{calculateTotal()}</span>
-              </div>
-              <button
-                onClick={handleCheckout}
-                className="w-full cursor-pointer bg-green-600 hover:bg-green-700 text-white py-2 rounded text-center font-medium"
-              >
-                Proceed to Checkout
-              </button>
-            </div>
-          </div>
-        )}
+    <section className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-24 px-4 md:px-10 lg:px-20 pb-16">
+      <div className="max-w-7xl mx-auto mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-800">🛒 Your Cart ({cart.length})</h2>
+        <button onClick={() => navigate('/services')} className="px-5 py-2 rounded-md bg-primary text-white hover:bg-primary/80 transition cursor-pointer">
+          Continue Shopping
+        </button>
       </div>
-    </div>
+
+      {cart.length ? (
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
+          {/* Items list */}
+          <div className="lg:col-span-2 space-y-6">
+            {cart.map((it) => {
+              const s = getService(it.service_id);
+              return (
+                <div key={it.service_id} className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row gap-4">
+                  <img src={s.image || 'https://via.placeholder.com/80'} alt={s.name} className="w-28 h-28 object-contain rounded border border-gray-200" />
+                  <div className="flex-1 grid sm:grid-cols-4 gap-4 items-center text-sm">
+                    <div className="sm:col-span-2">
+                      <p className="font-semibold text-gray-800 mb-1 truncate max-w-xs">{s.name}</p>
+                      <p className="text-primary">₵{parseFloat(s.price || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 justify-start sm:justify-center">
+                      {/* tooltip for decrement button */}
+                      <Tooltip message="Decrease quantity" position="top">
+                        <button onClick={() => updateQuantity(it.service_id, -1)} className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center hover:bg-gray-300 disabled:opacity-50 cursor-pointer" disabled={it.quantity <= 1}>
+                          <MinusIcon className="w-4" />
+                        </button>
+                      </Tooltip>
+                      <span className="w-8 text-center">{it.quantity}</span>
+                      {/* tooltip for increment button */}
+                      <Tooltip message="Increase quantity" position="top">
+                        <button onClick={() => updateQuantity(it.service_id, 1)} className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center hover:bg-gray-300 cursor-pointer">
+                          <PlusIcon className="w-4" />
+                        </button>
+                      </Tooltip>
+                    </div>
+                    <div className="text-right sm:text-center hidden lg:block font-medium">₵{((s.price || 0) * it.quantity).toFixed(2)}</div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Tooltip message="Remove from cart" position="right">
+                      <button onClick={() => handleRemove(it.service_id)} className="text-red-600 hover:text-red-800 cursor-pointer p-2 hover:bg-red-100 rounded">
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </Tooltip>
+                    <div className="block lg:hidden font-medium">
+                      Subtotal: ₵{((s.price || 0) * it.quantity).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Summary */}
+          <aside className="bg-white border border-gray-200 rounded-lg shadow p-6 space-y-6 h-max sticky top-28">
+            <h3 className="text-lg font-semibold">Order Summary</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 text-sm">
+              {cart.map((it) => {
+                const s = getService(it.service_id);
+                return (
+                  <div key={it.service_id} className="flex justify-between">
+                    <span>{s.name} × {it.quantity}</span>
+                    <span>₵{((s.price || 0) * it.quantity).toFixed(2)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <hr className="border-gray-200" />
+            <div className="flex justify-between font-semibold text-gray-700">
+              <span>Total</span>
+              <span>₵{total}</span>
+            </div>
+            <button onClick={handleCheckout} className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-md font-medium shadow cursor-pointer transition ">
+              Checkout
+            </button>
+          </aside>
+        </div>
+      ) : (
+        <div className="text-center mt-24 space-y-6">
+          <p className="text-xl font-medium">Your cart is empty 🥲</p>
+          <button onClick={() => navigate('/services')} className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary/80 transition">
+            Browse Services
+          </button>
+        </div>
+      )}
+    </section>
   );
 };
 
