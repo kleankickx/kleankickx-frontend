@@ -35,11 +35,13 @@ const Cart = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  // backend URL from environment variable
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await axios.get('http://127.0.0.1:8000/api/services/');
+        const { data } = await axios.get(`${backendUrl}/api/services/`);
         setServices(data);
       } catch {
         toast.error('Failed to load services');

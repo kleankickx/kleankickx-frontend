@@ -138,8 +138,7 @@ const Services = () => {
             viewport={{ once: true, amount: 0.2 }}
             >
               {services.map((service) => (
-                <motion.div
-                  variants={fadeUp}
+                <div
                   key={service.id}
                   className="bg-white rounded shadow-md overflow-hidden border border-gray-200 hover:shadow-xl transition duration-300 relative"
                 >
@@ -173,7 +172,7 @@ const Services = () => {
                   <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
                     10% OFF
                   </div>
-                </motion.div>
+                </div>
               ))}
             </motion.div>
 
