@@ -22,11 +22,11 @@ const TempVerifyEmail = () => {
     };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 px-4 lg:px-24">
       <div className="bg-white p-6 rounded-lg shadow-md w-96">
         <h2 className="text-2xl font-bold mb-4">Verify Your Email</h2>
         <p className="mb-4">A verification link has been sent to your email address. Please check your inbox and click the link to verify your email.</p>
-        <button onClick={handleResendVerification} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        <button onClick={handleResendVerification} className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/80">
           Resend Verification Email
         </button>
       </div>
