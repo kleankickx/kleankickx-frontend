@@ -29,20 +29,6 @@ const VerifyEmail = () => {
           withCredentials: true,
         });
 
-        const pending = localStorage.getItem('pending_verification');
-        if (!pending) throw new Error('No pending verification credentials found.');
-
-        const { email, password } = JSON.parse(pending);
-
-        const loginResponse = await axios.post(
-          `${backendUrl}/api/users/login/`,
-          { email, password },
-          { withCredentials: true }
-        );
-
-        const { access, refresh } = loginResponse.data;
-        login(access, refresh);
-        localStorage.removeItem('pending_verification');
 
         if (cartExpired) {
           toast.warn('Your cart was cleared due to expiration and synced with the server.', {
@@ -51,9 +37,15 @@ const VerifyEmail = () => {
         }
 
         setStatus('success');
-        toast.success('Email verified and logged in successfully!', { position: 'top-right' });
 
-        setTimeout(() => navigate('/cart'), 1200);
+        
+
+        toast.success('Email verified successfully!', { position: 'top-right' });
+        // navigate user to login page
+        setTimeout(() => {
+          navigate('/login');
+        }, 1200);
+        
       } catch (err) {
         const errorMsg =
           err.response?.data?.detail ||
@@ -100,7 +92,7 @@ const VerifyEmail = () => {
           <div className="flex flex-col items-center space-y-4">
             <CheckCircleIcon className="w-12 h-12 text-green-500" />
             <p className="text-green-600 font-medium">
-              Email verified successfully! Redirecting to cart...
+              Email verified successfully! Redirecting to login...
             </p>
           </div>
         )}

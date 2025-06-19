@@ -73,8 +73,6 @@ const Register = () => {
         { withCredentials: true }
       );
       refreshCartTimestamp(); // Prevent cart expiration during verification
-      // Store credentials securely for VerifyEmail
-      localStorage.setItem('pending_verification', JSON.stringify({ email, password }));
       toast.success('Registration successful! Please check your email to verify.', {
         position: 'top-right',
       });
