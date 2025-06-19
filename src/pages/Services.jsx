@@ -46,13 +46,17 @@ const Services = () => {
   const [error, setError] = useState('');
   const { cart, addToCart } = useContext(CartContext);
   const [loading, setLoading] = useState(true);
+
+  // backend URL from environment variable
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/services/');
+        const response = await axios.get(`${backendUrl}/api/services/`);
         setServices(response.data);
       } catch (err) {
         setError('Failed to load services.');

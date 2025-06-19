@@ -14,6 +14,8 @@ const VerifyEmail = () => {
   const { login } = useContext(AuthContext);
   const hasVerified = useRef(false);
   const { key } = useParams();  
+  // backend URL from environment variable
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   useEffect(() => {
     if (hasVerified.current) return;
@@ -23,7 +25,7 @@ const VerifyEmail = () => {
       try {
         // Verify email
         await axios.post(
-          `http://127.0.0.1:8000/api/users/verify-email/${key}/`,
+          `${backendUrl}/api/users/verify-email/${key}/`,
           { withCredentials: true }
         );
         // Retrieve pending credentials
@@ -34,7 +36,7 @@ const VerifyEmail = () => {
         const { email, password } = JSON.parse(pending);
         // Login
         const loginResponse = await axios.post(
-          'http://127.0.0.1:8000/api/users/login/',
+          `${backendUrl}/api/users/login/`,
           { email, password },
           { withCredentials: true }
         );

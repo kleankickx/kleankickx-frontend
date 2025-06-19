@@ -14,13 +14,15 @@ import 'react-toastify/dist/ReactToastify.css'; // Ensure toast styles are impor
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { cartExpired } = useContext(CartContext);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+
+  // backend URL from environment variable
+  const backendUrl = import.meta.env.VITE_BACKEND_URL  || 'http://127.0.0.1:8000';
 
   // get the continue path from the query string
   const location = useLocation();
@@ -50,7 +52,7 @@ const Login = () => {
 
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/users/login/',
+        `${backendUrl}/api/users/login/`,
         { email, password },
         { withCredentials: true }
       );
@@ -78,7 +80,7 @@ const Login = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/users/google-login/',
+        `${backendUrl}/api/users/google-login/`,
         { token: credentialResponse.credential },
         { withCredentials: true }
       );

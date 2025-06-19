@@ -2,10 +2,14 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const TempVerifyEmail = () => {
+
+    // backend URL from environment variable
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
     const handleResendVerification = async () => {
         try {
             const response = await axios.post(
-                'http://localhost:8000/api/users/resend-verification-email/',
+                `${backendUrl}/api/users/resend-verification-email/`,
                 { email: userEmail }
             );
             if (response.status === 200) {

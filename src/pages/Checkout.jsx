@@ -198,6 +198,9 @@ const Checkout = () => {
   const { user, loading: authLoading } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // backend URL from environment variable
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
   const [deliveryDetails, setDeliveryDetails] = useState({
     name: user ? `${user.first_name} ${user.last_name}`.trim() : '',
     phone: '',
@@ -228,7 +231,7 @@ const Checkout = () => {
   const createAddress = async () => {
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/addresses/create/',
+        `${backendUrl}/api/addresses/create/`,
         deliveryDetails,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
@@ -244,7 +247,7 @@ const Checkout = () => {
   const fetchDeliveryCost = async () => {
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/delivery/cost/',
+        `${backendUrl}/api/delivery/cost/`,
         {
           delivery_latitude: deliveryDetails.latitude,
           delivery_longitude: deliveryDetails.longitude,
@@ -263,7 +266,7 @@ const Checkout = () => {
   const initiatePayment = async () => {
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/payments/initialize/',
+        `${backendUrl}/api/payments/initialize/`,
         { amount: total },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
       );
@@ -299,7 +302,7 @@ const Checkout = () => {
   const confirmPayment = async (payment_id) => {
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/payments/verify/',
+        `${backendUrl}/api/payments/verify/`,
         { payment_id },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
       );
@@ -314,7 +317,7 @@ const Checkout = () => {
   const createOrder = async (payment_id) => {
     try {
       await axios.post(
-        'http://127.0.0.1:8000/api/orders/create/',
+        `${backendUrl}/api/orders/create/`,
         { cart, address_id: addressId, payment_id, delivery_id: deliveryId },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
       );

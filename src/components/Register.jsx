@@ -18,6 +18,10 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useContext(AuthContext); // Assuming you have a login function in context
+
+  // backend URL from environment variable
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
   const navigate = useNavigate();
 
   const refreshCartTimestamp = () => {
@@ -64,7 +68,7 @@ const Register = () => {
 
     try {
       await axios.post(
-        'http://127.0.0.1:8000/api/users/register/',
+        `${backendUrl}/api/users/register/`,
         { email, password, first_name: firstName, last_name: lastName },
         { withCredentials: true }
       );
@@ -87,7 +91,7 @@ const Register = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/users/google-login/',
+        `${backendUrl}/api/users/google-login/`,
         { token: credentialResponse.credential },
         { withCredentials: true }
       );
