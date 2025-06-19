@@ -38,7 +38,7 @@ const RateAndServices = () => (
     <section className="bg-cover bg-center h-screen relative" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="absolute inset-0 bg-black/30" />
       <motion.div
-        className="relative h-full px-4 md:px-8 lg:px-24 flex flex-col justify-center items-center lg:items-start text-center lg:text-left"
+        className="relative h-full px-4 md:px-8 lg:px-24 flex flex-col items-center lg:items-start text-center lg:text-left pt-[8rem]"
         variants={fadeInUp}
         initial="hidden"
         animate="visible"
@@ -75,9 +75,9 @@ const RateAndServices = () => (
           whileInView="visible"
           viewport={{ once: true }}
         />
-        <motion.div className='px-4 lg:px-0' variants={fadeInUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+        <motion.div className='px-4 pb-[4rem] lg:px-0' variants={fadeInUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
           <h2 className="text-[#007F03] text-3xl lg:text-6xl font-bold header mb-4">We Clean All Types of Sneakers</h2>
-          <p className="text-white text-lg">
+          <p className="text-white text-lg ">
             No matter the style or material, we have the expertise and
             experience to clean your sneakers to perfection. Our services
             cover; High-tops and low-tops, Canvas, leather, suede, and

@@ -81,7 +81,7 @@ const Home = () => {
       <section className="relative bg-cover bg-center h-screen" style={{ backgroundImage: `url(${homeBg})` }}>
         
         <motion.div
-          className="relative h-full px-4 md:px-8 lg:px-24 lg:pt-[10rem] flex flex-col justify-center items-center text-center lg:text-left lg:block"
+          className="relative h-full px-4 md:px-8 lg:px-24 lg:pt-[10rem] flex flex-col pt-[8rem] text-center lg:text-left lg:block"
           variants={fadeInUp}
           initial="hidden"
           animate="visible"

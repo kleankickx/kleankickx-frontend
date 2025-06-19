@@ -87,7 +87,7 @@ const Services = () => {
       <section className="bg-cover bg-center h-screen relative" style={{ backgroundImage: `url(${bgImage})` }}>
         <div className="absolute inset-0 bg-black/30" />
         <motion.div
-          className="relative h-full px-4 md:px-8 lg:px-24 flex flex-col justify-center items-center lg:items-start text-center lg:text-left"
+          className="relative h-full px-4 pt-[8rem] md:px-8 lg:px-24 flex flex-col lg:items-start text-center lg:text-left items-center"
           variants={fadeInUp}
           initial="hidden"
           animate="visible"
