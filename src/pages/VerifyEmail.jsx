@@ -1,6 +1,6 @@
 // src/components/VerifyEmail.jsx
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { CartContext } from '../context/CartContext';
@@ -9,7 +9,6 @@ import { CheckCircleIcon, XCircleIcon, ExclamationCircleIcon } from '@heroicons/
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
-  const { key } = useParams();
   const { cartExpired } = useContext(CartContext);
   const { login } = useContext(AuthContext);
 
@@ -19,13 +18,19 @@ const VerifyEmail = () => {
   const [status, setStatus] = useState('verifying'); // verifying | success | error
   const [error, setError] = useState('');
 
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const key = searchParams.get('key');
+  const userEmail = searchParams.get('email');
+
+
   useEffect(() => {
     if (hasVerified.current) return;
 
     const verifyEmail = async () => {
       hasVerified.current = true;
       try {
-        await axios.post(`${backendUrl}/api/users/verify-email/${key}/`, {
+        const response = await axios.post(`${backendUrl}/api/users/verify-email/${key}/`, {
           withCredentials: true,
         });
 
@@ -35,20 +40,31 @@ const VerifyEmail = () => {
             position: 'top-right',
           });
         }
+        console.log('Email verification response:', response.data.status);
+        setStatus(response.data.status);
 
-        setStatus('success');
-
+        if (response.data.status === 'already_verified') {
+          toast.info('This email is already verified. You can now log in.', {
+            position: 'top-right',
+          });
+         
+        }
+        if (response.data.status === 'success') {
+          toast.success('Email verified successfully! Redirecting to login...', {
+            position: 'top-right',
+          });
+        }
         
 
-        toast.success('Email verified successfully!', { position: 'top-right' });
         // navigate user to login page
         setTimeout(() => {
-          navigate('/login');
+          navigate('/login?continue=/cart');
         }, 1200);
         
       } catch (err) {
+        console.error('Email verification error:', err);
         const errorMsg =
-          err.response?.data?.detail ||
+          err.response?.data?.error ||
           err.message ||
           'Verification failed. Please try again.';
         setError(errorMsg);
@@ -97,6 +113,16 @@ const VerifyEmail = () => {
           </div>
         )}
 
+        {/* ALREADY VERIFIED STATE */ }
+        {status === 'already_verified' && (
+          <div className="flex flex-col items-center space-y-4">
+            <ExclamationCircleIcon className="w-12 h-12 text-yellow-500" />
+            <p className="text-yellow-600 font-medium">
+              This email is already verified. You can now log in.
+            </p>
+          </div>
+        )}
+
         {/* ERROR STATE */}
         {status === 'error' && (
           <div className="text-left space-y-4">
@@ -108,16 +134,15 @@ const VerifyEmail = () => {
               </div>
             </div>
 
-            {error.includes('expired') && (
+            {(error.includes('expired') || error.includes('Invalid')) && (
               <p className="text-sm text-gray-700 text-center">
                 Your link may have expired.{' '}
-                <a
-                  href="/register"
-                  className="text-green-600 font-medium hover:underline"
+                <button
+                  onClick={() => navigate('/temp-verify-email/?email=' + encodeURIComponent(userEmail) + '&expired=true')}
+                  className="text-primary hover:underline"
                 >
                   Request a new verification link
-                </a>
-                .
+                </button>
               </p>
             )}
           </div>

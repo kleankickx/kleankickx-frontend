@@ -222,6 +222,17 @@ const Checkout = () => {
   const taxAmount = (subtotal + deliveryCost) * taxRate;
   const total = subtotal + deliveryCost + taxAmount;
 
+  // check if the logged-in has verified their email
+  useEffect(() => {
+    if (user.is_verified === false) {
+      toast.error('Please verify your email before proceeding to checkout.', {
+        position: 'top-right',
+      });
+      navigate('/temp-verify-email/?is-verified=false&email=' + encodeURIComponent(user.email));
+      return;
+    }
+  }, [user]);
+
   useEffect(() => {
     console.log('Checkout: user=', user);
     console.log('Checkout: cart=', cart);

@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
         email: decoded.email || '',
         first_name: decoded.first_name || '',
         last_name: decoded.last_name || '',
+        is_verified: decoded.is_verified || false,
       };
     } catch (err) {
       console.error('AuthContext: Failed to decode token:', err);

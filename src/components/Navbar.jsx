@@ -1,4 +1,3 @@
-// Navbar.jsx
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -20,12 +19,19 @@ const Navbar = () => {
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef(null); // Desktop dropdown
+  const mobileDropdownRef = useRef(null); // Mobile dropdown
   const navigate = useNavigate();
 
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target) &&
+        mobileDropdownRef.current &&
+        !mobileDropdownRef.current.contains(e.target)
+      ) {
         setIsDropdownOpen(false);
       }
     };
@@ -43,11 +49,18 @@ const Navbar = () => {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  const handleLogout = () => {
-    logout();
-    toast.success('Logged out successfully!');
-    closeMobileMenu();
-    navigate('/login');
+  const handleLogout = (e) => {
+    e.stopPropagation();
+    try {
+      logout();
+      toast.success('Logged out successfully!');
+      closeMobileMenu();
+      setIsDropdownOpen(false);
+      navigate('/login');
+    } catch (err) {
+      toast.error('Logout failed. Please try again.');
+      console.error('Logout error:', err);
+    }
   };
 
   const navItems = [
@@ -84,7 +97,7 @@ const Navbar = () => {
               to="/services"
               className="bg-white text-green-700 rounded px-4 py-2.5 hover:bg-green-600 hover:text-white transition duration-300"
             >
-              Shop now
+              Shop now
             </NavLink>
           </li>
           <li>
@@ -102,7 +115,7 @@ const Navbar = () => {
           </li>
 
           {isAuthenticated ? (
-            <li className="relative" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen((p) => !p)}
                 className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-gray-700 transition cursor-pointer"
@@ -119,20 +132,12 @@ const Navbar = () => {
                 />
               </button>
               {isDropdownOpen && (
-                <ul className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded shadow-lg z-50 p-2">
+                <ul className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded shadow-lg z-50 p-2 space-y-1">
                   <li>
                     <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
-                    >
-                      Logout
-                    </button>
-
-                    {/* change password */}
-                    <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         navigate('/change-password');
-                        closeMobileMenu();
                         setIsDropdownOpen(false);
                       }}
                       className="w-full text-left rounded px-4 py-2 cursor-pointer hover:bg-gray-100"
@@ -140,9 +145,17 @@ const Navbar = () => {
                       Change Password
                     </button>
                   </li>
+                  <li>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
+                    >
+                      Logout
+                    </button>
+                  </li>
                 </ul>
               )}
-            </li>
+            </div>
           ) : (
             <>
               <li>
@@ -159,6 +172,7 @@ const Navbar = () => {
           )}
         </ul>
 
+        {/* Mobile menu toggle */}
         <div className="md:hidden flex gap-4 items-center">
           <button
             onClick={() => navigate('/cart')}
@@ -181,6 +195,7 @@ const Navbar = () => {
         </div>
       </div>
 
+      {/* Mobile menu overlay */}
       <div
         className={`fixed inset-0 bg-black/60 transition-opacity duration-300 ${
           isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -188,6 +203,7 @@ const Navbar = () => {
         onClick={closeMobileMenu}
       />
 
+      {/* Mobile side drawer */}
       <div
         className={`fixed top-0 right-0 h-full w-3/4 max-w-xs bg-gray-800 shadow-xl transform transition-transform duration-300 md:hidden ${
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
@@ -220,18 +236,17 @@ const Navbar = () => {
                 navigate('/cart');
                 closeMobileMenu();
               }}
-              className="flex items-center gap-2 cursor-pointer hover:bg-gray-700 px-3 py-2 rounded transition cursor-pointer w-full"
-              aria-label="View Cart"
+              className="flex items-center gap-2 hover:bg-gray-700 px-3 py-2 rounded transition cursor-pointer w-full"
             >
               <FontAwesomeIcon icon={faShoppingCart} />
               Cart ({cartItemCount})
             </button>
 
             {isAuthenticated ? (
-              <div className="text-white" ref={dropdownRef}>
+              <div className="text-white" ref={mobileDropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen((prev) => !prev)}
-                  className="flex items-center cursor-pointer justify-between w-full px-3 py-2 rounded hover:bg-gray-700 transition"
+                  className="flex items-center justify-between w-full px-3 py-2 rounded hover:bg-gray-700 transition"
                 >
                   <div className="flex items-center gap-2">
                     <FontAwesomeIcon icon={faUser} />
@@ -249,26 +264,22 @@ const Navbar = () => {
                   <ul className="mt-2 bg-gray-700 text-white rounded-md shadow space-y-2 p-2">
                     <li>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           navigate('/change-password');
                           closeMobileMenu();
                           setIsDropdownOpen(false);
                         }}
-                        className="flex items-center cursor-pointer gap-2 w-full text-left px-2 py-2 hover:bg-gray-600 rounded"
+                        className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
                       >
-                        <FontAwesomeIcon icon={faUser} />
                         Change Password
                       </button>
                     </li>
                     <li>
                       <button
-                        onClick={() => {
-                          handleLogout();
-                          setIsDropdownOpen(false);
-                        }}
-                        className="flex cursor-pointer items-center gap-2 w-full text-left px-2 py-2 hover:bg-gray-600 rounded"
+                        onClick={handleLogout}
+                        className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
                       >
-                        <FontAwesomeIcon icon={faTimes} />
                         Logout
                       </button>
                     </li>
@@ -293,7 +304,7 @@ const Navbar = () => {
               onClick={closeMobileMenu}
               className="inline-block bg-white text-green-700 rounded px-4 py-2 text-center hover:bg-green-600 hover:text-white transition w-full"
             >
-              Shop now
+              Shop now
             </NavLink>
           </div>
         </div>

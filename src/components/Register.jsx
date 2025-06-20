@@ -76,7 +76,7 @@ const Register = () => {
       toast.success('Registration successful! Please check your email to verify.', {
         position: 'top-right',
       });
-      navigate('/temp-verify-email');
+      navigate('/temp-verify-email/?email=' + encodeURIComponent(email) );
     } catch (err) {
       console.error('Registration error:', err.response?.data.email);
       setError(err.response?.data.email || 'Registration failed. Please try again.');

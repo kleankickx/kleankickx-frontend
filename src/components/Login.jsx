@@ -58,7 +58,7 @@ const Login = () => {
       );
       const { access, refresh } = response.data;
       login(access, refresh);
-    //   await fetchCartFromBackend(access);
+    
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
@@ -67,7 +67,7 @@ const Login = () => {
     //   await syncCartWithBackend(access);
       toast.success('Logged in successfully!', { position: 'top-right' });
       {/* navigate to the previous page */}
-      navigate(continuePath || -1); // Navigate to the previous page or default to -1
+      navigate(continuePath || '/'); // Navigate to the previous page or default to /
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
       toast.error('Login failed. Please check your credentials.', { position: 'top-right' });
