@@ -8,14 +8,24 @@ import {
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
-import img2 from '../assets/deep_clean.png';
-import img3 from '../assets/de_yellow.png';
-import img4 from '../assets/standardClean.png';
+
+import blueBefore from '../assets/blue_before.jpg';
+import blueAfter from '../assets/blue_after.jpg';
+import diorBefore from '../assets/dior_before.jpg';
+import diorAfter from '../assets/dior_after.jpg';
+import valBefore from '../assets/val_before.jpg';
+import valAfter from '../assets/val_after.jpg';
+import whiteBefore from '../assets/white_before.jpg';
+import whiteAfter from '../assets/white_after.jpg';
+import nikeBefore from '../assets/nike_before.jpg';
+import nikeAfter from '../assets/nike_after.jpg';
 
 const pairedImages = [
-  [img2, img2],
-  [img4, img3],
-  [img3, img4],
+  [blueBefore, blueAfter],
+  [diorBefore, diorAfter],
+  [valBefore, valAfter],
+  [whiteBefore, whiteAfter],
+  [nikeBefore, nikeAfter],
 ];
 
 const Arrow = ({ onClick, direction }) => (
@@ -44,7 +54,7 @@ const ShoeCarousel = () => {
   const settings = {
     infinite: true,
     centerMode: true,
-    centerPadding: '25rem',
+    centerPadding: '0rem',
     initialSlide: 1,
     slidesToShow: 3,
     speed: 500,
