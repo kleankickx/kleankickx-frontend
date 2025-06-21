@@ -37,7 +37,7 @@ const About = () => (
   <div className="bg-white">
     {/* HERO */}
     <section
-      className="relative bg-cover bg-center h-[30rem] md:h-[40rem] lg:h-[40rem]"
+      className="relative bg-cover bg-center h-[30rem]  lg:h-[40rem]"
       style={{ backgroundImage: `url(${bgImage})` }}
     >
       <div className="absolute inset-0 bg-black/40" />

@@ -8,33 +8,21 @@ import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 
+// Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.6,
-      ease: [0.6, 0.05, 0.01, 0.9],
-    },
-  },
-};
-const zoomIn = {
-  hidden: { opacity: 0, scale: 0.85 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
       duration: 0.5,
-      ease: [0.6, 0.05, 0.01, 0.9],
+      ease: 'easeOut',
     },
   },
 };
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
+
+// staggered animation
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.15 } },
@@ -67,6 +55,7 @@ const Services = () => {
     fetchServices();
   }, []);
 
+  // Function to handle adding a service to the cart
   const handleAddToCart = (serviceId, serviceName, servicePrice) => {
     const isInCart = cart.some(item => item.service_id === serviceId);
     if (isInCart) {
@@ -74,6 +63,7 @@ const Services = () => {
         position: 'top-right',
       });
     } else {
+      // Add service to cart
       addToCart(serviceId, serviceName, servicePrice);
       toast.success(`${serviceName} has been added to your cart!`, {
         position: 'top-right',
@@ -84,7 +74,7 @@ const Services = () => {
 
   return ( 
     <>
-      <section className="bg-cover bg-center h-screen relative" style={{ backgroundImage: `url(${bgImage})` }}>
+      <section className="bg-cover bg-center h-[20rem] relative" style={{ backgroundImage: `url(${bgImage})` }}>
         <div className="absolute inset-0 bg-black/30" />
         <motion.div
           className="relative h-full px-4 pt-[8rem] md:px-8 lg:px-24 flex flex-col lg:items-start text-center lg:text-left items-center"
@@ -95,29 +85,23 @@ const Services = () => {
           <h1 className="text-white text-3xl md:text-5xl font-bold header">
             <span className="text-primary">Schedule </span> Klean
           </h1>
-          <p className="text-white text-lg md:text-xl mt-8 max-w-2xl">
-            We offer a range of services to help you maintain a clean and healthy environment.
-            From regular cleaning to specialized deep cleaning, we've got you covered.
-          </p>
-          <p className="text-white text-lg md:text-xl mt-4 max-w-2xl">
-            Our team is dedicated to providing top‑notch service with a focus on quality and customer satisfaction.
-          </p>
+          
           
           {/* button to scroll to services */}
-          <motion.button
+          {/* <motion.button
             onClick={() => window.scrollTo({ top: document.getElementById('services').offsetTop, behavior: 'smooth' })}
             className="bg-[#007F03] cursor-pointer hover:bg-green-700 text-white px-6 py-3 rounded mt-8 inline-block active:scale-95 transition duration-200 focus:outline-none"
             variants={zoomIn}
           >
             Explore Our Services
-          </motion.button>
+          </motion.button> */}
         </motion.div>
       </section>
       <div className="bg-[#edf1f4] py-16 px-4" id="services">
 
           <div className="max-w-6xl mx-auto">
 
-            <h2 className="text-2xl md:text-3xl font-bold text-green-700 mb-8 border-b-4 border-green-600 w-fit">
+            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-8 w-fit">
               Shop From Categories
             </h2>
             {loading && (
@@ -137,16 +121,21 @@ const Services = () => {
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
             >
-              {services.map((service) => (
-                <div
+              {services.map((service, index) => (
+                <motion.div
                   key={service.id}
                   className="bg-white rounded shadow-md overflow-hidden border border-gray-200 hover:shadow-xl transition duration-300 relative"
+                  variants={fadeInUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.2 }}
                 >
-                  <div className="h-60 flex items-center justify-center ">
+                  <div className="h-60 flex items-center justify-center">
                     <img
                       src={service.image}
                       alt={service.name}
-                      className="h-full object-contain w-full transition duration-200 group-hover:scale-105 " />
+                      className="h-full object-contain w-full transition duration-200 group-hover:scale-105"
+                    />
                   </div>
 
                   <div className="p-4">
@@ -172,8 +161,9 @@ const Services = () => {
                   <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
                     10% OFF
                   </div>
-                </div>
+                </motion.div>
               ))}
+
             </motion.div>
 
 

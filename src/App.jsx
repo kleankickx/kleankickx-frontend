@@ -7,7 +7,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
 import Register from './components/Register';
 import VerifyEmail from './pages/VerifyEmail';
-import Dashboard from './components/Dashboard';
 import Services from './pages/Services';
 import Cart from './pages/Cart';
 import Login from './components/Login';
@@ -19,6 +18,7 @@ import About from './pages/About';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { useContext } from 'react';
 
+// Define a ProtectedRoute component to guard the checkout route
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useContext(AuthContext);
   return isAuthenticated ? children : <Navigate to="/login?continue=/checkout" replace />;
@@ -31,7 +31,7 @@ const AppContent = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {!shouldHideNavbar && <Navbar />}
+      {!shouldHideNavbar && <Navbar />} {/* Conditionally render Navbar based on the current route */}
       <main className="flex-grow">
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -48,14 +48,6 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Checkout />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
               </ProtectedRoute>
             }
           />

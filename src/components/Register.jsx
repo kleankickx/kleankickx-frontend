@@ -96,7 +96,7 @@ const Register = () => {
       const { access, refresh } = response.data;
       login(access, refresh); // Assuming you have a login function in context
       toast.success('Registered with Google!', { position: 'top-right' });
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       console.error('Google registration error:', err.response?.data);
       setError(err.response?.data?.detail || 'Google registration failed.');

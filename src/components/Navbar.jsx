@@ -11,7 +11,7 @@ import {
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import Logo from '../assets/logo.png';
+import Logo from '../assets/klean_logo.png';
 
 const Navbar = () => {
   const { cart } = useContext(CartContext);
@@ -72,8 +72,8 @@ const Navbar = () => {
   return (
     <nav className="bg-gray-800 text-white py-3 shadow-md fixed inset-x-0 top-0 z-50">
       <div className="flex justify-between items-center px-4 lg:px-24">
-        <NavLink to="/" className="flex items-center gap-2">
-          <img src={Logo} alt="KleanKickx" className="h-8 w-auto" />
+        <NavLink to="/" className="flex items-center gap-2 w-[6rem]">
+          <img src={Logo} alt="KleanKickx" className="w-full object-cover" />
         </NavLink>
 
         <ul className="hidden md:flex items-center space-x-6">
@@ -95,9 +95,10 @@ const Navbar = () => {
           <li>
             <NavLink
               to="/services"
-              className="bg-white text-green-700 rounded px-4 py-2.5 hover:bg-green-600 hover:text-white transition duration-300"
+              className="bg-white text-primary rounded px-4 py-2.5 hover:bg-primary hover:text-white transition duration-300"
             >
-              Shop now
+               Start Kleaning Here
+
             </NavLink>
           </li>
           <li>
@@ -302,9 +303,9 @@ const Navbar = () => {
             <NavLink
               to="/services"
               onClick={closeMobileMenu}
-              className="inline-block bg-white text-green-700 rounded px-4 py-2 text-center hover:bg-green-600 hover:text-white transition w-full"
+              className="inline-block bg-white text-primary rounded px-4 py-2 text-center hover:bg-primary hover:text-white transition w-full"
             >
-              Shop now
+               Start Kleaning Here
             </NavLink>
           </div>
         </div>

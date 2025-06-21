@@ -15,6 +15,7 @@ import kleankickxCare from '../assets/kleankickx_care.png';
 import whoWeAre from '../assets/who_we_are.png';
 import KleanTips from '../components/KleanTips';
 import Footer from '../components/Footer';
+import heroImage from '../assets/home_hero.png';
 
 
 
@@ -80,27 +81,40 @@ const Home = () => {
   return (
     <>
       {/* HERO */}
-      <section className="relative bg-cover bg-center h-screen" style={{ backgroundImage: `url(${homeBg})` }}>
-        
-        <motion.div
-          className="relative h-full px-4 md:px-8 lg:px-24 lg:pt-[10rem] flex flex-col pt-[8rem] text-center lg:text-left lg:block"
-          variants={fadeInUp}
-          initial="hidden"
-          animate="visible"
-        >
-          <h1 className="text-primary text-4xl md:text-6xl font-medium header lg:leading-[5rem]">
-            <span className="text-[#011627]">Leave Your </span> Sneakers<br />
-            <span className="text-[#011627]">In our </span> Care
-          </h1>
-          <p className="text-[#011627] text-lg mt-4 max-w-xl">
-            Getting your footwear cleaned has never been so easy. We pick up your dirty kicks, Klean them by hand, and then deliver your Kleankickx to you.
-          </p>
-          <motion.div variants={zoomIn} initial="hidden" animate="visible" className="mt-8">
-            <Link to="/services" className="bg-[#011627] text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium">
-              Schedule a Klean
-            </Link>
+      <section className="bg-[#E5FDFF] h-full lg:h-screen">
+        <section className="py-[8rem] px-4 md:px-8 lg:px-24"
+          style={{}}>
+        <div className="flex flex-col lg:flex-row items-center justify-between h-full text-center lg:text-left">
+          <motion.div
+            className=""
+            variants={fadeInUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <h1 className="text-primary text-4xl md:text-6xl font-medium header lg:leading-[5rem]">
+              <span className="text-[#011627]">Leave Your </span> Sneakers<br />
+              <span className="text-[#011627]">In our </span> Care
+            </h1>
+            <p className="text-[#011627] text-lg mt-4 max-w-xl">
+              Getting your footwear cleaned has never been so easy. We pick up your dirty kicks, Klean them by hand, and then deliver your Kleankickx to you.
+            </p>
+            <motion.div variants={zoomIn} initial="hidden" animate="visible" className="mt-8">
+              <Link to="/services" className="bg-[#011627] text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium">
+                Schedule a Klean
+              </Link>
+            </motion.div>
+            
           </motion.div>
-        </motion.div>
+
+          <motion.div
+            className="mt-12 lg:mt-0"
+            variants={fadeInUp}
+          >
+            <img src={heroImage} alt="Hero Sneakers" className="lg:w-[35rem]" />
+          </motion.div>
+        </div>
+
+        </section>
       </section>
 
       {/* HOW IT WORKS */}
