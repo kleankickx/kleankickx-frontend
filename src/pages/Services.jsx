@@ -123,45 +123,46 @@ const Services = () => {
             >
               {services.map((service, index) => (
                 <motion.div
-                  key={service.id}
-                  className="bg-white rounded shadow-md overflow-hidden border border-gray-200 hover:shadow-xl transition duration-300 relative"
-                  variants={fadeInUp}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, amount: 0.2 }}
-                >
-                  <div className="h-60 flex items-center justify-center">
-                    <img
-                      src={service.image}
-                      alt={service.name}
-                      className="h-full object-contain w-full transition duration-200 group-hover:scale-105"
-                    />
+                key={service.id}
+                className="bg-white rounded shadow-md overflow-hidden border border-gray-200 hover:shadow-2xl transition duration-300 relative group"
+                variants={fadeInUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+              >
+                <div className="w-full flex items-center justify-center overflow-hidden">
+                  <img
+                    src={service.image}
+                    alt={service.name}
+                    className="h-full w-full object-cover transition-transform duration-300 transform group-hover:scale-105"
+                  />
+                </div>
+
+                <div className="p-4">
+                  <h3 className="text-xl font-handwritten text-primary mb-2">{service.name}</h3>
+                  <p className="text-gray-700 text-sm h-16 overflow-hidden">
+                    {service.description}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-gray-500 line-through">₵135.00</div>
+                    <div className="text-lg font-bold text-primary">₵{service.price}</div>
                   </div>
 
-                  <div className="p-4">
-                    <h3 className="text-xl font-handwritten text-primary mb-2">{service.name}</h3>
-                    <p className="text-gray-700 text-sm h-16 overflow-hidden">
-                      {service.description}
-                    </p>
+                  <button
+                    onClick={() => handleAddToCart(service.id, service.name, service.price)}
+                    className="mt-4 w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium cursor-pointer transition duration-200 focus:outline-none"
+                    aria-label={`Add ${service.name} to cart`}
+                  >
+                    ADD TO CART
+                  </button>
+                </div>
 
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-gray-500 line-through">₵135.00</div>
-                      <div className="text-lg font-bold text-primary">₵{service.price}</div>
-                    </div>
-
-                    <button
-                      onClick={() => handleAddToCart(service.id, service.name, service.price)}
-                      className="mt-4 w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium cursor-pointer transition duration-200 focus:outline-none"
-                      aria-label={`Add ${service.name} to cart`}
-                    >
-                      ADD TO CART
-                    </button>
-                  </div>
-
-                  <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
-                    10% OFF
-                  </div>
+                <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
+                  10% OFF
+                </div>
                 </motion.div>
+
               ))}
 
             </motion.div>

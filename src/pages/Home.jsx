@@ -7,9 +7,9 @@ import {useState, useEffect} from 'react';
 import homeBg from '../assets/home_bg.png';
 import arrow1 from '../assets/arrow1.png';
 import arrow2 from '../assets/arrow2.png';
-import standardClean from '../assets/standardClean.png';
-import deepClean from '../assets/deep_clean.png';
-import unyellowing from '../assets/unyellowing.png';
+import standardClean from '../assets/standard_klean.png';
+import deepClean from '../assets/deep_klean.png';
+import unyellowing from '../assets/unyellow.png';
 import ShoeCarousel from '../components/ShoeCarousel';
 import kleankickxCare from '../assets/kleankickx_care.png';
 import whoWeAre from '../assets/who_we_are.png';
@@ -187,13 +187,19 @@ const Home = () => {
           {[{
             img: standardClean,
             title: 'Standard Clean (Sneaker Cleaning)',
-          }, {
-            img: unyellowing,
-            title: 'Decolorization (Unyellowing)',
-          }, {
+            price: 'GH₵50.00',
+          }, 
+          {
             img: deepClean,
             title: 'Deep Klean (Intensive Sneaker Cleaning)',
-          }].map((service, i) => (
+            price: 'GH₵100.00',
+          },
+          {
+            img: unyellowing,
+            title: 'Decolorization (Unyellowing)',
+            price: 'GH₵120.00',
+          },
+          ].map((service, i) => (
             <motion.div key={i} variants={fadeIn} custom={i} className="group">
               <Link to="/services">
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg hover:shadow-2xl transition duration-300 hover:border-primary overflow-hidden">
@@ -201,7 +207,7 @@ const Home = () => {
                   <div className="p-6"><h3 className="text-lg text-gray-800">{service.title}</h3></div>
                   <div className="px-6 py-2 flex gap-4 items-center border-t border-gray-200">
                     <p className="text-primary/50 text-lg line-through">GH₵135.00</p>
-                    <p className="text-primary font-bold text-lg">GH₵120.00</p>
+                    <p className="text-primary font-bold text-lg">{service.price}</p>
                   </div>
                 </div>
               </Link>

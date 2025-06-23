@@ -10,7 +10,6 @@ import delivery from '../assets/delivery.svg';
 import priority from '../assets/priority.svg';
 import shoe2 from '../assets/shoe2.png';
 import Footer from '../components/Footer';
-import ShoeCarousel from '../components/ShoeCarousel';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
