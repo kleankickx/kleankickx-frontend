@@ -6,6 +6,7 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
+import api from '../api'; // Assuming you have an API utility set up
 
 /* ------------------ Tooltip ------------------ */
 const Tooltip = ({ message, position = 'top', children }) => {
@@ -41,7 +42,7 @@ const Cart = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await axios.get(`${backendUrl}/api/services/`);
+        const { data } = await api.get('/api/services/');
         setServices(data);
       } catch {
         toast.error('Failed to load services');
@@ -151,8 +152,10 @@ const Cart = () => {
               <span>Total</span>
               <span>₵{total}</span>
             </div>
-            <button onClick={handleCheckout} className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-md font-medium shadow cursor-pointer transition ">
-              Checkout
+            <button onClick={handleCheckout} className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-md font-medium shadow cursor-pointer transition "
+            disabled={services.length === 0 || cart.length === 0} aria-label="Proceed to checkout"
+            >
+              {services.length === 0 || cart.length === 0 ? 'No services available' : 'Proceed to Checkout'}
             </button>
           </aside>
         </div>

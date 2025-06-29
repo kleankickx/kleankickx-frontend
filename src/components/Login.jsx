@@ -17,7 +17,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { cartExpired } = useContext(CartContext);
-  const { login } = useContext(AuthContext);
+  const { login, googleLogin } = useContext(AuthContext);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -51,14 +51,7 @@ const Login = () => {
     }
 
     try {
-      const response = await axios.post(
-        `${backendUrl}/api/users/login/`,
-        { email, password },
-        { withCredentials: true }
-      );
-      const { access, refresh } = response.data;
-      login(access, refresh);
-    
+      login(email, password);
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
@@ -79,14 +72,7 @@ const Login = () => {
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${backendUrl}/api/users/google-login/`,
-        { token: credentialResponse.credential },
-        { withCredentials: true }
-      );
-      const { access, refresh } = response.data;
-      login(access, refresh);
-    //   await fetchCartFromBackend(access);
+      googleLogin(credentialResponse);
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
@@ -159,6 +145,15 @@ const Login = () => {
                 <EyeIcon className="w-[1.5rem]" />
               )}
             </button>
+          </div>
+          {/* 👉 Forgot password link — add this block */}
+          <div className="text-right -mt-2 mb-2">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-primary hover:underline"
+            >
+              Forgot password?
+            </Link>
           </div>
           <button
             type="submit"

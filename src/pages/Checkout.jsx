@@ -1,563 +1,954 @@
-// src/pages/Checkout.jsx
-import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import { toast } from 'react-toastify';
-import { CartContext } from '../context/CartContext';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
+import { APIProvider, Map, MapControl, ControlPosition, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { AuthContext } from '../context/AuthContext';
-import 'leaflet/dist/leaflet.css';
+import { CartContext } from '../context/CartContext';
+import { toast } from 'react-toastify';
+import { FiX, FiCheck, FiMapPin, FiTruck, FiPackage, FiNavigation, FiInfo } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import Paystack from '@paystack/inline-js'
+import api from '../api'; // Assuming you have an API utility set up
 
-// Fix Leaflet marker icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// --- Constants ---
+const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
+const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
-const PAYSTACK_PUBLIC_KEY = 'your-paystack-public-key';
-
-const ghanaRegions = [
-  'Ahafo',
-  'Ashanti',
-  'Bono',
-  'Bono East',
-  'Central',
-  'Eastern',
-  'Greater Accra',
-  'North East',
-  'Northern',
-  'Oti',
-  'Savannah',
-  'Upper East',
-  'Upper West',
-  'Volta',
-  'Western',
-  'Western North',
-];
-
-const LocationMarker = ({ position, setPosition }) => {
-  useMapEvents({
-    click(e) {
-      setPosition([e.latlng.lat, e.latlng.lng]);
+// Region pricing configuration
+const REGION_CONFIG = {
+    'Greater Accra Region': {
+        defaultFee: 40,
+        availableAreas: {
+            'tema': { fee: 60, name: 'Tema' },
+            'accra': { fee: 40, name: 'Accra' }
+        },
+        defaultArea: 'accra'
     },
-  });
-  return position ? <Marker position={position}></Marker> : null;
+    'Central Region': {
+        defaultFee: 70,
+        availableAreas: {
+            'kasoa': { fee: 60, name: 'Kasoa' }
+        },
+        defaultArea: 'kasoa'
+    },
 };
 
-const RegionDropdown = ({ value, onChange, disabled }) => {
-  const [searchTerm, setSearchTerm] = useState(value || '');
-  const [isOpen, setIsOpen] = useState(false);
-  const [filteredRegions, setFilteredRegions] = useState(ghanaRegions);
-  const dropdownRef = useRef(null);
-  const inputRef = useRef(null);
+// Available regions for dropdown
+const AVAILABLE_REGIONS = Object.keys(REGION_CONFIG);
 
-  useEffect(() => {
-    setSearchTerm(value || '');
-    setFilteredRegions(
-      ghanaRegions.filter((region) =>
-        region.toLowerCase().includes((searchTerm || '').toLowerCase())
-      )
-    );
-  }, [value, searchTerm]);
+// --- Helper Components ---
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+// LocationCard (unchanged)
+const LocationCard = ({ location, type, onClear }) => {
+    const icon = type === 'delivery' ? <FiTruck className="text-blue-500" /> : <FiPackage className="text-green-500" />;
+    const bgColor = type === 'delivery' ? 'bg-blue-50' : 'bg-green-50';
+    const textColor = type === 'delivery' ? 'text-blue-800' : 'text-green-800';
 
-  const handleSelect = (region) => {
-    onChange(region);
-    setSearchTerm(region);
-    // Close dropdown after selection
-    setIsOpen(false);
-    
-  };
-
-  const handleClear = (e) => {
-    e.stopPropagation();
-    setSearchTerm('');
-    onChange('');
-    setIsOpen(true);
-    inputRef.current.focus();
-  };
-
-  const handleKeyDown = (e, region) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleSelect(region);
-    }
-  };
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <div className="relative">
-        <input
-          ref={inputRef}
-          type="text"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            onChange(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          placeholder="Select Region"
-          className="input-style pr-10"
-          disabled={disabled}
-          aria-label="Select Region"
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-        />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-auto">
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="text-gray-500 cursor-pointer hover:text-gray-700 focus:outline-none mr-2"
-              aria-label="Clear region selection"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="text-gray-500 cursor-pointer hover:text-gray-700 focus:outline-none"
-            aria-label={isOpen ? 'Close region dropdown' : 'Open region dropdown'}
-          >
-            <svg
-              className={`h-5 w-5 transform transition-transform duration-200 ${
-                isOpen ? 'rotate-180' : 'rotate-0'
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-      {isOpen && (
-        <ul
-          className="absolute z-10 w-full bg-white border border-gray-300 rounded-xl mt-1 max-h-60 overflow-y-auto shadow-lg"
-          role="listbox"
+    return (
+        <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.3 }}
+            className={`mt-3 p-4 ${bgColor} ${textColor} rounded-lg shadow-sm border border-gray-100`}
         >
-          {filteredRegions.length > 0 ? (
-            filteredRegions.map((region) => (
-              <li
-                key={region}
-                onClick={() => handleSelect(region)}
-                onKeyDown={(e) => handleKeyDown(e, region)}
-                className="px-4 py-2 cursor-pointer hover:bg-green-100 focus:bg-green-100 focus:outline-none"
-                role="option"
-                tabIndex={0}
-                aria-selected={value === region}
-              >
-                {region}
-              </li>
-            ))
-          ) : (
-            <li className="px-4 py-2 text-gray-500">No regions found</li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
+            <div className="flex justify-between items-start">
+                <div className="flex items-start">
+                    <div className="mr-3 mt-1">{icon}</div>
+                    <div>
+                        <h3 className="font-semibold">{location.name}</h3>
+                        <p className="text-sm mt-1">{location.address}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="px-2 py-1 bg-white rounded-md text-xs font-medium shadow-xs">
+                                {location.region}
+                            </span>
+                            <span className="px-2 py-1 bg-white rounded-md text-xs font-medium shadow-xs">
+                                {location.areaName}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={onClear}
+                    className="text-gray-400 hover:text-gray-600"
+                    aria-label={`Clear ${type} location`}
+                >
+                    <FiX />
+                </button>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
+                <span className="font-medium">{type === 'delivery' ? 'Delivery Fee:' : 'Pickup Fee:'}</span>
+                <span className="font-bold">GHS {location.cost.toFixed(2)}</span>
+            </div>
+        </motion.div>
+    );
 };
 
+// PlaceAutocompleteElementWrapper
+const PlaceAutocompleteElementWrapper = ({ onPlaceSelect, placeholder, type, region, onFocus, currentInputValue, initialLocation }) => {
+    const inputContainerRef = useRef(null);
+    const autocompleteElementRef = useRef(null);
+    const placesLibrary = useMapsLibrary('places');
+    const [selectedLocation, setSelectedLocation] = useState(initialLocation || null);
+    const geocodingLibrary = useMapsLibrary('geocoding');
+
+    const handlePlaceSelect = useCallback(async (event) => {
+        const placePrediction = event.placePrediction || event.detail?.placePrediction;
+        if (!placePrediction) {
+            console.error("Error: placePrediction is missing");
+            toast.error('Location selection failed: Incomplete event data.');
+            setSelectedLocation(null);
+            onPlaceSelect(null, type);
+            return;
+        }
+
+        try {
+            const place = await placePrediction.toPlace();
+            await place.fetchFields({
+                fields: ['displayName', 'formattedAddress', 'location']
+            });
+
+            if (!place?.formattedAddress || !place?.location) {
+                toast.error('Selected location details are incomplete.');
+                setSelectedLocation(null);
+                onPlaceSelect(null, type);
+                return;
+            }
+
+            let detectedRegion = region;
+            let detectedAreaKey = null;
+            let tempRegion = null;
+
+            if (geocodingLibrary) {
+                const geocoder = new geocodingLibrary.Geocoder();
+                const latLng = { lat: place.location.lat(), lng: place.location.lng() };
+                try {
+                    const geocodeResponse = await geocoder.geocode({ location: latLng });
+                    const geocodeResults = geocodeResponse.results;
+                    for (const result of geocodeResults) {
+                        const adminAreaLevel1 = result.address_components.find(comp => 
+                            comp.types.includes('administrative_area_level_1')
+                        );
+                        if (adminAreaLevel1) {
+                            const matchedRegion = AVAILABLE_REGIONS.find(r => 
+                                adminAreaLevel1.long_name.includes(r)
+                            );
+                            tempRegion = adminAreaLevel1.long_name;
+                            if (matchedRegion) {
+                                detectedRegion = matchedRegion;
+                                break;
+                            }
+                        }
+                    }
+                    const regionData = REGION_CONFIG[detectedRegion];
+                    if (!regionData) {
+                        toast.error(`${tempRegion} is not configured.`);
+                        setSelectedLocation(null);
+                        onPlaceSelect(null, type);
+                        return;
+                    }
+                    for (const result of geocodeResults) {
+                        const locality = result.address_components.find(comp =>
+                            comp.types.includes('locality') || comp.types.includes('sublocality')
+                        )?.long_name.toLowerCase() || '';
+                        const sortedAreaKeys = Object.keys(regionData.availableAreas)
+                            .sort((a, b) => b.length - a.length);
+                        for (const areaKey of sortedAreaKeys) {
+                            if (locality.includes(areaKey.toLowerCase())) {
+                                detectedAreaKey = areaKey;
+                                break;
+                            }
+                        }
+                        if (detectedAreaKey) break;
+                    }
+                } catch (geocodeError) {
+                    console.error("Geocoding error:", geocodeError);
+                    toast.warn("Could not precisely determine area. Using fallback.");
+                }
+            }
+
+            if (!detectedAreaKey) {
+                const searchString = (place.formattedAddress || place.displayName || '').toLowerCase();
+                const regionData = REGION_CONFIG[detectedRegion];
+                if (searchString && regionData) {
+                    const sortedAreaKeys = Object.keys(regionData.availableAreas)
+                        .sort((a, b) => b.length - a.length);
+                    for (const areaKey of sortedAreaKeys) {
+                        if (searchString.includes(areaKey.toLowerCase())) {
+                            detectedAreaKey = areaKey;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const regionData = REGION_CONFIG[detectedRegion];
+            if (!regionData) {
+                toast.error('Region configuration not found.');
+                setSelectedLocation(null);
+                onPlaceSelect(null, type);
+                return;
+            }
+
+            const area = detectedAreaKey
+                ? regionData.availableAreas[detectedAreaKey]
+                : regionData.availableAreas[regionData.defaultArea];
+
+            if (!area) {
+                toast.error('Could not determine delivery area.');
+                setSelectedLocation(null);
+                onPlaceSelect(null, type);
+                return;
+            }
+
+            const location = {
+                address: place.formattedAddress,
+                name: place.displayName || place.formattedAddress,
+                region: detectedRegion,
+                areaName: area.name,
+                cost: area.fee,
+                lat: place.location.lat(),
+                lng: place.location.lng(),
+                place_id: place.place_id
+            };
+
+            setSelectedLocation(location);
+            onPlaceSelect(location, type);
+        } catch (error) {
+            console.error('Error processing location:', error);
+            toast.error('Failed to process location. Please try again.');
+            setSelectedLocation(null);
+            onPlaceSelect(null, type);
+        }
+    }, [onPlaceSelect, type, region, geocodingLibrary]);
+
+    useEffect(() => {
+        if (!placesLibrary || !inputContainerRef.current) return;
+        if (!window.google?.maps?.places?.PlaceAutocompleteElement) {
+            console.error('PlaceAutocompleteElement not available.');
+            toast.error('Location services unavailable. Please check API key.');
+            return;
+        }
+
+        const autocomplete = new window.google.maps.places.PlaceAutocompleteElement({
+            types: ['address'],
+            includedRegionCodes: ['gh']
+        });
+        autocompleteElementRef.current = autocomplete;
+        inputContainerRef.current.innerHTML = '';
+        autocompleteElementRef.current.placeholder = placeholder || 'Search for a place';
+        autocompleteElementRef.current.style.width = '100%';
+        autocompleteElementRef.current.style.height = '45px';
+        inputContainerRef.current.appendChild(autocomplete);
+        autocomplete.addEventListener('gmp-select', handlePlaceSelect);
+
+        // Initialize with currentInputValue
+        if (currentInputValue && initialLocation) {
+            autocompleteElementRef.current.value = currentInputValue;
+            setSelectedLocation(initialLocation);
+        }
+
+        return () => {
+            autocomplete.removeEventListener('gmp-select', handlePlaceSelect);
+            if (inputContainerRef.current && inputContainerRef.current.contains(autocomplete)) {
+                inputContainerRef.current.removeChild(autocomplete);
+            }
+        };
+    }, [placesLibrary, handlePlaceSelect, currentInputValue, initialLocation]);
+
+    const clearSelection = () => {
+        setSelectedLocation(null);
+        onPlaceSelect(null, type);
+        if (autocompleteElementRef.current) {
+            autocompleteElementRef.current.value = '';
+        }
+    };
+
+    return (
+        <div className="relative mt-2">
+            <div
+                ref={inputContainerRef}
+                className="w-full place-autocomplete-input-container"
+                onFocus={onFocus}
+            />
+            <AnimatePresence>
+                {selectedLocation && (
+                    <LocationCard
+                        location={selectedLocation}
+                        type={type}
+                        onClear={clearSelection}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+// MapHandler (unchanged)
+const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput }) => {
+    const map = useMap();
+    const geocoder = useMapsLibrary('geocoding');
+    const deliveryMarkerRef = useRef(null);
+    const pickupMarkerRef = useRef(null);
+
+    useEffect(() => {
+        if (!map) return;
+        if (delivery || pickup) {
+            const bounds = new window.google.maps.LatLngBounds();
+            if (delivery) bounds.extend({ lat: delivery.lat, lng: delivery.lng });
+            if (!useSame && pickup) bounds.extend({ lat: pickup.lat, lng: pickup.lng });
+            if (!bounds.isEmpty()) {
+                map.fitBounds(bounds);
+            }
+        } else {
+            map.setCenter(currentLocation);
+            map.setZoom(12);
+        }
+    }, [map, delivery, pickup, useSame, currentLocation]);
+
+    useEffect(() => {
+        if (!map || !window.google?.maps?.Marker) return;
+        [deliveryMarkerRef.current, pickupMarkerRef.current].forEach(marker => {
+            if (marker) marker.setMap(null);
+        });
+
+        if (delivery) {
+            deliveryMarkerRef.current = new window.google.maps.Marker({
+                position: { lat: delivery.lat, lng: delivery.lng },
+                map: map,
+                icon: {
+                    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+                            <circle cx="12" cy="12" r="12" fill="#3B82F6" />
+                            <text x="12" y="16" font-size="12" fill="white" font-weight="bold" text-anchor="middle">D</text>
+                        </svg>`
+                    )}`,
+                    scaledSize: new window.google.maps.Size(24, 24)
+                },
+                title: 'Delivery Location'
+            });
+        }
+
+        if (!useSame && pickup) {
+            pickupMarkerRef.current = new window.google.maps.Marker({
+                position: { lat: pickup.lat, lng: pickup.lng },
+                map: map,
+                icon: {
+                    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+                            <circle cx="12" cy="12" r="12" fill="#10B981" />
+                            <text x="12" y="16" font-size="12" fill="white" font-weight="bold" text-anchor="middle">P</text>
+                        </svg>`
+                    )}`,
+                    scaledSize: new window.google.maps.Size(24, 24)
+                },
+                title: 'Pickup Location'
+            });
+        }
+    }, [map, delivery, pickup, useSame]);
+
+    const handleMapClick = useCallback(async (e) => {
+        if (!map || !geocoder || !activeInput || !e.detail?.latLng) return;
+        try {
+            const { results } = await geocoder.geocode({ location: e.detail.latLng });
+            if (results && results.length > 0) {
+                const place = results[0];
+                const selectedRegionName = activeInput === 'delivery' ? localStorage.getItem('deliveryRegion') || 'Greater Accra' : localStorage.getItem('pickupRegion') || 'Greater Accra';
+                const regionData = REGION_CONFIG[selectedRegionName];
+                let locality = place.address_components.find(comp =>
+                    comp.types.includes('locality') || comp.types.includes('sublocality')
+                )?.long_name.toLowerCase() || '';
+                let area = regionData.availableAreas[regionData.defaultArea];
+                for (const [areaKey, areaInfo] of Object.entries(regionData.availableAreas)) {
+                    if (locality.includes(areaKey)) {
+                        area = areaInfo;
+                        break;
+                    }
+                }
+                const locationInfo = {
+                    address: place.formatted_address,
+                    name: place.name || place.formatted_address || 'Selected Location',
+                    region: selectedRegionName,
+                    areaName: area.name,
+                    cost: area.fee,
+                    lat: e.detail.latLng.lat,
+                    lng: e.detail.latLng.lng
+                };
+                if (activeInput === 'delivery') {
+                    localStorage.setItem('deliveryLocation', JSON.stringify(locationInfo));
+                    localStorage.setItem('deliveryInputValue', locationInfo.address);
+                } else {
+                    localStorage.setItem('pickupLocation', JSON.stringify(locationInfo));
+                    localStorage.setItem('pickupInputValue', locationInfo.address);
+                }
+                window.dispatchEvent(new CustomEvent('mapLocationSelected', { detail: { location: locationInfo, type: activeInput } }));
+                map.panTo(e.detail.latLng);
+                map.setZoom(16);
+            }
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            toast.error('Could not determine address at this location. Please try searching instead.');
+        }
+    }, [map, geocoder, activeInput]);
+
+    useEffect(() => {
+        if (!map) return;
+        map.addListener('click', handleMapClick);
+        return () => {
+            window.google.maps.event.clearListeners(map, 'click');
+        };
+    }, [map, handleMapClick]);
+
+    return null;
+};
+
+// --- Main Checkout Component ---
 const Checkout = () => {
-  const { cart, clearCart } = useContext(CartContext);
-  const { user, loading: authLoading } = useContext(AuthContext);
-  const navigate = useNavigate();
-
-  // backend URL from environment variable
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
-
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    name: user ? `${user.first_name} ${user.last_name}`.trim() : '',
-    phone: '',
-    email: user?.email || '',
-    address: '',
-    region: 'Greater Accra', // Default region
-    landmark: '',
-    latitude: 5.6037, // Default Accra
-    longitude: -0.1870,
-  });
-  const [deliveryCost, setDeliveryCost] = useState(0);
-  const [deliveryId, setDeliveryId] = useState(null);
-  const [addressId, setAddressId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
-  const taxRate = 0.05;
-  const taxAmount = (subtotal + deliveryCost) * taxRate;
-  const total = subtotal + deliveryCost + taxAmount;
-
-  // check if the logged-in has verified their email
-  useEffect(() => {
-    if (user.is_verified === false) {
-      toast.error('Please verify your email before proceeding to checkout.', {
-        position: 'top-right',
-      });
-      navigate('/temp-verify-email/?is-verified=false&email=' + encodeURIComponent(user.email));
-      return;
-    }
-  }, [user]);
-
-  useEffect(() => {
-    console.log('Checkout: user=', user);
-    console.log('Checkout: cart=', cart);
-    console.log('Checkout: deliveryDetails=', deliveryDetails);
-  }, [user, cart, deliveryDetails]);
-
-  const createAddress = async () => {
-    try {
-      const response = await axios.post(
-        `${backendUrl}/api/addresses/create/`,
-        deliveryDetails,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    const { accessToken, user } = useContext(AuthContext);
+    const { cart, clearCart } = useContext(CartContext);
+    const navigate = useNavigate();
+    const [delivery, setDelivery] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('deliveryLocation'));
+        } catch {
+            return null;
         }
-      );
-      setAddressId(response.data.id);
-      return response.data.id;
-    } catch (err) {
-      throw new Error('Failed to save address: ' + err.message);
-    }
-  };
-
-  const fetchDeliveryCost = async () => {
-    try {
-      const response = await axios.post(
-        `${backendUrl}/api/delivery/cost/`,
-        {
-          delivery_latitude: deliveryDetails.latitude,
-          delivery_longitude: deliveryDetails.longitude,
-        },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    });
+    const [pickup, setPickup] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('pickupLocation'));
+        } catch {
+            return null;
         }
-      );
-      setDeliveryCost(response.data.delivery_cost);
-      setDeliveryId(response.data.delivery_id);
-    } catch (err) {
-      throw new Error('Failed to calculate delivery cost: ' + err.message);
-    }
-  };
+    });
+    const [useSame, setUseSame] = useState(true);
+    const [placing, setPlacing] = useState(false);
+    const [activeInput, setActiveInput] = useState(null);
+    const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
+    const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
+    const [currentLocation, setCurrentLocation] = useState(DEFAULT_CENTER);
+    const [locationLoading, setLocationLoading] = useState(true);
+    const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
+    const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
+    const [showAlert, setShowAlert] = useState(false);
+    const [paymentView, setPaymentView] = useState(false);
 
-  const initiatePayment = async () => {
-    try {
-      const response = await axios.post(
-        `${backendUrl}/api/payments/initialize/`,
-        { amount: total },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
-      );
-      const { authorization_url, reference, payment_id } = response.data;
+    const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
+    const deliveryFee = delivery?.cost || 0;
+    const pickupFee = useSame ? deliveryFee : pickup?.cost || 0;
+    const total = subtotal + deliveryFee + pickupFee;
 
-      const paystack = new window.PaystackPop();
-      paystack.newTransaction({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: user.email,
-        amount: total * 100,
-        reference,
-        onSuccess: async () => {
-          try {
-            await confirmPayment(payment_id);
-            await createOrder(payment_id);
-          } catch (err) {
-            setError(err.message || 'Payment failed.');
-            toast.error(err.message || 'Payment failed.', { position: 'top-right' });
-            setLoading(false);
-          }
-        },
-        onCancel: () => {
-          setError('Payment cancelled.');
-          toast.error('Payment cancelled.', { position: 'top-right' });
-          setLoading(false);
-        },
-      });
-    } catch (err) {
-      throw new Error('Failed to initiate payment: ' + err.message);
-    }
-  };
+    useEffect(() => {
+        localStorage.setItem('deliveryRegion', deliveryRegion);
+    }, [deliveryRegion]);
 
-  const confirmPayment = async (payment_id) => {
-    try {
-      const response = await axios.post(
-        `${backendUrl}/api/payments/verify/`,
-        { payment_id },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
-      );
-      if (response.data.status !== 'SUCCESS') {
-        throw new Error('Payment verification failed.');
-      }
-    } catch (err) {
-      throw err;
-    }
-  };
+    useEffect(() => {
+        localStorage.setItem('pickupRegion', pickupRegion);
+    }, [pickupRegion]);
 
-  const createOrder = async (payment_id) => {
-    try {
-      await axios.post(
-        `${backendUrl}/api/orders/create/`,
-        { cart, address_id: addressId, payment_id, delivery_id: deliveryId },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
-      );
-      clearCart();
-      toast.success('Order placed successfully!', { position: 'top-right' });
-      navigate('/dashboard');
-    } catch (err) {
-      throw new Error('Failed to create order: ' + err.message);
-    }
-  };
+    useEffect(() => {
+        if (useSame && delivery) {
+            setPickup({ ...delivery, region: deliveryRegion });
+            setPickupInputValue(delivery.address);
+            localStorage.setItem('pickupLocation', JSON.stringify({ ...delivery, region: deliveryRegion }));
+            localStorage.setItem('pickupInputValue', delivery.address);
+        } else if (useSame && !delivery) {
+            setPickup(null);
+            setPickupInputValue('');
+            localStorage.removeItem('pickupLocation');
+            localStorage.removeItem('pickupInputValue');
+        }
+    }, [useSame, delivery, deliveryRegion]);
 
-  useEffect(() => {
-    if (!authLoading && cart.length === 0) {
-      toast.warn('Your cart is empty.', { position: 'top-right' });
-      navigate('/services');
-    }
-  }, [cart, navigate, authLoading]);
+    useEffect(() => {
+        const hasSeenAlert = localStorage.getItem('hasSeenCheckoutAlert');
+        if (!hasSeenAlert) {
+            setShowAlert(true);
+            localStorage.setItem('hasSeenCheckoutAlert', 'true');
+        }
+    }, []);
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      setDeliveryDetails((prev) => ({
-        ...prev,
-        name: `${user.first_name} ${user.last_name}`.trim(),
-        email: user.email,
-      }));
-    }
-  }, [user, authLoading]);
+    useEffect(() => {
+        const detectUserLocation = () => {
+            if (!navigator.geolocation) {
+                setLocationLoading(false);
+                toast.info("Geolocation not supported, using default location (Accra).");
+                return;
+            }
+            setLocationLoading(true);
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setCurrentLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                    setLocationLoading(false);
+                },
+                (error) => {
+                    console.error("Geolocation error:", error);
+                    setLocationLoading(false);
+                    toast.info("Failed to detect location, using default (Accra).");
+                },
+                { timeout: 5000 }
+            );
+        };
+        detectUserLocation();
+    }, []);
 
-  useEffect(() => {
-    if (deliveryDetails.latitude && deliveryDetails.longitude) {
-      fetchDeliveryCost().catch((err) => {
-        setError(err.message);
-        toast.error(err.message, { position: 'top-right' });
-      });
-    }
-  }, [deliveryDetails.latitude, deliveryDetails.longitude]);
-
-  const validateDeliveryDetails = () => {
-    const { name, phone, email, address, region } = deliveryDetails;
-    if (!name || !phone || !email || !address || !region) {
-      setError('Please fill in all required delivery details.');
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email.');
-      return false;
-    }
-    if (!/^\+?\d{10,15}$/.test(phone)) {
-      setError('Please enter a valid phone number.');
-      return false;
-    }
-    if (!ghanaRegions.includes(region)) {
-      setError('Please select a valid region.');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    if (!validateDeliveryDetails()) {
-      setLoading(false);
-      return;
-    }
-    try {
-      await createAddress();
-      await initiatePayment();
-    } catch (err) {
-      setError(err.message || 'Checkout failed. Please try again.');
-      toast.error(err.message || 'Checkout failed.', { position: 'top-right' });
-      setLoading(false);
-    }
-  };
-
-  if (authLoading) {
-    return <div className="text-center py-16">Loading...</div>;
-  }
-
-  return (
-    <div className="bg-gray-50 py-10 px-4 min-h-screen">
-      <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-2xl p-10 mt-[4rem]">
-        <h1 className="text-4xl font-bold text-center text-green-700 mb-10 tracking-tight">
-          Checkout
-        </h1>
-        <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-10">
-          {/* Delivery Details */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-2xl font-semibold text-green-600 mb-4">Delivery Information</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={deliveryDetails.name}
-                onChange={(e) =>
-                  setDeliveryDetails({ ...deliveryDetails, name: e.target.value })
-                }
-                className="input-style"
-                required
-                disabled={loading}
-                aria-label="Full Name"
-              />
-              <input
-                type="tel"
-                placeholder="Phone Number"
-                value={deliveryDetails.phone}
-                onChange={(e) =>
-                  setDeliveryDetails({ ...deliveryDetails, phone: e.target.value })
-                }
-                className="input-style"
-                required
-                disabled={loading}
-                aria-label="Phone Number"
-              />
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={deliveryDetails.email}
-                onChange={(e) =>
-                  setDeliveryDetails({ ...deliveryDetails, email: e.target.value })
-                }
-                className="input-style"
-                required
-                disabled={loading}
-                aria-label="Email Address"
-              />
-              <RegionDropdown
-                value={deliveryDetails.region}
-                onChange={(region) =>
-                  setDeliveryDetails({ ...deliveryDetails, region })
-                }
-                disabled={loading}
-              />
-              <input
-                type="text"
-                placeholder="Full Address"
-                value={deliveryDetails.address}
-                onChange={(e) =>
-                  setDeliveryDetails({ ...deliveryDetails, address: e.target.value })
-                }
-                className="input-style"
-                required
-                disabled={loading}
-                aria-label="Full Address"
-              />
-              <input
-                type="text"
-                placeholder="Nearby Landmark (optional)"
-                value={deliveryDetails.landmark}
-                onChange={(e) =>
-                  setDeliveryDetails({ ...deliveryDetails, landmark: e.target.value })
-                }
-                className="input-style"
-                disabled={loading}
-                aria-label="Nearby Landmark"
-              />
-            </div>
-            <div className="mt-6">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">
-                Select Delivery Location on Map
-              </h3>
-              <MapContainer
-                center={[deliveryDetails.latitude, deliveryDetails.longitude]}
-                zoom={13}
-                scrollWheelZoom={false}
-                className="h-72 rounded-xl border border-green-200 shadow"
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <LocationMarker
-                  position={[deliveryDetails.latitude, deliveryDetails.longitude]}
-                  setPosition={(latlng) =>
-                    setDeliveryDetails({
-                      ...deliveryDetails,
-                      latitude: latlng[0],
-                      longitude: latlng[1],
-                    })
-                  }
-                />
-              </MapContainer>
-            </div>
-            <div className="pt-6">
-              <button
-                type="submit"
-                className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition duration-300"
-                disabled={loading}
-                aria-label="Place Order and Pay"
-              >
-                {loading ? 'Processing...' : 'Place Order & Pay'}
-              </button>
-              {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-            </div>
-          </div>
-          {/* Order Summary */}
-          <div className="bg-gray-50 rounded-2xl shadow p-6">
-            <h2 className="text-2xl font-semibold text-green-600 mb-6">Order Summary</h2>
-            <div className="space-y-4 text-sm">
-              {cart.map((item) => (
-                <div key={item.service_id} className="flex justify-between border-b pb-2">
-                  <span>{item.service_name} x {item.quantity}</span>
-                  <span className="font-medium text-gray-800">
-                    GH₵{(item.price * item.quantity).toFixed(2)}
-                  </span>
+    const handlePlaceSelect = useCallback((location, type) => {
+        if (type === 'delivery') {
+            setDelivery(location);
+            setDeliveryInputValue(location ? location.address : '');
+            localStorage.setItem('deliveryLocation', JSON.stringify(location));
+            localStorage.setItem('deliveryInputValue', location ? location.address : '');
+            if (useSame && location) {
+                setPickup({ ...location, region: deliveryRegion });
+                setPickupInputValue(location.address);
+                localStorage.setItem('pickupLocation', JSON.stringify({ ...location, region: deliveryRegion }));
+                localStorage.setItem('pickupInputValue', location.address);
+            } else if (useSame && !location) {
+                setPickup(null);
+                setPickupInputValue('');
+                localStorage.removeItem('pickupLocation');
+                localStorage.removeItem('pickupInputValue');
+            }
+        } else {
+            setPickup(location);
+            setPickupInputValue(location ? location.address : '');
+            localStorage.setItem('pickupLocation', JSON.stringify(location));
+            localStorage.setItem('pickupInputValue', location ? location.address : '');
+        }
+        setActiveInput(null);
+        if (location) {
+            toast.success(
+                <div className="flex items-center">
+                    <FiCheck className="mr-2" />
+                    {type} location set to {location.areaName}, {location.region}
                 </div>
-              ))}
+            );
+        } else {
+            toast.info(`${type} location cleared.`);
+        }
+    }, [useSame, deliveryRegion]);
+
+    useEffect(() => {
+        const listener = (event) => {
+            const { location, type } = event.detail;
+            handlePlaceSelect(location, type);
+        };
+        window.addEventListener('mapLocationSelected', listener);
+        return () => {
+            window.removeEventListener('mapLocationSelected', listener);
+        };
+    }, [handlePlaceSelect]);
+
+    const handleUseCurrentLocation = async () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocation not supported by your browser");
+            return;
+        }
+        setLocationLoading(true);
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            });
+            const userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            const geocoder = new window.google.maps.Geocoder();
+            const { results } = await new Promise((resolve, reject) => {
+                geocoder.geocode({ location: userLocation }, (results, status) => {
+                    if (status === 'OK' && results && results.length > 0) {
+                        resolve({ results });
+                    } else {
+                        reject(new Error(status));
+                    }
+                });
+            });
+            const place = results[0];
+            let detectedRegion = deliveryRegion;
+            const administrativeAreaLevel1 = place.address_components.find(comp =>
+                comp.types.includes('administrative_area_level_1')
+            )?.long_name;
+            if (administrativeAreaLevel1) {
+                const matchedRegion = AVAILABLE_REGIONS.find(r => administrativeAreaLevel1.includes(r));
+                if (matchedRegion) {
+                    detectedRegion = matchedRegion;
+                    setDeliveryRegion(detectedRegion);
+                }
+            }
+            const regionData = REGION_CONFIG[detectedRegion];
+            let locality = place.address_components.find(comp =>
+                comp.types.includes('locality') || comp.types.includes('sublocality')
+            )?.long_name.toLowerCase() || '';
+            let area = regionData.availableAreas[regionData.defaultArea];
+            for (const [areaKey, areaInfo] of Object.entries(regionData.availableAreas)) {
+                if (locality.includes(areaKey)) {
+                    area = areaInfo;
+                    break;
+                }
+            }
+            const locationInfo = {
+                address: place.formatted_address,
+                name: 'Your Current Location',
+                region: detectedRegion,
+                areaName: area.name,
+                cost: area.fee,
+                lat: userLocation.lat,
+                lng: userLocation.lng
+            };
+            handlePlaceSelect(locationInfo, 'delivery');
+        } catch (error) {
+            console.error("Error getting current location:", error);
+            toast.error("Could not get current location. Please try searching instead.");
+        } finally {
+            setLocationLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!delivery) {
+            toast.error('Please select a delivery location');
+            return;
+        }
+        if (!pickup && !useSame) {
+            toast.error('Please select a pickup location');
+            return;
+        }
+        if (cart.length === 0) {
+            toast.error('Your cart is empty');
+            return;
+        }
+        setPaymentView(true);
+    };
+
+    const handlePayment = () => {
+        if (!Paystack) {
+            toast.error('Paystack SDK not loaded');
+            return;
+        }
+        const handler = new Paystack()
+        handler.newTransaction({
+            key: PAYSTACK_PUBLIC_KEY,
+            email: user.email,
+            amount: total * 100, // Convert GHS to pesewas
+            currency: 'GHS',
+
+            onSuccess: (transaction) => {
+                setPlacing(true);
+                console.log('Transaction successful:', transaction);
+                console.log("saving"); 
+                console.log( user.id,
+                    delivery,
+                    useSame ? delivery : pickup,
+                    total,
+                    cart,
+                    transaction.reference
+                ) 
+                const res = api.post('/api/orders/create/', {
+                    user_id: user.id,
+                    delivery_location: delivery,
+                    pickup_location: useSame ? delivery : pickup,
+                    total_amount: total,
+                    cart_items: cart,
+                    delivery_cost: deliveryFee,
+                    pickup_cost: useSame ? deliveryFee : pickupFee,
+                    sub_total: subtotal,
+                    transaction_id: transaction.reference,
+                })
+                res.then(response => {
+                    setPlacing(false);
+                    clearCart();
+                    localStorage.removeItem('deliveryLocation');
+                    localStorage.removeItem('pickupLocation');
+                    localStorage.removeItem('deliveryInputValue');
+                    localStorage.removeItem('pickupInputValue');
+                    localStorage.removeItem('deliveryRegion');
+                    localStorage.removeItem('pickupRegion');
+                    setDelivery(null);
+                    setPickup(null);
+                    setDeliveryInputValue('');
+                    setPickupInputValue('');
+                    setDeliveryRegion('');
+                    setPickupRegion('');
+                    setUseSame(true);
+                    toast.success('Order placed successfully! Thank you for your purchase.');
+                    navigate(`/orders/${response.data.order_slug}`);
+                }).catch(error => {
+                    setPlacing(false);
+                    console.error('Error placing order:', error);
+                    toast.error('Failed to place order. Please try again.');
+                });
+                
+            },
+            onCancel: () => {
+                toast.info('Payment cancelled. Your order was not placed.');
+            },
+
+            onError: (error) => {
+                setPlacing(false);
+                console.error('Payment error:', error);
+                toast.error('Payment failed. Please try again.');
+            },
+
+            onLoad: (response) => {
+                console.log('Paystack SDK loaded successfully:', response);
+            }
+            
+            
+        });
+        
+    }
+
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = "https://js.paystack.co/v2/inline.js";
+        script.async = true;
+        document.body.appendChild(script);
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
+
+    return (
+        <APIProvider
+            apiKey={Maps_API_KEY}
+            libraries={['places', 'geocoding']}
+            onLoad={() => console.log('Google Maps API loaded successfully!')}
+        >
+            <div className="max-w-5xl mx-auto px-4 py-8 mt-[4rem]">
+                {showAlert && (
+                    <div className="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center">
+                        <FiInfo className="mr-2 text-yellow-700" />
+                        <p className="text-sm text-yellow-700">
+                            Locations depend on the selected region. Current options for delivery and pickup are Accra, Tema, Kasoa.
+                            <button
+                                onClick={() => setShowAlert(false)}
+                                className="ml-4 text-yellow-700 hover:text-yellow-900 underline"
+                            >
+                                Dismiss
+                            </button>
+                        </p>
+                    </div>
+                )}
+
+                {!paymentView ? (
+                    <>
+                        <div className="mb-8">
+                            <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+                            <p className="text-gray-600 mt-2">Review your order and provide delivery details</p>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-semibold mb-4 flex items-center">
+                                        <FiTruck className="mr-2 text-blue-600" />
+                                        Delivery Information
+                                    </h2>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Delivery Location
+                                                </label>
+                                                <button
+                                                    onClick={handleUseCurrentLocation}
+                                                    disabled={locationLoading}
+                                                    className="flex items-center text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+                                                >
+                                                    <FiNavigation className="mr-1" />
+                                                    {locationLoading ? 'Detecting...' : 'Use Current Location'}
+                                                </button>
+                                            </div>
+                                            <PlaceAutocompleteElementWrapper
+                                                key={`delivery-${paymentView}`}
+                                                onPlaceSelect={(loc) => handlePlaceSelect(loc, 'delivery')}
+                                                currentInputValue={deliveryInputValue}
+                                                initialLocation={delivery}
+                                                placeholder="Search delivery address"
+                                                type="delivery"
+                                                region={deliveryRegion}
+                                                onFocus={() => setActiveInput('delivery')}
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="same"
+                                                checked={useSame}
+                                                onChange={(e) => setUseSame(e.target.checked)}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <label htmlFor="same" className="ml-2 block text-sm text-gray-700">
+                                                Use delivery address for pickup
+                                            </label>
+                                        </div>
+                                        {!useSame && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Pickup Location
+                                                </label>
+                                                <PlaceAutocompleteElementWrapper
+                                                    key={`pickup-${paymentView}`}
+                                                    onPlaceSelect={(loc) => handlePlaceSelect(loc, 'pickup')}
+                                                    currentInputValue={pickupInputValue}
+                                                    initialLocation={pickup}
+                                                    placeholder="Search pickup address"
+                                                    type="pickup"
+                                                    region={pickupRegion}
+                                                    onFocus={() => setActiveInput('pickup')}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
+                                    <h2 className="text-xl font-semibold mb-4">Delivery Map</h2>
+                                    <p className="text-sm text-gray-500 mb-3">
+                                        {activeInput
+                                            ? `Click on the map to set ${activeInput} location`
+                                            : 'Select a field above to set location on map'}
+                                    </p>
+                                    <div className="relative">
+                                        <Map
+                                            mapId={"YOUR_MAP_ID"}
+                                            defaultZoom={delivery || pickup ? 16 : 12}
+                                            defaultCenter={currentLocation}
+                                            gestureHandling={'greedy'}
+                                            disableDefaultUI={false}
+                                            style={MAP_CONTAINER_STYLE}
+                                        >
+                                            <MapHandler
+                                                delivery={delivery}
+                                                pickup={pickup}
+                                                useSame={useSame}
+                                                currentLocation={currentLocation}
+                                                activeInput={activeInput}
+                                            />
+                                        </Map>
+                                        <AnimatePresence>
+                                            {activeInput && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: 10 }}
+                                                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center"
+                                                >
+                                                    <FiMapPin className="mr-2 text-blue-500" />
+                                                    Click to set {activeInput} location
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+                                    <div className="space-y-3">
+                                        {cart.map((item) => (
+                                            <div key={item.service_id} className="flex justify-between py-2 border-b border-gray-100">
+                                                <div>
+                                                    <p className="font-medium">{item.service_name}</p>
+                                                    <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                                                </div>
+                                                <p className="font-medium">GHS {(item.quantity * item.price).toFixed(2)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-6 space-y-2 pt-4 border-t border-gray-200">
+                                        <div className="flex justify-between">
+                                            <p className="text-gray-600">Subtotal</p>
+                                            <p className="font-medium">GHS {subtotal.toFixed(2)}</p>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <p className="text-gray-600">Delivery Fee</p>
+                                            <p className="font-medium">
+                                                {delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--'}
+                                            </p>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <p className="text-gray-600">Pickup Fee</p>
+                                            <p className="font-medium">
+                                                {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '--')}
+                                            </p>
+                                        </div>
+                                        <div className="flex justify-between pt-4 mt-2 border-t border-gray-200">
+                                            <p className="text-lg font-semibold">Total</p>
+                                            <p className="text-lg font-semibold text-blue-600">
+                                                GHS {total.toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup)}
+                                    className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${
+                                        placing || cart.length === 0 || !delivery || (!useSame && !pickup)
+                                            ? 'bg-gray-400 cursor-not-allowed'
+                                            : 'bg-blue-600 hover:bg-blue-700'
+                                    }`}
+                                >
+                                    {placing ? (
+                                        <span className="flex items-center justify-center">
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Continuing...
+                                        </span>
+                                    ) : (
+                                        'Continue to Payment'
+                                    )}
+                                </button>
+                                {cart.length === 0 && (
+                                    <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-sm">
+                                        Your cart is empty. Add items to proceed with checkout.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h2 className="text-xl font-semibold mb-4">Complete Payment</h2>
+                        <p className="text-gray-600 mb-4">
+                            Total: GHS {total.toFixed(2)} (includes delivery and pickup fees)
+                        </p>
+                        <button
+                            onClick={handlePayment}
+                            disabled={placing}
+                            className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${
+                                placing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                            }`}
+                        >
+                            {placing ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processing...
+                                </span>
+                            ) : (
+                                'Pay with Paystack'
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setPaymentView(false)}
+                            className="mt-4 w-full py-3 px-4 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200"
+                        >
+                            Back to Checkout
+                        </button>
+                    </div>
+                )}
             </div>
-            <div className="mt-6 space-y-2 text-base font-medium text-gray-700">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>GH₵{subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Delivery:</span>
-                <span>GH₵{deliveryCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax (5%):</span>
-                <span>GH₵{taxAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-3 text-lg font-bold">
-                <span>Total:</span>
-                <span>GH₵{total.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+        </APIProvider>
+    );
 };
 
 export default Checkout;

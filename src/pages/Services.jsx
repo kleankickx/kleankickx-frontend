@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
+import api from '../api'; // Assuming you have an API utility set up
 
 // Animation variants
 const fadeInUp = {
@@ -44,7 +45,7 @@ const Services = () => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${backendUrl}/api/services/`);
+        const response = await api.get('/api/services/');
         setServices(response.data);
       } catch (err) {
         setError('Failed to load services.');
@@ -83,7 +84,7 @@ const Services = () => {
           animate="visible"
         >
           <h1 className="text-white text-3xl md:text-5xl font-bold header">
-            <span className="text-primary">Schedule </span> Klean
+            <span className="text-primary">Schedule </span> a Klean
           </h1>
           
           

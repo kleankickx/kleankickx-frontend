@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CartProvider } from './context/CartContext';
@@ -15,14 +14,13 @@ import Checkout from './pages/Checkout';
 import RateAndServices from './pages/RateAndServices';
 import Home from './pages/Home';
 import About from './pages/About';
-import { AuthProvider, AuthContext } from './context/AuthContext';
-import { useContext } from 'react';
-
-// Define a ProtectedRoute component to guard the checkout route
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useContext(AuthContext);
-  return isAuthenticated ? children : <Navigate to="/login?continue=/checkout" replace />;
-};
+import ChangePassword from './pages/ChangePassword';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import AuthProvider from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import GetOrder from './pages/GetOrder';
+import MyOrders from './pages/MyOrders';
 
 const AppContent = () => {
   const location = useLocation();
@@ -43,11 +41,37 @@ const AppContent = () => {
           <Route path="/temp-verify-email" element={<TempVerifyEmail />} />
           <Route path="/rate-and-services" element={<RateAndServices />} />
           <Route path="/about-us" element={<About />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route
             path="/checkout"
             element={
               <ProtectedRoute>
                 <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/order/:orderSlug"
+            element={
+              <ProtectedRoute>
+                <GetOrder />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-orders"
+            element={
+              <ProtectedRoute>
+                <MyOrders />
               </ProtectedRoute>
             }
           />
@@ -63,13 +87,13 @@ function App() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <CartProvider>
-          <Router>
+      <Router>
+        <AuthProvider>
+          <CartProvider>
             <AppContent />
-          </Router>
-        </CartProvider>
-      </AuthProvider>
+          </CartProvider>
+        </AuthProvider>
+      </Router>
     </GoogleOAuthProvider>
   );
 }

@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { EnvelopeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
 import { useLocation } from 'react-router-dom';
+import api from '../api';
 
 const TempVerifyEmail = () => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -32,7 +33,7 @@ const TempVerifyEmail = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${backendUrl}/api/users/resend-verification-email/`, {
+      await api.post('/api/users/resend-verification-email/', {
         email: userEmail,
       });
       toast.success('Verification email resent – please check your inbox.');

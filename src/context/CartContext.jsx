@@ -129,6 +129,12 @@ export const CartProvider = ({ children }) => {
     });
   };
 
+  const clearCart = () => {
+    setCart([]);
+    setCartExpired(true);
+    localStorage.removeItem('cart');
+    console.log('clearCart: Cart cleared');
+  };
 
   console.log('CartProvider: Current cart state=', cart);
 
@@ -140,6 +146,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         updateQuantity,
         removeFromCart,
+        clearCart,
       }}
     >
       {children}

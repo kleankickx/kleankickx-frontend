@@ -17,7 +17,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useContext(AuthContext); // Assuming you have a login function in context
+  const { googleLogin } = useContext(AuthContext); // Assuming you have a login function in context
 
   // backend URL from environment variable
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -88,13 +88,7 @@ const Register = () => {
   const handleGoogleRegisterSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${backendUrl}/api/users/google-login/`,
-        { token: credentialResponse.credential },
-        { withCredentials: true }
-      );
-      const { access, refresh } = response.data;
-      login(access, refresh); // Assuming you have a login function in context
+      googleLogin(credentialResponse);
       toast.success('Registered with Google!', { position: 'top-right' });
       navigate('/');
     } catch (err) {

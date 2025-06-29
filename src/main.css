@@ -1,0 +1,12 @@
+gmp-place-autocomplete {
+  display: block;
+  width: 100%;
+  
+ 
+}
+
+gmp-place-autocomplete .widget-container{
+  border-color:#d1d5db;
+  background-color: red;
+}
+

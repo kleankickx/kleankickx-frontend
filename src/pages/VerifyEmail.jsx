@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { CheckCircleIcon, XCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import api from '../api'; // Assuming you have an API utility set up
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const VerifyEmail = () => {
     const verifyEmail = async () => {
       hasVerified.current = true;
       try {
-        const response = await axios.post(`${backendUrl}/api/users/verify-email/${key}/`, {
+        const response = await api.post(`/api/users/verify-email/${key}/`, {
           withCredentials: true,
         });
 

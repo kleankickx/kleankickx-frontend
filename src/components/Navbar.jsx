@@ -67,6 +67,9 @@ const Navbar = () => {
     { to: '/', label: 'Home' },
     { to: '/rate-and-services', label: 'Rate & Services' },
     { to: '/about-us', label: 'About Us' },
+
+    // my orders link only if user is authenticated
+    ...(isAuthenticated ? [{ to: '/my-orders', label: 'My Orders' }] : []),
   ];
 
   return (

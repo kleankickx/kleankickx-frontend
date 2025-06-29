@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Google Maps Place Autocomplete</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        h1 {
+            color: #1a73e8;
+            font-size: 1.875rem; /* 30px */
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        #autocomplete-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        /* Custom styling for the Google Places Autocomplete element */
+        /* Note: Google's custom element creates its own shadow DOM,
+           so direct CSS targeting can be tricky.
+           We'll rely on inline styles set via JS for most customization,
+           but these general styles apply to the container and might
+           affect how the element is rendered if it inherits. */
+        .pac-container { /* Default class for the autocomplete dropdown */
+            font-family: 'Inter', sans-serif;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            background-color: #ffffff;
+            z-index: 1000; /* Ensure it appears above other content */
+        }
+        .pac-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .pac-item:last-child {
+            border-bottom: none;
+        }
+        .pac-item:hover {
+            background-color: #e6f4ea; /* Light green for hover, similar to Google's */
+        }
+        .pac-item-query {
+            font-weight: 500;
+            color: #333333;
+        }
+        .pac-item-query + span {
+            color: #666666;
+            font-size: 0.9em;
+        }
+        .pac-icon {
+            display: none; /* Hide default icon if you want to use custom ones or none */
+        }
+        .message-box {
+            background-color: #e6f4ea;
+            color: #1e8449;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            word-wrap: break-word;
+            text-align: left;
+        }
+        .widget-container{
+            border-color: red;
+            background-color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Find a Place</h1>
+        <p class="text-gray-600 mb-6">Start typing an address or place name to use the customized autocomplete.</p>
+        <div id="autocomplete-container" class="relative">
+            <!-- The Place Autocomplete Element will be inserted here by JavaScript -->
+        </div>
+        <div id="selected-place-info" class="message-box">
+            <p class="font-semibold mb-2">Selected Place Details:</p>
+            <p id="place-name"></p>
+            <p id="place-address"></p>
+            <p id="place-lat-lng"></p>
+        </div>
+    </div>
+
+    <script>
+        // Check if __app_id and __firebase_config are defined, otherwise use defaults
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+        // Google Maps API Key will be automatically provided by the Canvas environment.
+        const GOOGLE_MAPS_API_KEY = "AIzaSyAViQNRAKxGaJ-i6oTYKq4H9OF72p6P9sI"; // Canvas will inject this if running in the environment
+
+        // Function to load Google Maps JavaScript API
+        function loadGoogleMapsScript() {
+            return new Promise((resolve, reject) => {
+                if (window.google && window.google.maps && window.google.maps.places) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                // Removed 'loading=async' and 'defer=true' for more reliable script loading
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+                script.async = false; // Set to false to ensure synchronous loading
+                script.onload = () => {
+                    if (window.google && window.google.maps && window.google.maps.places) {
+                        resolve();
+                    } else {
+                        reject(new Error("Google Maps Places library still not loaded after script onload."));
+                    }
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        async function initAutocomplete() {
+            try {
+                await loadGoogleMapsScript();
+
+                if (!window.google || !window.google.maps || !window.google.maps.places) {
+                    console.error("Google Maps Places library not loaded.");
+                    document.getElementById('autocomplete-container').innerHTML = `
+                        <p class="text-red-600">Error loading maps. Please check your API key and network connection.</p>
+                    `;
+                    return;
+                }
+
+                // Create the PlaceAutocompleteElement
+                const placeAutocomplete = new google.maps.places.PlaceAutocompleteElement();
+
+                // Apply custom styling directly to the element's input field
+                // The PlaceAutocompleteElement exposes a style attribute for its underlying input.
+                // Object.assign(placeAutocomplete.style, {
+                //     width: '100%',
+                //     padding: '12px 16px',
+                //     borderRadius: '8px',
+                //     border: '1px solid #d0d0d0',
+                //     fontSize: '1rem',
+                //     boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                //     outline: 'none',
+                //     transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                //     fontFamily: "'Inter', sans-serif",
+                //     color: '#333333',
+                //     backgroundColor: '#f8f8f8'
+                // });
+
+                
+                
+
+                // Add focus/hover styles (these are a bit trickier with shadow DOM,
+                // but setting a class and adding general CSS can help or
+                // you might listen to focus events and set styles programmatically)
+                placeAutocomplete.onfocus = () => {
+                    placeAutocomplete.style.borderColor = '#1a73e8';
+                    placeAutocomplete.style.boxShadow = '0 0 0 3px rgba(26, 115, 232, 0.2)';
+                };
+                placeAutocomplete.onblur = () => {
+                    placeAutocomplete.style.borderColor = '#d0d0d0';
+                    placeAutocomplete.style.boxShadow = 'none';
+                };
+
+                // Append the element to the container
+                document.getElementById('autocomplete-container').appendChild(placeAutocomplete);
+
+                
+                // Object.assign(widget.style, {
+                //     width: '100%',
+                //     padding: '12px 16px',
+                //     borderRadius: '8px',
+                //     border: '1px solid #d0d0d0',
+                //     fontSize: '1rem',
+                //     boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                //     outline: 'none',
+                //     transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                //     fontFamily: "'Inter', sans-serif",
+                //     color: '#333333',
+                //     backgroundColor: '#f8f8f8'
+                // });
+
+                // Add a listener for when a place is selected
+                placeAutocomplete.addEventListener('placechanged', () => {
+                    const place = placeAutocomplete.place;
+                    const infoBox = document.getElementById('selected-place-info');
+                    const placeName = document.getElementById('place-name');
+                    const placeAddress = document.getElementById('place-address');
+                    const placeLatLng = document.getElementById('place-lat-lng');
+
+                    if (place) {
+                        infoBox.style.display = 'block';
+                        placeName.textContent = `Name: ${place.displayName || 'N/A'}`;
+                        placeAddress.textContent = `Address: ${place.formattedAddress || 'N/A'}`;
+                        if (place.location) {
+                            placeLatLng.textContent = `Lat, Lng: ${place.location.lat}, ${place.location.lng}`;
+                        } else {
+                            placeLatLng.textContent = `Lat, Lng: N/A`;
+                        }
+                    } else {
+                        infoBox.style.display = 'none';
+                    }
+                });
+
+                const gmpAutocompleteElement = document.querySelector('#autocomplete-container')
+                console.log('gmp-place-autocomplete Element:', gmpAutocompleteElement);
+                const temp = gmpAutocompleteElement.children[0]
+                console.log('gmp-place-autocomplete Element:', temp);
+
+                // Get the shadowRoot
+                const shadowRoot = temp.shadowRoot
+                const widget = document.querySelector('.widget-container');
+                console.log('Widget Element:', widget);
+
+                console.log('Shadow Root:', shadowRoot);
+
+            } catch (error) {
+                console.error("Failed to load Google Maps API or initialize autocomplete:", error);
+                document.getElementById('autocomplete-container').innerHTML = `
+                    <p class="text-red-600">Failed to load maps or initialize autocomplete. Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        // Initialize autocomplete when the window loads
+        window.onload = initAutocomplete;
+        
+
+
+        
+    </script>
+</body>
+</html>
