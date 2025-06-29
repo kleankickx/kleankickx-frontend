@@ -28,7 +28,6 @@ const Login = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const continuePath = searchParams.get('continue') || null;
-  console.log('Continue Path:', continuePath);
 
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -51,16 +50,22 @@ const Login = () => {
     }
 
     try {
-      login(email, password);
+      const isLoggedIn = await login(email, password);
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
         });
       }
-    //   await syncCartWithBackend(access);
-      toast.success('Logged in successfully!', { position: 'top-right' });
-      {/* navigate to the previous page */}
-      navigate(continuePath || '/'); // Navigate to the previous page or default to /
+      if (isLoggedIn) {
+        toast.success('Logged in successfully!', { position: 'top-right' });
+        // navigate to the previous page or default to -1
+        navigate(continuePath || -1);
+      }
+      else {
+        setError('Login failed. Please check your credentials.');
+        toast.error('Login failed. Please check your credentials.', { position: 'top-right' });
+      }
+
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
       toast.error('Login failed. Please check your credentials.', { position: 'top-right' });
@@ -72,7 +77,7 @@ const Login = () => {
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      googleLogin(credentialResponse);
+      await googleLogin(credentialResponse);
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',

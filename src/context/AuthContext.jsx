@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import api, { setAuthContext } from '../api';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 export const AuthContext = createContext();
 
@@ -68,7 +69,8 @@ const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const response = await api.post('/api/users/login/', { email, password });
+            const response = await api.post('/api/users/login/', { email, password }
+            );
             const { access, refresh } = response.data;
             localStorage.setItem('access_token', access);
             localStorage.setItem('refresh_token', refresh);
