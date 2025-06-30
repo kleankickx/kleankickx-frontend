@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Paystack from '@paystack/inline-js'
 import api from '../api'; // Assuming you have an API utility set up
+import PaystackIcon from "../assets/paystack.png"
 
 // --- Constants ---
 const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -745,6 +746,8 @@ const Checkout = () => {
                                         <FiTruck className="mr-2 text-blue-600" />
                                         Delivery Information
                                     </h2>
+
+
                                     <div className="space-y-4">
                                         <div>
                                             <div className="flex justify-between items-center mb-1">
@@ -884,10 +887,10 @@ const Checkout = () => {
                                 <button
                                     onClick={handleSubmit}
                                     disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup)}
-                                    className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${
+                                    className={`w-full py-3 px-4 rounded-lg cursor-pointer font-medium text-white transition-colors ${
                                         placing || cart.length === 0 || !delivery || (!useSame && !pickup)
                                             ? 'bg-gray-400 cursor-not-allowed'
-                                            : 'bg-blue-600 hover:bg-blue-700'
+                                            : 'bg-primary hover:bg-primary/80'
                                     }`}
                                 >
                                     {placing ? (
@@ -911,37 +914,131 @@ const Checkout = () => {
                         </div>
                     </>
                 ) : (
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h2 className="text-xl font-semibold mb-4">Complete Payment</h2>
-                        <p className="text-gray-600 mb-4">
-                            Total: GHS {total.toFixed(2)} (includes delivery and pickup fees)
-                        </p>
-                        <button
-                            onClick={handlePayment}
-                            disabled={placing}
-                            className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${
-                                placing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-                            }`}
-                        >
-                            {placing ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Processing...
-                                </span>
-                            ) : (
-                                'Pay with Paystack'
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setPaymentView(false)}
-                            className="mt-4 w-full py-3 px-4 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200"
-                        >
-                            Back to Checkout
-                        </button>
-                    </div>
+                    
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 max-w-md mx-auto transform transition-all duration-300 hover:shadow-xl">
+    {/* Header with animated gradient */}
+    <div className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-green-500 to-primary/80 p-6 text-white">
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10"></div>
+        <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/10"></div>
+        
+        <div className="relative z-10 flex items-center justify-between">
+            <div>
+                <h2 className="text-2xl font-bold">Complete Payment</h2>
+                <p className="text-white/80">Secure transaction powered by Paystack</p>
+            </div>
+            <div className="flex space-x-2">
+                <div className="h-10 w-16 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <img src={PaystackIcon} className="w-[1rem]" />
+                </div>
+               
+            </div>
+        </div>
+    </div>
+
+    {/* Payment breakdown - Glassmorphism style */}
+    <div className="space-y-4 mb-8 backdrop-blur-sm bg-white/50 p-6 rounded-xl border border-gray-100 shadow-sm">
+        <div className="flex justify-between py-3 border-b border-gray-100/50">
+            <div className="flex items-center text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                </svg>
+                Subtotal
+            </div>
+            <span className="font-medium">GHS {subtotal.toFixed(2)}</span>
+        </div>
+        
+        <div className="flex justify-between py-3 border-b border-gray-100/50">
+            <div className="flex items-center text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                    <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1V5a1 1 0 00-1-1H3z" />
+                </svg>
+                Delivery Fee
+            </div>
+            <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
+        </div>
+        
+        <div className={`flex justify-between py-3 ${useSame ? 'border-b border-gray-100/50' : ''}`}>
+            <div className="flex items-center text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                Pickup Fee
+            </div>
+            <span className="font-medium">
+                {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '0.00') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '0.00')}
+            </span>
+        </div>
+
+        <div className="flex justify-between py-3 pt-4">
+            <div className="flex items-center text-lg font-semibold text-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                Total Amount
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-green-500 to-primary/80 bg-clip-text text-transparent">GHS {total.toFixed(2)}</span>
+        </div>
+    </div>
+
+    {/* Payment button with micro-interactions */}
+    <div className="space-y-4">
+        <button
+            onClick={handlePayment}
+            disabled={placing}
+            className={`w-full py-4 px-6 rounded-xl font-semibold text-white cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden group ${
+                placing 
+                    ? 'bg-gray-300 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-green-500 to-primary/80 hover:from-green-700 hover:to-primar shadow-lg hover:shadow-xl'
+            }`}
+        >
+            {placing ? (
+                <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing Payment...
+                </>
+            ) : (
+                <>
+                    <span className="relative z-10 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 text-white/90" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        </svg>
+                        Pay Now
+                    </span>
+                    <span className="absolute inset-0 bg-white/10 group-hover:bg-white/5 transition-all duration-500 transform group-hover:scale-110"></span>
+                </>
+            )}
+        </button>
+
+        <button
+            onClick={() => setPaymentView(false)}
+            className="w-full py-3 px-6 rounded-xl font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 transition-all duration-300 flex items-center justify-center hover:shadow-sm group cursor-pointer"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500 group-hover:text-gray-700 transition-colors" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            Back to Checkout
+        </button>
+    </div>
+
+    {/* Security badge - Animated */}
+    <div className="mt-8 pt-6 border-t border-gray-100/50 flex flex-col items-center justify-center">
+        <div className="flex items-center mb-2">
+            <div className="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping"></div>
+            </div>
+            <span className="ml-2 text-sm font-medium text-gray-700">Payment Secured</span>
+             
+        </div>
+    </div>
+</div>
                 )}
             </div>
         </APIProvider>
