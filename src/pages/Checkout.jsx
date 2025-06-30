@@ -915,7 +915,7 @@ const Checkout = () => {
                     </>
                 ) : (
                     
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 max-w-md mx-auto transform transition-all duration-300 hover:shadow-xl">
+                    <div className="bg-white lg:p-8 p-4 rounded-2xl shadow-2xl border border-gray-100 max-w-md mx-auto transform transition-all duration-300 hover:shadow-xl">
     {/* Header with animated gradient */}
     <div className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-green-500 to-primary/80 p-6 text-white">
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10"></div>
