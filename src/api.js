@@ -1,101 +1,85 @@
+// api.js
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-// Create Axios instance
+// Base Axios instance
 const api = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   },
-  withCredentials: false // Explicitly set this if you're not using cookies
+  withCredentials: false, // Set to true if using cookie-based auth
 });
 
-// Store AuthContext methods for interceptor
+// Optional Auth Context (if using React Context)
 let authContext = null;
 
 export const setAuthContext = (context) => {
   authContext = context;
 };
 
-// Request interceptor
+// Attach access token before requests
 api.interceptors.request.use(
   (config) => {
-    // Skip for refresh token request to avoid infinite loops
-    if (config.url?.includes('/token/refresh/')) {
-      return config;
-    }
-
-    const token = authContext?.accessToken || localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!config.url?.includes('/token/refresh/')) {
+      const token = authContext?.accessToken || localStorage.getItem('accessToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// Handle 401 errors and try refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
-    // Skip if already retried or not a 401 error
-    if (error.response?.status !== 401 || originalRequest._retry) {
-        console.error('API Error:', error);
+
+    const is401 = error.response?.status === 401;
+    const isLoginOrRefresh = originalRequest.url?.includes('/token/') || originalRequest._retry;
+
+    if (!is401 || isLoginOrRefresh) {
+      console.error('API error:', error);
       return Promise.reject(error);
     }
 
-    // Skip for login/refresh endpoints to avoid infinite loops
-    if (originalRequest.url?.includes('/token/') || !authContext?.refreshToken) {
+    if (!authContext?.refreshToken) {
       return Promise.reject(error);
     }
 
     try {
       originalRequest._retry = true;
-      
-      // Refresh token request
-      const response = await axios.post(
+
+      const refreshResponse = await axios.post(
         `${api.defaults.baseURL}/api/users/token/refresh/`,
         { refresh: authContext.refreshToken },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            // Explicitly no Authorization header for refresh request
-            Authorization: undefined
-          }
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
 
-      const newAccessToken = response.data.access;
-      
-      // Update context and storage
-      if (authContext.setAccessToken) {
-        authContext.setAccessToken(newAccessToken);
-      }
+      const newAccessToken = refreshResponse.data.access;
+
+      // Update token in context and storage
+      authContext?.setAccessToken?.(newAccessToken);
       localStorage.setItem('accessToken', newAccessToken);
-      
-      // Update the original request with new token
+
+      // Retry the original request with new token
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-      
-      // Retry the original request
       return api(originalRequest);
     } catch (refreshError) {
       console.error('Token refresh failed:', refreshError);
-      
-      // Clear auth state on refresh failure
-      if (authContext.logout) {
-        authContext.logout();
-      }
+
+      // Logout and cleanup
+      authContext?.logout?.();
       localStorage.removeItem('accessToken');
-      
+
       toast.error('Session expired. Please log in again.', {
         position: 'top-right',
-        autoClose: 5000
+        autoClose: 5000,
       });
-      
+
       return Promise.reject(refreshError);
     }
   }
