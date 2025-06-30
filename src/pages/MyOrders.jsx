@@ -270,7 +270,7 @@ const MyOrders = () => {
                       </div>
                       
                       <Link
-                        to={`/order/${order.slug}`}
+                        to={`/orders/${order.slug}`}
                         className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors text-sm font-medium"
                       >
                         View Details <FaChevronRight className="text-xs" />
