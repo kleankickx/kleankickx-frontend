@@ -58,8 +58,8 @@ const Login = () => {
       }
       if (isLoggedIn) {
         toast.success('Logged in successfully!', { position: 'top-right' });
-        // navigate to the previous page or default to -1
-        navigate(continuePath || -1);
+        // navigate to the previous page or default to home
+        navigate(continuePath || '/'); // Navigate to the previous page or default to home
       }
       else {
         setError('Login failed. Please check your credentials.');
@@ -86,7 +86,7 @@ const Login = () => {
     //   await syncCartWithBackend(access);
       toast.success('Logged in with Google!', { position: 'top-right' });
       {/* navigate to the previous page */}
-      navigate(continuePath || -1); // Navigate to the previous page or default to -1
+      navigate(continuePath || '/'); // Navigate to the previous page or default to -1
 
     } catch (err) {
       setError(err.response?.data?.error || 'Google login failed.');
