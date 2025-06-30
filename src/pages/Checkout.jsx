@@ -625,41 +625,40 @@ const Checkout = () => {
         setPaymentView(true);
     };
 
-    const handlePayment = () => {
-        if (!Paystack) {
-            toast.error('Paystack SDK not loaded');
-            return;
-        }
-        const handler = new Paystack()
+    const handlePayment = async () => {
+    if (!Paystack) {
+        toast.error('Paystack SDK not loaded');
+        return;
+    }
+
+    try {
+        const handler = new Paystack();
         handler.newTransaction({
             key: PAYSTACK_PUBLIC_KEY,
             email: user.email,
             amount: total * 100, // Convert GHS to pesewas
             currency: 'GHS',
 
-            onSuccess: (transaction) => {
-                setPlacing(true);
-                console.log('Transaction successful:', transaction);
-                console.log("saving"); 
-                console.log( user.id,
-                    delivery,
-                    useSame ? delivery : pickup,
-                    total,
-                    cart,
-                    transaction.reference
-                ) 
-                const res = api.post('/api/orders/create/', {
-                    user_id: user.id,
-                    delivery_location: delivery,
-                    pickup_location: useSame ? delivery : pickup,
-                    total_amount: total,
-                    cart_items: cart,
-                    delivery_cost: deliveryFee,
-                    pickup_cost: useSame ? deliveryFee : pickupFee,
-                    sub_total: subtotal,
-                    transaction_id: transaction.reference,
-                })
-                res.then(response => {
+            onSuccess: async (transaction) => {  // Make this callback async
+                try {
+                    setPlacing(true);
+                    console.log('Transaction successful:', transaction);
+                    console.log("saving"); 
+                    console.log(user.id, delivery, useSame ? delivery : pickup, total, cart, transaction.reference);
+
+                    // Use await directly instead of .then()
+                    const response = await api.post('/api/orders/create/', {
+                        user_id: user.id,
+                        delivery_location: delivery,
+                        pickup_location: useSame ? delivery : pickup,
+                        total_amount: total,
+                        cart_items: cart,
+                        delivery_cost: deliveryFee,
+                        pickup_cost: useSame ? deliveryFee : pickupFee,
+                        sub_total: subtotal,
+                        transaction_id: transaction.reference,
+                    });
+
                     setPlacing(false);
                     clearCart();
                     localStorage.removeItem('deliveryLocation');
@@ -677,31 +676,29 @@ const Checkout = () => {
                     setUseSame(true);
                     toast.success('Order placed successfully! Thank you for your purchase.');
                     navigate(`/orders/${response.data.order_slug}`);
-                }).catch(error => {
+                } catch (error) {
                     setPlacing(false);
                     console.error('Error placing order:', error);
                     toast.error('Failed to place order. Please try again.');
-                });
-                
+                }
             },
             onCancel: () => {
                 toast.info('Payment cancelled. Your order was not placed.');
             },
-
             onError: (error) => {
                 setPlacing(false);
                 console.error('Payment error:', error);
                 toast.error('Payment failed. Please try again.');
             },
-
             onLoad: (response) => {
                 console.log('Paystack SDK loaded successfully:', response);
             }
-            
-            
         });
-        
+    } catch (error) {
+        console.error('Error initializing payment:', error);
+        toast.error('Error initializing payment. Please try again.');
     }
+};
 
     useEffect(() => {
         const script = document.createElement('script');
