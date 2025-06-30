@@ -12,7 +12,13 @@ import {
   FaTimesCircle,
   FaChevronRight,
   FaBoxOpen,
-  FaSearch
+  FaSearch,
+  FaBroom,
+  FaTruck,
+  FaCalendarAlt,
+  FaCheckDouble,
+  
+
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -73,39 +79,68 @@ const MyOrders = () => {
   );
 
   const getStatusDisplay = (status) => {
-    const statusConfig = {
+      const statusConfig = {
       pending: {
         icon: <FaInfoCircle className="text-blue-400" />,
         color: 'text-blue-600',
-        bg: 'bg-blue-50/80'
-      },
-      completed: {
-        icon: <FaCheckCircle className="text-emerald-400" />,
-        color: 'text-emerald-600',
-        bg: 'bg-emerald-50/80'
-      },
-      cancelled: {
-        icon: <FaTimesCircle className="text-rose-400" />,
-        color: 'text-rose-600',
-        bg: 'bg-rose-50/80'
+        bg: 'bg-blue-50/80',
+        displayText: 'Pending'
       },
       processing: {
         icon: <FaSpinner className="animate-spin text-amber-400" />,
         color: 'text-amber-600',
-        bg: 'bg-amber-50/80'
+        bg: 'bg-amber-50/80',
+        displayText: 'Processing'
+      },
+      pickup: {
+        icon: <FaTruck className="text-indigo-400" />,
+        color: 'text-indigo-600',
+        bg: 'bg-indigo-50/80',
+        displayText: 'Pickup'
+      },
+      cleaning_ongoing: {
+        icon: <FaBroom className="text-purple-400" />,
+        color: 'text-purple-600',
+        bg: 'bg-purple-50/80',
+        displayText: 'Cleaning Ongoing'
+      },
+      cleaning_completed: {
+        icon: <FaCheckDouble className="text-green-400" />,
+        color: 'text-green-600',
+        bg: 'bg-green-50/80',
+        displayText: 'Cleaning Completed'
+      },
+      scheduled_for_delivery: {
+        icon: <FaCalendarAlt className="text-teal-400" />,
+        color: 'text-teal-600',
+        bg: 'bg-teal-50/80',
+        displayText: 'Scheduled for Delivery'
+      },
+      delivered: {
+        icon: <FaCheckCircle className="text-emerald-400" />,
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50/80',
+        displayText: 'Delivered'
+      },
+      cancelled: {
+        icon: <FaTimesCircle className="text-rose-400" />,
+        color: 'text-rose-600',
+        bg: 'bg-rose-50/80',
+        displayText: 'Cancelled'
       },
       default: {
         icon: <FaInfoCircle className="text-gray-400" />,
         color: 'text-gray-600',
-        bg: 'bg-gray-50/80'
+        bg: 'bg-gray-50/80',
+        displayText: 'Unknown'
       }
     };
-
-    const config = statusConfig[status?.toLowerCase()] || statusConfig.default;
-    
+    const statusKey = status?.toLowerCase().replace(/ /g, '_') || 'default';
+    const config = statusConfig[statusKey] || statusConfig.default;
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
-        {config.icon} <span className="ml-2 capitalize">{status || 'Unknown'}</span>
+      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.color}`}>
+        {config.icon}
+        {config.displayText}
       </span>
     );
   };

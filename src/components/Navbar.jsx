@@ -39,13 +39,18 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const truncateWithEllipsis = (text, maxLength) => {
+    if (!text) return '';
+    return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+  };
+
   useEffect(() => {
     document.body.classList.toggle('overflow-hidden', isMobileMenuOpen);
   }, [isMobileMenuOpen]);
 
   const cartItemCount = cart.reduce((t, i) => t + (i.quantity || 0), 0);
   const userDisplayName =
-    user && (user.first_name?.trim() ? user.first_name : user.email);
+    user && (user.first_name?.trim() ? user.first_name : truncateWithEllipsis(user.email, 8));
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -69,7 +74,7 @@ const Navbar = () => {
     { to: '/about-us', label: 'About Us' },
 
     // my orders link only if user is authenticated
-    ...(isAuthenticated ? [{ to: '/my-orders', label: 'My Orders' }] : []),
+    ...(isAuthenticated ? [{ to: '/orders', label: 'My Orders' }] : []),
   ];
 
   return (

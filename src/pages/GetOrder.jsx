@@ -2,18 +2,21 @@ import React, { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import {
   FaShoppingCart,
-  FaSpinner,
   FaExclamationCircle,
-  FaCheckCircle,
-  FaInfoCircle,
-  FaTimesCircle,
   FaUserCircle,
   FaBox,
-  FaTruck,
   FaStore,
+  FaChevronRight,
+  FaInfoCircle, 
+  FaCheckCircle, 
+  FaTimesCircle, 
+  FaSpinner,
+  FaTruck,
+  FaBroom,
+  FaCheckDouble,
   FaCalendarAlt,
-  FaChevronRight
 } from 'react-icons/fa';
+
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,41 +77,72 @@ const GetOrder = () => {
 
   const getStatusDisplay = (status) => {
     const statusConfig = {
-      pending: {
-        icon: <FaInfoCircle className="text-blue-400" />,
-        color: 'text-blue-600',
-        bg: 'bg-blue-50/80'
-      },
-      completed: {
-        icon: <FaCheckCircle className="text-emerald-400" />,
-        color: 'text-emerald-600',
-        bg: 'bg-emerald-50/80'
-      },
-      cancelled: {
-        icon: <FaTimesCircle className="text-rose-400" />,
-        color: 'text-rose-600',
-        bg: 'bg-rose-50/80'
-      },
-      processing: {
-        icon: <FaSpinner className="animate-spin text-amber-400" />,
-        color: 'text-amber-600',
-        bg: 'bg-amber-50/80'
-      },
-      default: {
-        icon: <FaInfoCircle className="text-gray-400" />,
-        color: 'text-gray-600',
-        bg: 'bg-gray-50/80'
-      }
-    };
-
-    const config = statusConfig[status?.toLowerCase()] || statusConfig.default;
-    
-    return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
-        {config.icon} <span className="ml-2 capitalize">{status || 'Unknown'}</span>
-      </span>
-    );
+    pending: {
+      icon: <FaInfoCircle className="text-blue-400" />,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50/80',
+      displayText: 'Pending'
+    },
+    processing: {
+      icon: <FaSpinner className="animate-spin text-amber-400" />,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50/80',
+      displayText: 'Processing'
+    },
+    pickup: {
+      icon: <FaTruck className="text-indigo-400" />,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50/80',
+      displayText: 'Pickup'
+    },
+    cleaning_ongoing: {
+      icon: <FaBroom className="text-purple-400" />,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50/80',
+      displayText: 'Cleaning Ongoing'
+    },
+    cleaning_completed: {
+      icon: <FaCheckDouble className="text-green-400" />,
+      color: 'text-green-600',
+      bg: 'bg-green-50/80',
+      displayText: 'Cleaning Completed'
+    },
+    scheduled_for_delivery: {
+      icon: <FaCalendarAlt className="text-teal-400" />,
+      color: 'text-teal-600',
+      bg: 'bg-teal-50/80',
+      displayText: 'Scheduled for Delivery'
+    },
+    delivered: {
+      icon: <FaCheckCircle className="text-emerald-400" />,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50/80',
+      displayText: 'Delivered'
+    },
+    cancelled: {
+      icon: <FaTimesCircle className="text-rose-400" />,
+      color: 'text-rose-600',
+      bg: 'bg-rose-50/80',
+      displayText: 'Cancelled'
+    },
+    default: {
+      icon: <FaInfoCircle className="text-gray-400" />,
+      color: 'text-gray-600',
+      bg: 'bg-gray-50/80',
+      displayText: 'Unknown'
+    }
   };
+
+  // Convert status to lowercase and replace spaces with underscores to match the keys
+  const statusKey = status?.toLowerCase().replace(/ /g, '_') || 'default';
+  const config = statusConfig[statusKey] || statusConfig.default;
+  
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
+      {config.icon} <span className="ml-2">{config.displayText}</span>
+    </span>
+  );
+};
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -192,7 +226,7 @@ const GetOrder = () => {
             </p>
           </div>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/orders')}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white cursor-pointer transition-colors bg-primary hover:bg-primary/80 rounded-lg shadow-sm"
           >
             <FaChevronRight className="transform rotate-180" />

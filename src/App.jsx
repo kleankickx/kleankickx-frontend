@@ -60,7 +60,7 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/order/:orderSlug"
+            path="/orders/:orderSlug"
             element={
               <ProtectedRoute>
                 <GetOrder />
@@ -68,7 +68,7 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/my-orders"
+            path="/orders"
             element={
               <ProtectedRoute>
                 <MyOrders />
