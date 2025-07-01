@@ -167,26 +167,40 @@ const Login = () => {
           >
             {/* Loading state with spinner */}
             {loading ? (
-              <span className="flex items-center justify-center">
-                <svg
-                  className="animate-spin h-5 w-5 mr-3 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
+              <span className="flex items-center justify-center gap-2">
+                <svg 
+                  className="animate-spin h-5 w-5 text-current" 
                   viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2.93 6.243A8.001 8.001 0 014 12H0c0 5.523 4.477 10 10 10v-4a6.002 6.002 0 01-3.07-1.757z"
-                  ></path>
+                  <g fill="none" fillRule="evenodd">
+                    {/* Outer ring - subtle background */}
+                    <circle 
+                      cx="12" 
+                      cy="12" 
+                      r="10" 
+                      stroke="currentColor" 
+                      strokeOpacity="0.2" 
+                      strokeWidth="4"
+                    />
+                    
+                    {/* Animated arc - more visible */}
+                    <path 
+                      d="M12 2a10 10 0 0 1 10 10" 
+                      stroke="currentColor" 
+                      strokeWidth="4" 
+                      strokeLinecap="round"
+                    >
+                      <animateTransform 
+                        attributeName="transform" 
+                        type="rotate" 
+                        from="0 12 12" 
+                        to="360 12 12" 
+                        dur="1s" 
+                        repeatCount="indefinite" 
+                      />
+                    </path>
+                  </g>
                 </svg>
                 Logging in...
               </span>
