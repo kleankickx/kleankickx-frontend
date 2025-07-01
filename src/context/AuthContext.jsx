@@ -1,9 +1,8 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import api, { setAuthContext } from '../api';
+import api from '../api';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 
 export const AuthContext = createContext();
 
@@ -12,6 +11,7 @@ const AuthProvider = ({ children }) => {
     const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token') || null);
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
+    const [authContext, setAuthContext] = useState({})
     const navigate = useNavigate();
 
     const decodeToken = (token) => {
@@ -136,6 +136,9 @@ const AuthProvider = ({ children }) => {
                 login,
                 logout,
                 googleLogin,
+                setAccessToken,
+                setRefreshToken,
+                authContext
             }}
         >
             {children}

@@ -72,7 +72,7 @@ const LocationCard = ({ location, type, onClear }) => {
                 </div>
                 <button
                     onClick={onClear}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
                     aria-label={`Clear ${type} location`}
                 >
                     <FiX />
@@ -144,7 +144,7 @@ const PlaceAutocompleteElementWrapper = ({ onPlaceSelect, placeholder, type, reg
                     }
                     const regionData = REGION_CONFIG[detectedRegion];
                     if (!regionData) {
-                        toast.error(`${tempRegion} is not configured.`);
+                        toast.error(`${tempRegion} is not set up for delivery yet`)
                         setSelectedLocation(null);
                         onPlaceSelect(null, type);
                         return;
@@ -461,7 +461,7 @@ const Checkout = () => {
     const [locationLoading, setLocationLoading] = useState(true);
     const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
     const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
-    const [showAlert, setShowAlert] = useState(false);
+    const [showAlert, setShowAlert] = useState(true);
     const [paymentView, setPaymentView] = useState(false);
     const [transactionReference, setTransactionReference] = useState(null);
 
@@ -664,6 +664,7 @@ const Checkout = () => {
             return;
         }
         setPaymentView(true);
+        setShowAlert(false)
     };
 
     const handlePayment = async () => {
@@ -823,7 +824,7 @@ const Checkout = () => {
                     <div className="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center">
                         <FiInfo className="mr-2 text-yellow-700" />
                         <p className="text-sm text-yellow-700">
-                            Locations depend on the selected region. Current options for delivery and pickup are Accra, Tema, Kasoa.
+                            Current options for delivery and pickup are Accra, Tema, Kasoa.
                             <button
                                 onClick={() => setShowAlert(false)}
                                 className="ml-4 text-yellow-700 hover:text-yellow-900 underline"
@@ -906,8 +907,8 @@ const Checkout = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white lg:p-6 rounded-xl shadow-sm lg:border lg:border-gray-100 relative">
-                                    <h2 className="text-xl font-semibold mb-4">Delivery Map</h2>
+                                <div className="bg-white lg:p-6 rounded-xl lg:shadow-sm lg:border lg:border-gray-100 relative">
+                                    <h2 className="text-xl font-semibold mb-2">Delivery Map</h2>
                                     <p className="text-sm text-gray-500 mb-3">
                                        The map shows the delivery and pickup locations.
                                     </p>
@@ -1132,7 +1133,10 @@ const Checkout = () => {
                             </button>
 
                             <button
-                                onClick={() => setPaymentView(false)}
+                                onClick={() => {
+                                    setPaymentView(false)
+                                    setShowAlert(true)
+                                }}
                                 className="w-full py-3 px-6 rounded-xl font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 transition-all duration-300 flex items-center justify-center hover:shadow-sm group cursor-pointer"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500 group-hover:text-gray-700 transition-colors" viewBox="0 0 20 20" fill="currentColor">

@@ -22,11 +22,26 @@ import ProtectedRoute from './components/ProtectedRoute';
 import GetOrder from './pages/GetOrder';
 import MyOrders from './pages/MyOrders';
 import FailedOrders from './pages/FailedOrders';
+import { useContext, useEffect } from 'react';
+import { AuthContext } from './context/AuthContext';
+import { setupInterceptors } from './api';
 
 const AppContent = () => {
   const location = useLocation();
   const hideNavbarOn = ['/login', '/register'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
+
+  const { refreshToken, accessToken,  setAccessToken, logout } = useContext(AuthContext);
+
+  // Setup interceptors when app loads
+  useEffect(() => {
+    setupInterceptors({
+      getAccessToken: () => accessToken || localStorage.getItem('access_token'),
+      getRefreshToken: () => refreshToken,
+      setAccessToken,
+      logout
+    });
+  }, [accessToken, refreshToken, setAccessToken, logout]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -94,6 +109,7 @@ const AppContent = () => {
 
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+   
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>

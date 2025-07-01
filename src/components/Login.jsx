@@ -98,8 +98,7 @@ const Login = () => {
 
   return (
     <div className="bg-[#edf1f4] py-16 px-4 min-h-screen  ">
-     
-
+      
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
         <h2 className="text-2xl font-bold text-black mb-6 inline-block">
           Login
