@@ -8,6 +8,7 @@ import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 import api from '../api'; // Assuming you have an API utility set up
+import { FaSpinner } from 'react-icons/fa6';
 
 // Animation variants
 const fadeInUp = {
@@ -98,16 +99,20 @@ const Services = () => {
           </motion.button> */}
         </motion.div>
       </section>
-      <div className="bg-[#edf1f4] py-16 px-4" id="services">
+      <div className="bg-[#edf1f4] py-8 px-4" id="services">
 
           <div className="max-w-6xl mx-auto">
-
-            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-8 w-fit">
+            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-1 w-fit">
               Shop From Categories
             </h2>
+            <p className="text-gray-600 mb-6">
+              We offer a range of services to help you maintain a clean sneakers.
+            </p>
+
             {loading && (
-              <div className="flex items-center justify-center h-[50vh]">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600"></div>
+              <div className="flex flex-col items-center justify-center h-[50vh]">
+                <FaSpinner className="animate-spin h-8 w-8 text-primary" />
+                <p className="text-gray-600 mt-4">Loading services...</p>
               </div>
             )}
 

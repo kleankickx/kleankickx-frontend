@@ -22,7 +22,7 @@ export const setAuthContext = (context) => {
 api.interceptors.request.use(
   (config) => {
     if (!config.url?.includes('/token/refresh/')) {
-      const token = authContext?.accessToken || localStorage.getItem('accessToken');
+      const token = authContext?.accessToken || localStorage.getItem('access_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -63,7 +63,7 @@ api.interceptors.response.use(
 
       // Update token in context and storage
       authContext?.setAccessToken?.(newAccessToken);
-      localStorage.setItem('accessToken', newAccessToken);
+      localStorage.setItem('access_token', newAccessToken);
 
       // Retry the original request with new token
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -73,7 +73,7 @@ api.interceptors.response.use(
 
       // Logout and cleanup
       authContext?.logout?.();
-      localStorage.removeItem('accessToken');
+      localStorage.removeItem('access_token');
 
       toast.error('Session expired. Please log in again.', {
         position: 'top-right',

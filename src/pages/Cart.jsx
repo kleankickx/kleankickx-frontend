@@ -1,12 +1,12 @@
 // Modern Cart.jsx – polished responsive design with fixed tooltip
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../api'; // Assuming you have an API utility set up
+import { FaSpinner } from 'react-icons/fa6';
 
 /* ------------------ Tooltip ------------------ */
 const Tooltip = ({ message, position = 'top', children }) => {
@@ -37,19 +37,27 @@ const Cart = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   // backend URL from environment variable
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+ 
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get('/api/services/');
-        setServices(data);
-      } catch {
-        toast.error('Failed to load services');
-      } finally {
-        setLoading(false);
-      }
-    })();
+
+
+    // fetch services in the cart with their ids
+    cart.forEach((item) => {
+      if (!item.service_id) return; // skip if no service_id
+      api.get(`/api/services/${item.service_id}/`)
+        .then((response) => {
+          setServices((prev) => [...prev, response.data]);
+        })
+        .catch((error) => {
+          console.error(`Failed to fetch service ${item.service_id}:`, error);
+          toast.error(`Failed to load service details for item ${item.service_id}`);
+        })
+        
+    });
+
+    setLoading(false)
+
   }, []);
 
   const getService = (id) => services.find((s) => s.id === id) || {};
@@ -73,9 +81,10 @@ const Cart = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-green-50 to-white">
-        <span className="animate-spin h-10 w-10 border-4 border-green-600 border-t-transparent rounded-full" />
-      </div>
+      <div className="flex items-center justify-center min-h-screen flex-col space-y-2">
+              <FaSpinner className="animate-spin h-8 w-8 text-primary" />
+              <p className="text-gray-600 mt-4">Loading your cart...</p>
+        </div>
     );
 
   return (
@@ -160,12 +169,25 @@ const Cart = () => {
           </aside>
         </div>
       ) : (
-        <div className="text-center mt-24 space-y-6">
-          <p className="text-xl font-medium">Your cart is empty 🥲</p>
-          <button onClick={() => navigate('/services')} className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary/80 transition">
-            Browse Services
-          </button>
-        </div>
+         <div
+                className="text-center"
+                >
+                  <div className="max-w-md mx-auto">
+                    <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto mb-6 flex items-center justify-center">
+                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                    <h2 className="text-xl font-medium text-gray-900 mb-2">Your cart is empty</h2>
+                    <p className="text-gray-500 mb-6">Looks like you haven't added any services yet</p>
+                    <button
+                      onClick={() => navigate('/services')}
+                      className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors font-medium cursor-pointer"
+                    >
+                      Browse Services
+                    </button>
+                  </div>
+          </div>
       )}
     </section>
   );

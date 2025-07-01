@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
-import { APIProvider, Map, MapControl, ControlPosition, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, MapControl, ControlPosition, useMap, useMapsLibrary, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
@@ -293,12 +293,15 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
     const deliveryMarkerRef = useRef(null);
     const pickupMarkerRef = useRef(null);
 
+    // Handle map bounds and center
     useEffect(() => {
         if (!map) return;
+        
         if (delivery || pickup) {
             const bounds = new window.google.maps.LatLngBounds();
             if (delivery) bounds.extend({ lat: delivery.lat, lng: delivery.lng });
             if (!useSame && pickup) bounds.extend({ lat: pickup.lat, lng: pickup.lng });
+            
             if (!bounds.isEmpty()) {
                 map.fitBounds(bounds);
             }
@@ -308,58 +311,24 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
         }
     }, [map, delivery, pickup, useSame, currentLocation]);
 
-    useEffect(() => {
-        if (!map || !window.google?.maps?.Marker) return;
-        [deliveryMarkerRef.current, pickupMarkerRef.current].forEach(marker => {
-            if (marker) marker.setMap(null);
-        });
-
-        if (delivery) {
-            deliveryMarkerRef.current = new window.google.maps.Marker({
-                position: { lat: delivery.lat, lng: delivery.lng },
-                map: map,
-                icon: {
-                    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
-                            <circle cx="12" cy="12" r="12" fill="#3B82F6" />
-                            <text x="12" y="16" font-size="12" fill="white" font-weight="bold" text-anchor="middle">D</text>
-                        </svg>`
-                    )}`,
-                    scaledSize: new window.google.maps.Size(24, 24)
-                },
-                title: 'Delivery Location'
-            });
-        }
-
-        if (!useSame && pickup) {
-            pickupMarkerRef.current = new window.google.maps.Marker({
-                position: { lat: pickup.lat, lng: pickup.lng },
-                map: map,
-                icon: {
-                    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
-                            <circle cx="12" cy="12" r="12" fill="#10B981" />
-                            <text x="12" y="16" font-size="12" fill="white" font-weight="bold" text-anchor="middle">P</text>
-                        </svg>`
-                    )}`,
-                    scaledSize: new window.google.maps.Size(24, 24)
-                },
-                title: 'Pickup Location'
-            });
-        }
-    }, [map, delivery, pickup, useSame]);
-
+    // Handle map clicks
     const handleMapClick = useCallback(async (e) => {
         if (!map || !geocoder || !activeInput || !e.detail?.latLng) return;
+        
         try {
             const { results } = await geocoder.geocode({ location: e.detail.latLng });
+            
             if (results && results.length > 0) {
                 const place = results[0];
-                const selectedRegionName = activeInput === 'delivery' ? localStorage.getItem('deliveryRegion') || 'Greater Accra' : localStorage.getItem('pickupRegion') || 'Greater Accra';
+                const selectedRegionName = activeInput === 'delivery' 
+                    ? localStorage.getItem('deliveryRegion') || 'Greater Accra' 
+                    : localStorage.getItem('pickupRegion') || 'Greater Accra';
+                
                 const regionData = REGION_CONFIG[selectedRegionName];
                 let locality = place.address_components.find(comp =>
                     comp.types.includes('locality') || comp.types.includes('sublocality')
                 )?.long_name.toLowerCase() || '';
+                
                 let area = regionData.availableAreas[regionData.defaultArea];
                 for (const [areaKey, areaInfo] of Object.entries(regionData.availableAreas)) {
                     if (locality.includes(areaKey)) {
@@ -367,6 +336,7 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
                         break;
                     }
                 }
+                
                 const locationInfo = {
                     address: place.formatted_address,
                     name: place.name || place.formatted_address || 'Selected Location',
@@ -376,6 +346,7 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
                     lat: e.detail.latLng.lat,
                     lng: e.detail.latLng.lng
                 };
+                
                 if (activeInput === 'delivery') {
                     localStorage.setItem('deliveryLocation', JSON.stringify(locationInfo));
                     localStorage.setItem('deliveryInputValue', locationInfo.address);
@@ -383,7 +354,11 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
                     localStorage.setItem('pickupLocation', JSON.stringify(locationInfo));
                     localStorage.setItem('pickupInputValue', locationInfo.address);
                 }
-                window.dispatchEvent(new CustomEvent('mapLocationSelected', { detail: { location: locationInfo, type: activeInput } }));
+                
+                window.dispatchEvent(new CustomEvent('mapLocationSelected', { 
+                    detail: { location: locationInfo, type: activeInput } 
+                }));
+                
                 map.panTo(e.detail.latLng);
                 map.setZoom(16);
             }
@@ -393,16 +368,70 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
         }
     }, [map, geocoder, activeInput]);
 
+    // Add click listener
     useEffect(() => {
         if (!map) return;
-        map.addListener('click', handleMapClick);
+        
+        const listener = map.addListener('click', handleMapClick);
         return () => {
-            window.google.maps.event.clearListeners(map, 'click');
+            listener.remove();
         };
     }, [map, handleMapClick]);
 
-    return null;
+    // Render markers as React components
+    return (
+        <>
+            {delivery && (
+                <AdvancedMarker
+                    position={{ lat: delivery.lat, lng: delivery.lng }}
+                    title="Delivery Location"
+                >
+                    <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: '#3B82F6',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}>
+                        D
+                    </div>
+                </AdvancedMarker>
+            )}
+            
+            {!useSame && pickup && (
+                <AdvancedMarker
+                    position={{ lat: pickup.lat, lng: pickup.lng }}
+                    title="Pickup Location"
+                >
+                    <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: '#10B981',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}>
+                        P
+                    </div>
+                </AdvancedMarker>
+            )}
+        </>
+    );
 };
+
 
 // --- Main Checkout Component ---
 const Checkout = () => {
@@ -434,11 +463,22 @@ const Checkout = () => {
     const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
     const [showAlert, setShowAlert] = useState(false);
     const [paymentView, setPaymentView] = useState(false);
+    const [transactionReference, setTransactionReference] = useState(null);
 
     const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
     const deliveryFee = delivery?.cost || 0;
     const pickupFee = useSame ? deliveryFee : pickup?.cost || 0;
     const total = subtotal + deliveryFee + pickupFee;
+
+    // check if user is verified and if not redirect to verification page
+    useEffect(() => {
+        if (!user.is_verified) {
+            navigate(`/temp-verify-email/?email=${user.email}`);
+            toast.warn('Please verify your email before proceeding to checkout.');
+            return;
+        }
+
+    }, [user, navigate]);
 
     useEffect(() => {
         localStorage.setItem('deliveryRegion', deliveryRegion);
@@ -627,79 +667,140 @@ const Checkout = () => {
     };
 
     const handlePayment = async () => {
-    if (!Paystack) {
-        toast.error('Paystack SDK not loaded');
-        return;
-    }
+        if (!Paystack) {
+            toast.error('Paystack SDK not loaded');
+            return;
+        }
 
-    try {
-        const handler = new Paystack();
-        handler.newTransaction({
-            key: PAYSTACK_PUBLIC_KEY,
-            email: user.email,
-            amount: total * 100, // Convert GHS to pesewas
-            currency: 'GHS',
+        // Prevent multiple clicks while processing
+        if (placing) return;
 
-            onSuccess: async (transaction) => {  // Make this callback async
-                try {
-                    setPlacing(true);
-                    console.log('Transaction successful:', transaction);
-                    console.log("saving"); 
-                    console.log(user.id, delivery, useSame ? delivery : pickup, total, cart, transaction.reference);
+        try {
+            setPlacing(true);
+            
+            // Store transaction reference in state in case of page refresh
+            const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            setTransactionReference(transactionRef);
 
-                    // Use await directly instead of .then()
-                    const response = await api.post('/api/orders/create/', {
-                        user_id: user.id,
-                        delivery_location: delivery,
-                        pickup_location: useSame ? delivery : pickup,
-                        total_amount: total,
-                        cart_items: cart,
-                        delivery_cost: deliveryFee,
-                        pickup_cost: useSame ? deliveryFee : pickupFee,
-                        sub_total: subtotal,
-                        transaction_id: transaction.reference,
-                    });
+            const handler = new Paystack();
+            handler.newTransaction({
+                key: PAYSTACK_PUBLIC_KEY,
+                email: user.email,
+                amount: total * 100, // Convert GHS to pesewas
+                currency: 'GHS',
+                reference: transactionRef, // Set our own reference
 
+                onSuccess: async (transaction) => {
+                    try {
+                        console.log('Transaction successful:', transaction);
+                        
+                        // Block page navigation/refresh
+                        const beforeUnloadHandler = (e) => {
+                            e.preventDefault();
+                            e.returnValue = 'Your order is being processed. Please wait...';
+                            return e.returnValue;
+                        };
+                        window.addEventListener('beforeunload', beforeUnloadHandler);
+
+                        // Retry mechanism for order creation
+                        let retries = 3;
+                        let success = false;
+                        let lastError = null;
+
+                        while (retries > 0 && !success) {
+                            try {
+                                const response = await api.post('/api/orders/create/', {
+                                    user_id: user.id,
+                                    delivery_location: delivery,
+                                    pickup_location: useSame ? delivery : pickup,
+                                    total_amount: total,
+                                    cart_items: cart,
+                                    delivery_cost: deliveryFee,
+                                    pickup_cost: useSame ? deliveryFee : pickupFee,
+                                    sub_total: subtotal,
+                                    transaction_id: transaction.reference,
+                                });
+
+                                // Mark as success
+                                success = true;
+
+                                // Clean up
+                                clearCart();
+                                ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 
+                                'pickupInputValue', 'deliveryRegion', 'pickupRegion'].forEach(key => {
+                                    localStorage.removeItem(key);
+                                });
+
+                                setDelivery(null);
+                                setPickup(null);
+                                setDeliveryInputValue('');
+                                setPickupInputValue('');
+                                setDeliveryRegion('');
+                                setPickupRegion('');
+                                setUseSame(true);
+
+                                // Remove the beforeunload listener
+                                window.removeEventListener('beforeunload', beforeUnloadHandler);
+
+                                // Navigate to success page
+                                navigate(`/orders/${response.data.order_slug}`);
+                                toast.success('Order placed successfully! Thank you for your purchase.');
+                            } catch (error) {
+                                lastError = error;
+                                retries--;
+                                
+                                if (retries > 0) {
+                                    // Wait before retrying (exponential backoff)
+                                    await new Promise(resolve => 
+                                        setTimeout(resolve, 1000 * (4 - retries))
+                                    );
+                                }
+                            }
+                        }
+
+                        if (!success) {
+                            throw lastError || new Error('Failed to create order after retries');
+                        }
+                    } catch (error) {
+                        console.error('Error placing order:', error);
+                        
+                        // Store failed order data for recovery
+                        const failedOrder = {
+                            user_id: user.id,
+                            delivery_location: delivery,
+                            pickup_location: useSame ? delivery : pickup,
+                            total_amount: total,
+                            cart_items: cart,
+                            transaction_id: transaction.reference,
+                            error: error.message
+                        };
+                        localStorage.setItem('failedOrder', JSON.stringify(failedOrder));
+                        
+                        toast.error('Failed to place order. Please check your orders page or contact support.');
+                        navigate('/orders/failed');
+                    } finally {
+                        setPlacing(false);
+                    }
+                },
+                onCancel: () => {
                     setPlacing(false);
-                    clearCart();
-                    localStorage.removeItem('deliveryLocation');
-                    localStorage.removeItem('pickupLocation');
-                    localStorage.removeItem('deliveryInputValue');
-                    localStorage.removeItem('pickupInputValue');
-                    localStorage.removeItem('deliveryRegion');
-                    localStorage.removeItem('pickupRegion');
-                    setDelivery(null);
-                    setPickup(null);
-                    setDeliveryInputValue('');
-                    setPickupInputValue('');
-                    setDeliveryRegion('');
-                    setPickupRegion('');
-                    setUseSame(true);
-                    toast.success('Order placed successfully! Thank you for your purchase.');
-                    navigate(`/orders/${response.data.order_slug}`);
-                } catch (error) {
+                    toast.info('Payment cancelled. Your order was not placed.');
+                },
+                onError: (error) => {
                     setPlacing(false);
-                    console.error('Error placing order:', error);
-                    toast.error('Failed to place order. Please try again.');
+                    console.error('Payment error:', error);
+                    toast.error('Payment failed. Please try again.');
+                },
+                onLoad: (response) => {
+                    console.log('Paystack SDK loaded successfully:', response);
                 }
-            },
-            onCancel: () => {
-                toast.info('Payment cancelled. Your order was not placed.');
-            },
-            onError: (error) => {
-                setPlacing(false);
-                console.error('Payment error:', error);
-                toast.error('Payment failed. Please try again.');
-            },
-            onLoad: (response) => {
-                console.log('Paystack SDK loaded successfully:', response);
-            }
-        });
-    } catch (error) {
-        console.error('Error initializing payment:', error);
-        toast.error('Error initializing payment. Please try again.');
-    }
-};
+            });
+        } catch (error) {
+            setPlacing(false);
+            console.error('Error initializing payment:', error);
+            toast.error('Error initializing payment. Please try again.');
+        }
+    };
 
     useEffect(() => {
         const script = document.createElement('script');
@@ -743,7 +844,7 @@ const Checkout = () => {
                             <div className="space-y-6">
                                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                     <h2 className="text-xl font-semibold mb-4 flex items-center">
-                                        <FiTruck className="mr-2 text-blue-600" />
+                                        <FiTruck className="mr-2 text-primary" />
                                         Delivery Information
                                     </h2>
 
@@ -805,13 +906,29 @@ const Checkout = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
+                                <div className="bg-white lg:p-6 rounded-xl shadow-sm lg:border lg:border-gray-100 relative">
                                     <h2 className="text-xl font-semibold mb-4">Delivery Map</h2>
                                     <p className="text-sm text-gray-500 mb-3">
-                                        {activeInput
-                                            ? `Click on the map to set ${activeInput} location`
-                                            : 'Select a field above to set location on map'}
+                                       The map shows the delivery and pickup locations.
                                     </p>
+                                    {/* key */}
+                                    <div className="flex items-center space-x-4 mb-4">
+                                        <div className="flex items-center">
+                                            <div className="w-4 h-4 bg-blue-500 rounded-full mr-2 flex justify-center items-center">
+                                                <span className="text-white text-xs font-bold">D</span>
+                                            </div>
+                                            <span className="text-sm  text-gray-700">Delivery Location</span>
+                                        </div>
+                                        {!useSame && (
+                                            <div className="flex items-center">
+                                                <div className="w-4 h-4 bg-green-500 rounded-full mr-2 justify-center items-center">
+                                                    <span className="text-white text-xs font-bold">P</span>
+                                                </div>
+                                                <span className="text-sm text-gray-700">Pickup Location</span>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="relative">
                                         <Map
                                             mapId={"YOUR_MAP_ID"}
@@ -850,7 +967,7 @@ const Checkout = () => {
                                     <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
                                     <div className="space-y-3">
                                         {cart.map((item) => (
-                                            <div key={item.service_id} className="flex justify-between py-2 border-b border-gray-100">
+                                            <div key={item.service_id} className={`flex justify-between py-2 border-gray-200 ${item === cart[cart.length - 1] ? '' : 'border-b'}`}>
                                                 <div>
                                                     <p className="font-medium">{item.service_name}</p>
                                                     <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
@@ -916,129 +1033,133 @@ const Checkout = () => {
                 ) : (
                     
                     <div className="bg-white lg:p-8 p-4 rounded-2xl shadow-2xl border border-gray-100 max-w-md mx-auto transform transition-all duration-300 hover:shadow-xl">
-    {/* Header with animated gradient */}
-    <div className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-green-500 to-primary/80 p-6 text-white">
-        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10"></div>
-        <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/10"></div>
-        
-        <div className="relative z-10 flex items-center justify-between">
-            <div>
-                <h2 className="text-2xl font-bold">Complete Payment</h2>
-                <p className="text-white/80">Secure transaction powered by Paystack</p>
-            </div>
-            <div className="flex space-x-2">
-                <div className="h-10 w-16 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <img src={PaystackIcon} className="w-[1rem]" />
-                </div>
-               
-            </div>
-        </div>
-    </div>
+                        {/* Header with animated gradient */}
+                        <div className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-green-500 to-primary/80 p-6 text-white">
+                            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10"></div>
+                            <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/10"></div>
+                            
+                            <div className="relative z-10 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-bold">Complete Payment</h2>
+                                    <p className="text-white/80">Secure transaction powered by Paystack</p>
+                                </div>
+                                <div className="flex space-x-2">
+                                    <div className="h-10 w-16 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                        <img src={PaystackIcon} className="w-[1rem]" />
+                                    </div>
+                                
+                                </div>
+                            </div>
+                        </div>
 
-    {/* Payment breakdown - Glassmorphism style */}
-    <div className="space-y-4 mb-8 backdrop-blur-sm bg-white/50 p-6 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex justify-between py-3 border-b border-gray-100/50">
-            <div className="flex items-center text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                    <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                </svg>
-                Subtotal
-            </div>
-            <span className="font-medium">GHS {subtotal.toFixed(2)}</span>
-        </div>
-        
-        <div className="flex justify-between py-3 border-b border-gray-100/50">
-            <div className="flex items-center text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                    <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1V5a1 1 0 00-1-1H3z" />
-                </svg>
-                Delivery Fee
-            </div>
-            <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
-        </div>
-        
-        <div className={`flex justify-between py-3 ${useSame ? 'border-b border-gray-100/50' : ''}`}>
-            <div className="flex items-center text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
-                Pickup Fee
-            </div>
-            <span className="font-medium">
-                {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '0.00') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '0.00')}
-            </span>
-        </div>
+                        {/* Payment breakdown - Glassmorphism style */}
+                        <div className="space-y-4 mb-8 backdrop-blur-sm bg-white/50 p-6 rounded-xl border border-gray-100 shadow-sm">
+                            <div className="flex justify-between py-3 border-b border-gray-100/50">
+                                <div className="flex items-center text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                        <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                                    </svg>
+                                    Subtotal
+                                </div>
+                                <span className="font-medium">GHS {subtotal.toFixed(2)}</span>
+                            </div>
+                            
+                            <div className="flex justify-between py-3 border-b border-gray-100/50">
+                                <div className="flex items-center text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                                        <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1V5a1 1 0 00-1-1H3z" />
+                                    </svg>
+                                    Delivery Fee
+                                </div>
+                                <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
+                            </div>
+                            
+                            <div className={`flex justify-between py-3 ${useSame ? 'border-b border-gray-100/50' : ''}`}>
+                                <div className="flex items-center text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                    </svg>
+                                    Pickup Fee
+                                </div>
+                                <span className="font-medium">
+                                    {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '0.00') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '0.00')}
+                                </span>
+                            </div>
 
-        <div className="flex justify-between py-3 pt-4">
-            <div className="flex items-center text-lg font-semibold text-gray-800">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
-                Total Amount
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-green-500 to-primary/80 bg-clip-text text-transparent">GHS {total.toFixed(2)}</span>
-        </div>
-    </div>
+                            <div className="flex justify-between py-3 pt-4">
+                                <div className="flex items-center text-lg font-semibold text-gray-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                    </svg>
+                                    Total Amount
+                                </div>
+                                <span className="text-xl font-bold bg-gradient-to-r from-green-500 to-primary/80 bg-clip-text text-transparent">GHS {total.toFixed(2)}</span>
+                            </div>
+                        </div>
 
-    {/* Payment button with micro-interactions */}
-    <div className="space-y-4">
-        <button
-            onClick={handlePayment}
-            disabled={placing}
-            className={`w-full py-4 px-6 rounded-xl font-semibold text-white cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden group ${
-                placing 
-                    ? 'bg-gray-300 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-green-500 to-primary/80 hover:from-green-700 hover:to-primar shadow-lg hover:shadow-xl'
-            }`}
-        >
-            {placing ? (
-                <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing Payment...
-                </>
-            ) : (
-                <>
-                    <span className="relative z-10 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 text-white/90" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                        </svg>
-                        Pay Now
-                    </span>
-                    <span className="absolute inset-0 bg-white/10 group-hover:bg-white/5 transition-all duration-500 transform group-hover:scale-110"></span>
-                </>
-            )}
-        </button>
+                        {/* Payment button with micro-interactions */}
+                        <div className="space-y-4">
+                            <button
+                                onClick={handlePayment}
+                                disabled={placing}
+                                className={`w-full py-4 px-6 rounded-xl font-semibold text-white cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden group ${
+                                    placing 
+                                        ? 'bg-gray-300 cursor-not-allowed' 
+                                        : 'bg-gradient-to-r from-green-500 to-primary/80 hover:from-green-700 hover:to-primar shadow-lg hover:shadow-xl'
+                                }`}
+                            >
+                                {placing ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Processing Payment...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="relative z-10 flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 text-white/90" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                            </svg>
+                                            Pay Now
+                                        </span>
+                                        <span className="absolute inset-0 bg-white/10 group-hover:bg-white/5 transition-all duration-500 transform group-hover:scale-110"></span>
+                                    </>
+                                )}
+                            </button>
 
-        <button
-            onClick={() => setPaymentView(false)}
-            className="w-full py-3 px-6 rounded-xl font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 transition-all duration-300 flex items-center justify-center hover:shadow-sm group cursor-pointer"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500 group-hover:text-gray-700 transition-colors" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            Back to Checkout
-        </button>
-    </div>
+                            <button
+                                onClick={() => setPaymentView(false)}
+                                className="w-full py-3 px-6 rounded-xl font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 transition-all duration-300 flex items-center justify-center hover:shadow-sm group cursor-pointer"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500 group-hover:text-gray-700 transition-colors" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                                Back to Checkout
+                            </button>
+                        </div>
 
-    {/* Security badge - Animated */}
-    <div className="mt-8 pt-6 border-t border-gray-100/50 flex flex-col items-center justify-center">
-        <div className="flex items-center mb-2">
-            <div className="relative">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-                <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping"></div>
-            </div>
-            <span className="ml-2 text-sm font-medium text-gray-700">Payment Secured</span>
-             
-        </div>
-    </div>
-</div>
+                        {/* Security badge - Animated */}
+                        <div className="mt-8 border-t border-gray-100/50 flex flex-col items-center justify-center">
+                            <div className="flex items-center">
+                                <div className="relative">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping"></div>
+                                </div>
+                                <span className="ml-2 text-sm font-medium text-gray-700">Payment Secured</span>
+                                
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-gray-500 text-center mt-2">
+                            Your payment is being processed. Please do not refresh the page.
+                        </p>
+                    </div>
                 )}
             </div>
         </APIProvider>

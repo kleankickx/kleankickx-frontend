@@ -8,10 +8,9 @@ import { useLocation } from 'react-router-dom';
 import api from '../api';
 
 const TempVerifyEmail = () => {
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
   const location = useLocation();
-  const userEmail = new URLSearchParams(location.search).get('email');
-  const isVerified = new URLSearchParams(location.search).get('is-verified') === 'false';
+  const userEmail = new URLSearchParams(location.search).get('email'); // Get email from URL parameters
+  const isVerified = new URLSearchParams(location.search).get('is-verified') === 'false'; // Check if email is not verified
   const isExpired = new URLSearchParams(location.search).get('expired') === 'true';
   if (!userEmail) {
     toast.error('No email provided. Please register or log in first.');
@@ -28,6 +27,7 @@ const TempVerifyEmail = () => {
     return () => clearInterval(id);
   }, [cooldown]);
 
+  // handle resend verification email
   const handleResendVerification = async () => {
     if (!userEmail) return toast.error('No email found in local storage.');
 

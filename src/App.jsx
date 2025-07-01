@@ -21,6 +21,7 @@ import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import GetOrder from './pages/GetOrder';
 import MyOrders from './pages/MyOrders';
+import FailedOrders from './pages/FailedOrders';
 
 const AppContent = () => {
   const location = useLocation();
@@ -75,6 +76,15 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="orders/failed"
+            element={
+              <ProtectedRoute>
+                <FailedOrders />
+              </ProtectedRoute>
+            }
+          />
+          
         </Routes>
       </main>
       <ToastContainer position="top-right" autoClose={3000} />
