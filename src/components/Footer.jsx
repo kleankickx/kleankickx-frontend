@@ -25,24 +25,23 @@ const Footer = () => {
       <div className="absolute inset-0 bg-black/70"></div>
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-[8rem] px-4 md:px-16 lg:px-24 relative z-10"
+        className="grid grid-cols-1 md:grid-cols-2 gap-[4rem] px-4 md:px-16 lg:px-24 relative z-10"
         variants={fadeInUp}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
       >
         <div>
-          <h3 className="text-4xl font-bold header text-primary">Our Location</h3>
+          <h3 className="text-4xl font-bold header text-primary mb-4">Our Location</h3>
           {/* map */}
           <iframe
-            className="mt-4 shadow-lg"
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.123456789012!2d-122.419415684681!3d37.774929279759!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8085809c8b8b8b8b%3A0x8b8b8b8b8b8b8b8b!2sKleanKickx%20Shoe%20Cleaning%20and%20Repair%20Services!5e0!3m2!1sen!2sus!4v1616161616161"
-            width="100%"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3970.5545659560976!2d-0.22692922603032634!3d5.632567832877106!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xfdf99b47241bab3%3A0xd1639f177d0d42f6!2sKleankickx%20Sneaker%20Care!5e0!3m2!1sen!2sgh!4v1751371309949!5m2!1sen!2sgh"
             height="300"
-            style={{ border: 0 }}
-            allowFullScreen=""
+            style={{ border: 0, width: "100%" }}  // Changed from string to object
+            allowFullScreen
             loading="lazy"
-          ></iframe>
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
 
         <div>
