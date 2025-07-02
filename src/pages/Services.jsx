@@ -10,6 +10,7 @@ import Footer from '../components/Footer';
 import { FaSpinner } from 'react-icons/fa6';
 import { AuthContext } from '../context/AuthContext';
 
+
 // Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -47,7 +48,7 @@ const Services = () => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/api/services/');
+        const response = await axios.get(`${backendUrl}/api/services/`);
         setServices(response.data);
       } catch (err) {
         setError('Failed to load services.');
