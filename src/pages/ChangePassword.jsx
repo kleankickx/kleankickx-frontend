@@ -1,12 +1,12 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
+
 const ChangePassword = () => {
-  const { accessToken } = useContext(AuthContext);
+  const { accessToken, api } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [oldPassword, setOldPassword] = useState('');
@@ -19,6 +19,7 @@ const ChangePassword = () => {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   const handleSubmit = async (e) => {
@@ -27,7 +28,7 @@ const ChangePassword = () => {
     setFormErrors({});
 
     try {
-      await axios.post(
+      await api.post(
         `${backendUrl}/api/users/password/change/`,
         {
           old_password: oldPassword,

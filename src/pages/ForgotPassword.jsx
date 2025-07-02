@@ -1,16 +1,15 @@
-import { useState } from 'react';
-import axios from 'axios';
+import { useState, useContext } from 'react';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
-import api from '../api.js'
+import { AuthContext } from '../context/AuthContext';
+
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const { api } = useContext(AuthContext)
 
   const handleSubmit = async (e) => {
     e.preventDefault();

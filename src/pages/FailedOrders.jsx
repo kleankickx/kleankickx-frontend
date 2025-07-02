@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import api from '../api';
 import { FaSpinner } from 'react-icons/fa6';
+import { AuthContext } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
 
 
 const FailedOrders = () => {
@@ -10,6 +11,8 @@ const FailedOrders = () => {
     const [loading, setLoading] = useState(true);
     const [retrying, setRetrying] = useState(false);
     const navigate = useNavigate();
+    const { api } = useContext(AuthContext)
+    const { clearCart } = useContext(CartContext)
 
     useEffect(() => {
         const loadFailedOrders = () => {
@@ -44,7 +47,7 @@ const FailedOrders = () => {
 
             // Clear the failed order from storage
             localStorage.removeItem('failedOrder');
-            
+            clearCart()
             toast.success('Order successfully recovered!');
             navigate(`/orders/${response.data.order_slug}`);
         } catch (error) {

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useContext } from 'react';
-import api from '../api';
 import {
   FaShoppingCart,
   FaExclamationCircle,
@@ -26,7 +25,7 @@ const GetOrder = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { isAuthenticated, user } = useContext(AuthContext);
+  const { isAuthenticated, user, api } = useContext(AuthContext);
   const navigate = useNavigate();
   const { orderSlug } = useParams();
 
@@ -38,19 +37,12 @@ const GetOrder = () => {
       try {
         const response = await api.get(`/api/orders/${orderSlug}/`);
         setOrder(response.data);
-        toast.success('Order loaded', {
-          position: 'top-right',
-          autoClose: 2000,
-          theme: 'colored',
-          icon: <FaCheckCircle className="text-green-400" />
-        });
       } catch (err) {
         console.error('Error fetching order:', err);
         setError('Failed to load order details');
         toast.error('Failed to load order', {
           position: 'top-right',
           autoClose: 3000,
-          theme: 'colored'
         });
       } finally {
         setLoading(false);
@@ -333,11 +325,11 @@ const GetOrder = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery</span>
-                    <span>{order.delivery_cost ? `GHS ${parseFloat(order.delivery_cost).toFixed(2)}` : 'N/A'}</span>
+                    <span>{order.delivery_address.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}</span>
                   </div>
                     <div className="flex justify-between">
                     <span className="text-gray-600">Pickup</span>
-                    <span>{order.pickup_cost ? `GHS ${parseFloat(order.pickup_cost).toFixed(2)}` : 'N/A'}</span>
+                    <span>{order.pickup_address.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-3 flex justify-between">
                     <span className="font-semibold">Total</span>

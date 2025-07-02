@@ -3,11 +3,11 @@ import { APIProvider, Map, MapControl, ControlPosition, useMap, useMapsLibrary, 
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
-import { FiX, FiCheck, FiMapPin, FiTruck, FiPackage, FiNavigation, FiInfo } from 'react-icons/fi';
+import { FiX, FiCheck, FiMapPin, FiTruck, FiPackage, FiNavigation, FiInfo,  } from 'react-icons/fi';
+import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Paystack from '@paystack/inline-js'
-import api from '../api'; // Assuming you have an API utility set up
 import PaystackIcon from "../assets/paystack.png"
 
 // --- Constants ---
@@ -241,6 +241,7 @@ const PlaceAutocompleteElementWrapper = ({ onPlaceSelect, placeholder, type, reg
         autocompleteElementRef.current.placeholder = placeholder || 'Search for a place';
         autocompleteElementRef.current.style.width = '100%';
         autocompleteElementRef.current.style.height = '45px';
+        autocompleteElementRef.current.style.backgroundColor = "#F2F0EF"
         inputContainerRef.current.appendChild(autocomplete);
         autocomplete.addEventListener('gmp-select', handlePlaceSelect);
 
@@ -434,10 +435,13 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
 
 
 // --- Main Checkout Component ---
+
 const Checkout = () => {
-    const { accessToken, user } = useContext(AuthContext);
+    const { accessToken, user, api } = useContext(AuthContext);
     const { cart, clearCart } = useContext(CartContext);
     const navigate = useNavigate();
+    
+    // State for locations and inputs
     const [delivery, setDelivery] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem('deliveryLocation'));
@@ -464,30 +468,54 @@ const Checkout = () => {
     const [showAlert, setShowAlert] = useState(true);
     const [paymentView, setPaymentView] = useState(false);
     const [transactionReference, setTransactionReference] = useState(null);
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [isPhoneValid, setIsPhoneValid] = useState(false);
 
+    // Calculate order totals
     const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
     const deliveryFee = delivery?.cost || 0;
     const pickupFee = useSame ? deliveryFee : pickup?.cost || 0;
     const total = subtotal + deliveryFee + pickupFee;
 
-    // check if user is verified and if not redirect to verification page
+    // Ghana phone number validation
+    const validateGhanaPhone = (number) => {
+        const cleaned = number.replace(/\D/g, '');
+        const ghanaRegex = /^(233|0)?(20|24|25|26|27|28|29|30|50|54|55|56|57|59)[0-9]{7}$/;
+        return ghanaRegex.test(cleaned);
+    };
+
+    const handlePhoneChange = (e) => {
+        let input = e.target.value;
+        if (input.startsWith('0') && !input.startsWith('+233')) {
+            input = '+233' + input.slice(1);
+        }
+        if (input.length <= 13) {
+            setPhoneNumber(input);
+            setIsPhoneValid(validateGhanaPhone(input));
+        }
+    };
+
+    // Check user verification status
     useEffect(() => {
+        if (!user || !user.email) return;
+
         if (!user.is_verified) {
             navigate(`/temp-verify-email/?email=${user.email}`);
             toast.warn('Please verify your email before proceeding to checkout.');
-            return;
         }
-
     }, [user, navigate]);
 
+    // Save delivery region to localStorage
     useEffect(() => {
         localStorage.setItem('deliveryRegion', deliveryRegion);
     }, [deliveryRegion]);
 
+    // Save pickup region to localStorage
     useEffect(() => {
         localStorage.setItem('pickupRegion', pickupRegion);
     }, [pickupRegion]);
 
+    // Sync pickup location when useSame is true
     useEffect(() => {
         if (useSame && delivery) {
             setPickup({ ...delivery, region: deliveryRegion });
@@ -502,6 +530,7 @@ const Checkout = () => {
         }
     }, [useSame, delivery, deliveryRegion]);
 
+    // Show alert only once
     useEffect(() => {
         const hasSeenAlert = localStorage.getItem('hasSeenCheckoutAlert');
         if (!hasSeenAlert) {
@@ -510,6 +539,7 @@ const Checkout = () => {
         }
     }, []);
 
+    // Detect user location
     useEffect(() => {
         const detectUserLocation = () => {
             if (!navigator.geolocation) {
@@ -537,6 +567,7 @@ const Checkout = () => {
         detectUserLocation();
     }, []);
 
+    // Handle place selection from map
     const handlePlaceSelect = useCallback((location, type) => {
         if (type === 'delivery') {
             setDelivery(location);
@@ -573,6 +604,7 @@ const Checkout = () => {
         }
     }, [useSame, deliveryRegion]);
 
+    // Event listener for map location selection
     useEffect(() => {
         const listener = (event) => {
             const { location, type } = event.detail;
@@ -584,6 +616,7 @@ const Checkout = () => {
         };
     }, [handlePlaceSelect]);
 
+    // Handle use current location
     const handleUseCurrentLocation = async () => {
         if (!navigator.geolocation) {
             toast.error("Geolocation not supported by your browser");
@@ -649,6 +682,7 @@ const Checkout = () => {
         }
     };
 
+    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!delivery) {
@@ -663,23 +697,22 @@ const Checkout = () => {
             toast.error('Your cart is empty');
             return;
         }
-        setPaymentView(true);
-        setShowAlert(false)
-    };
-
-    const handlePayment = async () => {
-        if (!Paystack) {
-            toast.error('Paystack SDK not loaded');
+        if (!isPhoneValid) {
+            toast.error('Please enter a valid Ghana phone number');
             return;
         }
+        setPaymentView(true);
+        setShowAlert(false);
+    };
 
-        // Prevent multiple clicks while processing
+    // Handle payment with Paystack
+    const handlePayment = async () => {
+
         if (placing) return;
 
         try {
             setPlacing(true);
             
-            // Store transaction reference in state in case of page refresh
             const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
             setTransactionReference(transactionRef);
 
@@ -687,15 +720,12 @@ const Checkout = () => {
             handler.newTransaction({
                 key: PAYSTACK_PUBLIC_KEY,
                 email: user.email,
-                amount: total * 100, // Convert GHS to pesewas
+                amount: total * 100,
                 currency: 'GHS',
-                reference: transactionRef, // Set our own reference
+                reference: transactionRef,
 
                 onSuccess: async (transaction) => {
                     try {
-                        console.log('Transaction successful:', transaction);
-                        
-                        // Block page navigation/refresh
                         const beforeUnloadHandler = (e) => {
                             e.preventDefault();
                             e.returnValue = 'Your order is being processed. Please wait...';
@@ -703,7 +733,6 @@ const Checkout = () => {
                         };
                         window.addEventListener('beforeunload', beforeUnloadHandler);
 
-                        // Retry mechanism for order creation
                         let retries = 3;
                         let success = false;
                         let lastError = null;
@@ -720,12 +749,10 @@ const Checkout = () => {
                                     pickup_cost: useSame ? deliveryFee : pickupFee,
                                     sub_total: subtotal,
                                     transaction_id: transaction.reference,
+                                    phone_number: phoneNumber
                                 });
 
-                                // Mark as success
                                 success = true;
-
-                                // Clean up
                                 clearCart();
                                 ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 
                                 'pickupInputValue', 'deliveryRegion', 'pickupRegion'].forEach(key => {
@@ -740,18 +767,13 @@ const Checkout = () => {
                                 setPickupRegion('');
                                 setUseSame(true);
 
-                                // Remove the beforeunload listener
                                 window.removeEventListener('beforeunload', beforeUnloadHandler);
-
-                                // Navigate to success page
                                 navigate(`/orders/${response.data.order_slug}`);
                                 toast.success('Order placed successfully! Thank you for your purchase.');
                             } catch (error) {
                                 lastError = error;
                                 retries--;
-                                
                                 if (retries > 0) {
-                                    // Wait before retrying (exponential backoff)
                                     await new Promise(resolve => 
                                         setTimeout(resolve, 1000 * (4 - retries))
                                     );
@@ -764,19 +786,20 @@ const Checkout = () => {
                         }
                     } catch (error) {
                         console.error('Error placing order:', error);
-                        
-                        // Store failed order data for recovery
                         const failedOrder = {
                             user_id: user.id,
                             delivery_location: delivery,
                             pickup_location: useSame ? delivery : pickup,
                             total_amount: total,
                             cart_items: cart,
+                            sub_total: subtotal,
                             transaction_id: transaction.reference,
+                            phone_number: phoneNumber,
+                            delivery_cost: deliveryFee,
+                            pickup_cost: useSame ? deliveryFee : pickupFee,
                             error: error.message
                         };
                         localStorage.setItem('failedOrder', JSON.stringify(failedOrder));
-                        
                         toast.error('Failed to place order. Please check your orders page or contact support.');
                         navigate('/orders/failed');
                     } finally {
@@ -791,9 +814,6 @@ const Checkout = () => {
                     setPlacing(false);
                     console.error('Payment error:', error);
                     toast.error('Payment failed. Please try again.');
-                },
-                onLoad: (response) => {
-                    console.log('Paystack SDK loaded successfully:', response);
                 }
             });
         } catch (error) {
@@ -803,6 +823,7 @@ const Checkout = () => {
         }
     };
 
+    // Load Paystack script
     useEffect(() => {
         const script = document.createElement('script');
         script.src = "https://js.paystack.co/v2/inline.js";
@@ -848,8 +869,6 @@ const Checkout = () => {
                                         <FiTruck className="mr-2 text-primary" />
                                         Delivery Information
                                     </h2>
-
-
                                     <div className="space-y-4">
                                         <div>
                                             <div className="flex justify-between items-center mb-1">
@@ -907,63 +926,88 @@ const Checkout = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white lg:p-6 rounded-xl lg:shadow-sm lg:border lg:border-gray-100 relative">
-                                    <h2 className="text-xl font-semibold mb-2">Delivery Map</h2>
-                                    <p className="text-sm text-gray-500 mb-3">
-                                       The map shows the delivery and pickup locations.
-                                    </p>
-                                    {/* key */}
-                                    <div className="flex items-center space-x-4 mb-4">
-                                        <div className="flex items-center">
-                                            <div className="w-4 h-4 bg-blue-500 rounded-full mr-2 flex justify-center items-center">
-                                                <span className="text-white text-xs font-bold">D</span>
-                                            </div>
-                                            <span className="text-sm  text-gray-700">Delivery Location</span>
-                                        </div>
-                                        {!useSame && (
-                                            <div className="flex items-center">
-                                                <div className="w-4 h-4 bg-green-500 rounded-full mr-2 justify-center items-center">
-                                                    <span className="text-white text-xs font-bold">P</span>
-                                                </div>
-                                                <span className="text-sm text-gray-700">Pickup Location</span>
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    <div className="relative">
-                                        <Map
-                                            mapId={"YOUR_MAP_ID"}
-                                            defaultZoom={delivery || pickup ? 16 : 12}
-                                            defaultCenter={currentLocation}
-                                            gestureHandling={'greedy'}
-                                            disableDefaultUI={false}
-                                            style={MAP_CONTAINER_STYLE}
-                                        >
-                                            <MapHandler
-                                                delivery={delivery}
-                                                pickup={pickup}
-                                                useSame={useSame}
-                                                currentLocation={currentLocation}
-                                                activeInput={activeInput}
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-semibold mb-4 flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                        </svg>
+                                        Contact Details
+                                    </h2>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                                                Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                id="email"
+                                                value={user?.email || ''}
+                                                disabled
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:text-gray-500 cursor-not-allowed"
                                             />
-                                        </Map>
-                                        <AnimatePresence>
-                                            {activeInput && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: 10 }}
-                                                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center"
-                                                >
-                                                    <FiMapPin className="mr-2 text-blue-500" />
-                                                    Click to set {activeInput} location
-                                                </motion.div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                                                Phone Number (Ghana)
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                                    <span className="text-gray-500">🇬🇭 +233</span>
+                                                </div>
+                                                <input
+                                                    type="tel"
+                                                    id="phone"
+                                                    value={phoneNumber}
+                                                    onChange={handlePhoneChange}
+                                                    placeholder="24 123 4567"
+                                                    className="pl-20 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                                                    maxLength={13}
+                                                />
+                                                {phoneNumber && (
+                                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                                        {isPhoneValid ? (
+                                                            <FaCheckCircle className="text-green-500" />
+                                                        ) : (
+                                                            <FaTimesCircle className="text-red-500" />
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {phoneNumber && !isPhoneValid && (
+                                                <p className="mt-1 text-sm text-red-600">
+                                                    Please enter a valid Ghana phone number (e.g., +233 24 123 4567 or 024 123 4567)
+                                                </p>
                                             )}
-                                        </AnimatePresence>
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Format: +233 XX XXX XXXX or 0XX XXX XXXX
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
                             <div className="space-y-6">
+                                <div className="relative">
+                                    <Map
+                                        mapId={"YOUR_MAP_ID"}
+                                        defaultZoom={delivery || pickup ? 16 : 12}
+                                        defaultCenter={currentLocation}
+                                        gestureHandling={'greedy'}
+                                        disableDefaultUI={false}
+                                        style={MAP_CONTAINER_STYLE}
+                                    >
+                                        <MapHandler
+                                            delivery={delivery}
+                                            pickup={pickup}
+                                            useSame={useSame}
+                                            currentLocation={currentLocation}
+                                            activeInput={activeInput}
+                                        />
+                                    </Map>
+                                </div>
+
                                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                     <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
                                     <div className="space-y-3">
@@ -1004,19 +1048,16 @@ const Checkout = () => {
                                 </div>
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup)}
+                                    disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
                                     className={`w-full py-3 px-4 rounded-lg cursor-pointer font-medium text-white transition-colors ${
-                                        placing || cart.length === 0 || !delivery || (!useSame && !pickup)
+                                        placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
                                             ? 'bg-gray-400 cursor-not-allowed'
                                             : 'bg-primary hover:bg-primary/80'
                                     }`}
                                 >
                                     {placing ? (
                                         <span className="flex items-center justify-center">
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
+                                            <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
                                             Continuing...
                                         </span>
                                     ) : (
@@ -1032,9 +1073,7 @@ const Checkout = () => {
                         </div>
                     </>
                 ) : (
-                    
-                    <div className="bg-white lg:p-8 p-4 rounded-2xl shadow-2xl border border-gray-100 max-w-md mx-auto transform transition-all duration-300 hover:shadow-xl">
-                        {/* Header with animated gradient */}
+                    <div className="bg-white lg:p-8 p-4 rounded-2xl shadow-2xl border border-gray-100 max-w-md mx-auto">
                         <div className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-green-500 to-primary/80 p-6 text-white">
                             <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10"></div>
                             <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/10"></div>
@@ -1046,14 +1085,12 @@ const Checkout = () => {
                                 </div>
                                 <div className="flex space-x-2">
                                     <div className="h-10 w-16 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                                        <img src={PaystackIcon} className="w-[1rem]" />
+                                        <span className="text-xs font-bold">PAYSTACK</span>
                                     </div>
-                                
                                 </div>
                             </div>
                         </div>
 
-                        {/* Payment breakdown - Glassmorphism style */}
                         <div className="space-y-4 mb-8 backdrop-blur-sm bg-white/50 p-6 rounded-xl border border-gray-100 shadow-sm">
                             <div className="flex justify-between py-3 border-b border-gray-100/50">
                                 <div className="flex items-center text-gray-600">
@@ -1077,7 +1114,7 @@ const Checkout = () => {
                                 <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
                             </div>
                             
-                            <div className={`flex justify-between py-3 ${useSame ? 'border-b border-gray-100/50' : ''}`}>
+                            <div className="flex justify-between py-3">
                                 <div className="flex items-center text-gray-600">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
@@ -1100,7 +1137,6 @@ const Checkout = () => {
                             </div>
                         </div>
 
-                        {/* Payment button with micro-interactions */}
                         <div className="space-y-4">
                             <button
                                 onClick={handlePayment}
@@ -1108,15 +1144,12 @@ const Checkout = () => {
                                 className={`w-full py-4 px-6 rounded-xl font-semibold text-white cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden group ${
                                     placing 
                                         ? 'bg-gray-300 cursor-not-allowed' 
-                                        : 'bg-gradient-to-r from-green-500 to-primary/80 hover:from-green-700 hover:to-primar shadow-lg hover:shadow-xl'
+                                        : 'bg-gradient-to-r from-green-500 to-primary/80 hover:from-green-700 hover:to-primary shadow-lg hover:shadow-xl'
                                 }`}
                             >
                                 {placing ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
+                                        <FaSpinner className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
                                         Processing Payment...
                                     </>
                                 ) : (
@@ -1146,7 +1179,6 @@ const Checkout = () => {
                             </button>
                         </div>
 
-                        {/* Security badge - Animated */}
                         <div className="mt-8 border-t border-gray-100/50 flex flex-col items-center justify-center">
                             <div className="flex items-center">
                                 <div className="relative">
@@ -1156,7 +1188,6 @@ const Checkout = () => {
                                     <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping"></div>
                                 </div>
                                 <span className="ml-2 text-sm font-medium text-gray-700">Payment Secured</span>
-                                
                             </div>
                         </div>
 

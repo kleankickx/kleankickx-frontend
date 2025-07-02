@@ -1,5 +1,5 @@
 // src/pages/ResetPassword.jsx
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -9,7 +9,7 @@ import {
   EyeSlashIcon,
   LockClosedIcon,
 } from '@heroicons/react/24/outline';
-import api from '../api.js'
+import { AuthContext } from '../context/AuthContext';
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -20,6 +20,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { api } = useContext(AuthContext)
 
   const backendUrl =
     import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';

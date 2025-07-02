@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../api';
 import { toast } from 'react-toastify';
 import {
   FaShoppingCart,
@@ -23,12 +22,13 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MyOrders = () => {
-  const { isAuthenticated, user } = useContext(AuthContext);
+  const { isAuthenticated, user, api } = useContext(AuthContext);
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+ 
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -39,19 +39,12 @@ const MyOrders = () => {
         const response = await api.get('/api/orders');
         setOrders(response.data);
         console.log('Fetched orders:', response.data);
-        toast.success('Orders loaded successfully', {
-          position: 'top-right',
-          autoClose: 2000,
-          theme: 'colored',
-          icon: <FaCheckCircle className="text-green-400" />
-        });
       } catch (err) {
         console.error('Error fetching orders:', err);
         setError('Failed to load orders. Please try again.');
         toast.error('Failed to load orders', {
           position: 'top-right',
           autoClose: 3000,
-          theme: 'colored'
         });
       } finally {
         setLoading(false);

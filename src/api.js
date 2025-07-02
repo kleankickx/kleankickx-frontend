@@ -1,82 +1,88 @@
+// src/api.js
 import axios from 'axios';
-import { toast } from 'react-toastify';
 
-// Base Axios instance - no React hooks here
-const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: false,
-});
+const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
-// Create a function to setup interceptors that can accept auth functions
-export const setupInterceptors = (authFunctions) => {
-  const { getAccessToken, getRefreshToken, setAccessToken, logout } = authFunctions;
-
-  // Request interceptor
-  api.interceptors.request.use(
-    (config) => {
-      if (!config.url?.includes('/token/refresh/')) {
-        const token = getAccessToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      }
-      return config;
+export const createApiClient = (auth) => {
+  const api = axios.create({
+    baseURL,
+    headers: {
+      'Content-Type': 'application/json',
     },
-    (error) => Promise.reject(error)
-  );
+    withCredentials: false,
+  });
 
-  // Response interceptor
+  let isRefreshing = false;
+  let failedQueue = [];
+
+  const processQueue = (error, token = null) => {
+    failedQueue.forEach(promise => {
+      if (error) promise.reject(error);
+      else promise.resolve(token);
+    });
+    failedQueue = [];
+  };
+
+  const refreshAccessToken = async () => {
+    const refresh = auth.refreshToken;
+    if (!refresh) throw new Error('No refresh token available');
+
+    const response = await axios.post(`${baseURL}/api/users/token/refresh/`, { refresh });
+    const { access, refresh: newRefresh } = response.data;
+
+    auth.setAccessToken(access);
+    if (newRefresh) auth.setRefreshToken(newRefresh);
+
+    return access;
+  };
+
+  api.interceptors.request.use(config => {
+    const token = auth.accessToken;
+    if (token && !config.url.includes('/token/')) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
   api.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      const originalRequest = error.config;
+    res => res,
+    async err => {
+      const originalRequest = err.config;
 
-      const is401 = error.response?.status === 401;
-      const isLoginOrRefresh = originalRequest.url?.includes('/token/') || originalRequest._retry;
+      const shouldRefresh =
+        err.response?.status === 401 &&
+        !originalRequest._retry &&
+        auth.refreshToken &&
+        !originalRequest.url.includes('/token/');
 
-      if (!is401 || isLoginOrRefresh) {
-        console.error('API error:', error);
-        return Promise.reject(error);
+      if (!shouldRefresh) return Promise.reject(err);
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        }).catch(err => Promise.reject(err));
       }
 
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        return Promise.reject(error);
-      }
+      originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        originalRequest._retry = true;
-
-        const refreshResponse = await axios.post(
-          `${api.defaults.baseURL}/api/users/token/refresh/`,
-          { refresh: refreshToken },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-
-        const newAccessToken = refreshResponse.data.access;
-
-        setAccessToken(newAccessToken);
-        localStorage.setItem('access_token', newAccessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        const newToken = await refreshAccessToken();
+        processQueue(null, newToken);
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        logout();
-        localStorage.removeItem('access_token');
-
-        toast.error('Session expired. Please log in again.', {
-          position: 'top-right',
-          autoClose: 5000,
-        });
-
-        return Promise.reject(refreshError);
+      } catch (refreshErr) {
+        processQueue(refreshErr);
+        auth.logout();
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
   );
-};
 
-export default api;
+  return api;
+};

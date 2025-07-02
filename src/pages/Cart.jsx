@@ -4,7 +4,6 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { TrashIcon, MinusIcon, PlusIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import api from '../api';
 import { FaSpinner } from 'react-icons/fa6';
 
 const Tooltip = ({ message, position = 'top', children }) => {
@@ -34,6 +33,7 @@ const Cart = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { api } = useContext(AuthContext)
 
   const fetchServices = async () => {
     setLoading(true);
@@ -56,7 +56,7 @@ const Cart = () => {
 
   useEffect(() => {
     fetchServices();
-  }, [cart]);
+  }, []);
 
   const getService = (id) => services.find((s) => s.id === id) || {};
   const total = cart
@@ -159,7 +159,8 @@ const Cart = () => {
               );
             })}
           </div>
-
+          
+          
           <aside className="bg-white border border-gray-200 rounded-lg shadow p-6 space-y-6 h-max sticky top-28">
             <h3 className="text-lg font-semibold">Order Summary</h3>
             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 text-sm">
@@ -184,6 +185,8 @@ const Cart = () => {
               {services.length === 0 || cart.length === 0 ? 'No services available' : 'Proceed to Checkout'}
             </button>
           </aside>
+
+
         </div>
       ) : (
         <div className="text-center">

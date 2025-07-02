@@ -1,11 +1,12 @@
 // src/components/TempVerifyEmail.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { EnvelopeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
 import { useLocation } from 'react-router-dom';
-import api from '../api';
+import { AuthContext } from '../context/AuthContext';
+
 
 const TempVerifyEmail = () => {
   const location = useLocation();
@@ -19,6 +20,7 @@ const TempVerifyEmail = () => {
  
   const [cooldown, setCooldown] = useState(0);          // seconds remaining
   const [loading, setLoading] = useState(false);        // API request state
+  const { api } = useContext(AuthContext)
 
   // countdown side‑effect
   useEffect(() => {

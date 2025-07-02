@@ -7,8 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
-import api from '../api'; // Assuming you have an API utility set up
 import { FaSpinner } from 'react-icons/fa6';
+import { AuthContext } from '../context/AuthContext';
 
 // Animation variants
 const fadeInUp = {
@@ -36,6 +36,7 @@ const Services = () => {
   const [error, setError] = useState('');
   const { cart, addToCart } = useContext(CartContext);
   const [loading, setLoading] = useState(true);
+  const { api } = useContext(AuthContext)
 
   // backend URL from environment variable
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
