@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { TrashIcon, MinusIcon, PlusIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { FaSpinner } from 'react-icons/fa6';
+import axios from 'axios';
 
 const Tooltip = ({ message, position = 'top', children }) => {
   const pos = {
@@ -34,6 +35,8 @@ const Cart = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { api } = useContext(AuthContext)
+  // Base URL for backend API
+  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   const fetchServices = async () => {
     setLoading(true);
@@ -41,7 +44,7 @@ const Cart = () => {
     try {
       const servicePromises = cart
         .filter(item => item.service_id)
-        .map(item => api.get(`/api/services/${item.service_id}/`));
+        .map(item => axios.get(`${baseURL}/api/services/${item.service_id}/`));
       
       const responses = await Promise.all(servicePromises);
       setServices(responses.map(res => res.data));

@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Paystack from '@paystack/inline-js'
 import PaystackIcon from "../assets/paystack.png"
+import { jwtDecode } from 'jwt-decode';
+import axios from 'axios';
 
 // --- Constants ---
 const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -437,7 +439,7 @@ const MapHandler = ({ delivery, pickup, useSame, currentLocation, activeInput })
 // --- Main Checkout Component ---
 
 const Checkout = () => {
-    const { accessToken, user, api } = useContext(AuthContext);
+    const { accessToken, refreshToken, setAccessToken, setRefreshToken, logout, api, user } = useContext(AuthContext);
     const { cart, clearCart } = useContext(CartContext);
     const navigate = useNavigate();
     
@@ -470,6 +472,8 @@ const Checkout = () => {
     const [transactionReference, setTransactionReference] = useState(null);
     const [phoneNumber, setPhoneNumber] = useState('');
     const [isPhoneValid, setIsPhoneValid] = useState(false);
+    // Base URL for backend API
+    const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
     // Calculate order totals
     const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
@@ -707,12 +711,52 @@ const Checkout = () => {
 
     // Handle payment with Paystack
     const handlePayment = async () => {
-
         if (placing) return;
 
         try {
             setPlacing(true);
             
+            // First check token validity
+            try {
+                if (!refreshToken) throw new Error('No refresh token');
+                
+                // Decode the refresh token to check expiration
+                const decoded = jwtDecode(refreshToken);
+                const currentTime = Date.now() / 1000;
+                const timeLeft = decoded.exp - currentTime;
+                
+                // If token expires in less than 30 seconds or already expired
+                if (timeLeft < 60) {
+                    // Attempt to refresh tokens
+                    const response = await axios.post(`${baseURL}/api/token/refresh/`, {
+                        refresh: refreshToken
+                    }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    // Update both context and localStorage
+                    const newAccessToken = response.data.access;
+                    const newRefreshToken = response.data.refresh || refreshToken;
+                    
+                    setAccessToken(newAccessToken);
+                    localStorage.setItem('access_token', newAccessToken);
+                    
+                    if (response.data.refresh) {
+                        setRefreshToken(newRefreshToken);
+                        localStorage.setItem('refresh_token', newRefreshToken);
+                    }
+                }
+            } catch (tokenError) {
+                console.error('Token refresh error:', tokenError);
+                // Properly logout using AuthContext
+                logout();
+                toast.error('Session expired. Please login again to complete your order.');
+                navigate('/login?continuePath=/checkout');
+                setPlacing(false);
+                return;
+            }
+
+            // Proceed with payment after token validation
             const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
             setTransactionReference(transactionRef);
 
@@ -753,6 +797,8 @@ const Checkout = () => {
                                 });
 
                                 success = true;
+                                // ... success handling
+                                success = true;
                                 clearCart();
                                 ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 
                                 'pickupInputValue', 'deliveryRegion', 'pickupRegion'].forEach(key => {
@@ -773,7 +819,34 @@ const Checkout = () => {
                             } catch (error) {
                                 lastError = error;
                                 retries--;
-                                if (retries > 0) {
+                                
+                                // If unauthorized, try refreshing token once
+                                if (error.response?.status === 401 && retries > 0) {
+                                    try {
+                                        const refreshResponse = await axios.post(`${api.defaults.baseURL}/api/token/refresh/`, {
+                                            refresh: localStorage.getItem('refresh_token')
+                                        }, {
+                                            headers: { 'Content-Type': 'application/json' }
+                                        });
+
+                                        const newAccessToken = refreshResponse.data.access;
+                                        const newRefreshToken = refreshResponse.data.refresh || refreshToken;
+                                        
+                                        // Update context and localStorage
+                                        setAccessToken(newAccessToken);
+                                        localStorage.setItem('access_token', newAccessToken);
+                                        
+                                        if (refreshResponse.data.refresh) {
+                                            setRefreshToken(newRefreshToken);
+                                            localStorage.setItem('refresh_token', newRefreshToken);
+                                        }
+                                    } catch (refreshError) {
+                                        // If refresh fails, logout and break the retry loop
+                                        logout();
+                                        retries = 0;
+                                        throw refreshError;
+                                    }
+                                } else if (retries > 0) {
                                     await new Promise(resolve => 
                                         setTimeout(resolve, 1000 * (4 - retries))
                                     );
@@ -786,26 +859,33 @@ const Checkout = () => {
                         }
                     } catch (error) {
                         console.error('Error placing order:', error);
+                        // ... error handling
                         const failedOrder = {
                             user_id: user.id,
                             delivery_location: delivery,
                             pickup_location: useSame ? delivery : pickup,
                             total_amount: total,
                             cart_items: cart,
-                            sub_total: subtotal,
                             transaction_id: transaction.reference,
                             phone_number: phoneNumber,
-                            delivery_cost: deliveryFee,
-                            pickup_cost: useSame ? deliveryFee : pickupFee,
                             error: error.message
                         };
                         localStorage.setItem('failedOrder', JSON.stringify(failedOrder));
-                        toast.error('Failed to place order. Please check your orders page or contact support.');
-                        navigate('/orders/failed');
+                        
+                        if (error.response?.status === 401) {
+                            toast.error('Session expired. Please login again to complete your order.');
+                            logout();
+                            navigate('/login?returnUrl=/checkout');
+                        } else {
+                            // ... other error handling
+                            toast.error('Failed to place order. Please check your orders page or contact support.');
+                            navigate('/orders/failed');
+                        }
                     } finally {
                         setPlacing(false);
                     }
                 },
+                // ... other Paystack handlers
                 onCancel: () => {
                     setPlacing(false);
                     toast.info('Payment cancelled. Your order was not placed.');
