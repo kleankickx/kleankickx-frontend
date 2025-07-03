@@ -50,21 +50,18 @@ const Login = () => {
     }
 
     try {
-      const isLoggedIn = await login(email, password);
+      await login(email, password);
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
         });
       }
-      if (isLoggedIn) {
-        toast.success('Logged in successfully!', { position: 'top-right' });
-        // navigate to the previous page or default to home
-        navigate(continuePath || '/'); // Navigate to the previous page or default to home
-      }
-      else {
-        setError('Login failed. Please check your credentials.');
-        toast.error('Login failed. Please check your credentials.', { position: 'top-right' });
-      }
+      
+      toast.success('Logged in successfully!', { position: 'top-right' });
+      // navigate to the previous page or default to home
+      navigate(continuePath || '/'); // Navigate to the previous page or default to home
+      
+      
 
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');

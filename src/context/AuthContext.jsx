@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-toastify';
 import { createApiClient } from '../api';
+import axios from 'axios';
 
 export const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
+  // Base URL for backend API
+  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   const [accessToken, setAccessToken] = useState(localStorage.getItem('access_token'));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token'));
@@ -87,7 +90,7 @@ const AuthProvider = ({ children }) => {
   // Login
   const login = async (email, password) => {
     try {
-      const response = await api.post('/api/users/login/', { email, password });
+      const response = await axios.post(`${baseURL}/api/users/login/`, { email, password });
       const { access, refresh } = response.data;
 
       authMethods.setAccessToken(access);
