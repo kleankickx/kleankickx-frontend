@@ -24,6 +24,7 @@ import MyOrders from './pages/MyOrders';
 import FailedOrders from './pages/FailedOrders';
 import { useContext, useEffect } from 'react';
 import { AuthContext } from './context/AuthContext';
+import ScrollToTop from './components/ScrollToTop';
 
 const AppContent = () => {
   const location = useLocation();
@@ -104,6 +105,7 @@ function App() {
       <Router>
         <AuthProvider>
           <CartProvider>
+            <ScrollToTop />
             <AppContent />
           </CartProvider>
         </AuthProvider>
