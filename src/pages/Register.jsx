@@ -8,6 +8,7 @@ import { CartContext } from '../context/CartContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'; 
 import { AuthContext } from '../context/AuthContext';
 import 'react-toastify/dist/ReactToastify.css'; // Ensure toast styles are imported
+import { motion } from 'framer-motion';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -102,7 +103,10 @@ const Register = () => {
 
   return (
     <div className="bg-[#edf1f4] py-16 px-4 min-h-screen">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
+      <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }} className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
         <h2 className="text-2xl font-bold text-black mb-6">
           Register
         </h2>
@@ -267,7 +271,7 @@ const Register = () => {
             Login
           </Link>
         </p>
-      </div>
+      </motion.div>
 
       {/* terms and conditions */}
       <div className="text-center mt-8 text-sm text-gray-500">
