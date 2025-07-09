@@ -37,9 +37,9 @@ const AppContent = () => {
       {!shouldHideNavbar && <Navbar />} {/* Conditionally render Navbar based on the current route */}
       <main className="flex-grow">
         <Routes>
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
