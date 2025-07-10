@@ -353,7 +353,7 @@ const GetOrder = () => {
                     href="mailto:support@kleankickx.com"
                     className="text-blue-600 hover:underline"
                   >
-                    support@kleankickx.com
+                    kleankickx.sneakercare@gmail.com
                   </a>
                 </p>
               </div>
