@@ -164,7 +164,7 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full bg-red-500 hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
+              className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
               disabled={loading}
               aria-label="Login with email and password"
             >
