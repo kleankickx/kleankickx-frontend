@@ -102,7 +102,7 @@ function App() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <Router>
+      <Router basename="/">
         <AuthProvider>
           <CartProvider>
             <ScrollToTop />
