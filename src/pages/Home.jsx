@@ -189,16 +189,19 @@ const Home = () => {
             img: standardClean,
             title: 'Standard Clean (Sneaker Cleaning)',
             price: 'GH₵50.00',
+            prevPrice: 'GH₵70.00'
           }, 
           {
             img: deepClean,
             title: 'Deep Klean (Intensive Sneaker Cleaning)',
             price: 'GH₵100.00',
+            prevPrice: 'GH₵120.00'
           },
           {
             img: unyellowing,
             title: 'Decolorization (Unyellowing)',
             price: 'GH₵120.00',
+            prevPrice: 'GH₵150.00'
           },
           ].map((service, i) => (
             <motion.div key={i} variants={fadeIn} custom={i} className="group">
@@ -207,7 +210,7 @@ const Home = () => {
                   <img src={service.img} alt={service.title} className="w-full h-72 object-contain rounded-t-lg group-hover:scale-105 transition" />
                   <div className="p-6"><h3 className="text-lg text-gray-800">{service.title}</h3></div>
                   <div className="px-6 py-2 flex gap-4 items-center border-t border-gray-200">
-                    <p className="text-primary/50 text-lg line-through">GH₵135.00</p>
+                    <p className="text-primary/50 text-lg line-through">{service.prevPrice}</p>
                     <p className="text-primary font-bold text-lg">{service.price}</p>
                   </div>
                 </div>

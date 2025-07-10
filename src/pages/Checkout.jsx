@@ -12,6 +12,7 @@ import PaystackIcon from "../assets/paystack.png"
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 
+
 // --- Constants ---
 const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
@@ -914,6 +915,13 @@ const Checkout = () => {
         };
     }, []);
 
+    useEffect(() => {
+        window.scrollTo({
+        top: 0,
+        behavior: 'smooth' // For a smooth scrolling animation
+        });
+    }, [paymentView]);
+
     return (
         <APIProvider
             apiKey={Maps_API_KEY}
@@ -937,7 +945,9 @@ const Checkout = () => {
                 )}
 
                 {!paymentView ? (
-                    <>
+                    <>  
+                        {/* scroll to the top of the page */}
+                        
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
                             <p className="text-gray-600 mt-2">Review your order and provide delivery details</p>
