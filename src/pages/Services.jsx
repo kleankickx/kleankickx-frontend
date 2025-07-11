@@ -176,8 +176,8 @@ const Services = () => {
 
                   <div className="flex items-center justify-between mt-4">
                     <div className="text-sm text-gray-500 line-through">₵{
-                        service.price === '50' ? '70' :
-                        service.price === '100' ? '120' :
+                        service.price === '50.00' ? '70' :
+                        service.price === '100.00' ? '120' :
                         '150'
                     }</div>
                     <div className="text-lg font-bold text-primary">₵{service.price}</div>
