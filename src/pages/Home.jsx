@@ -51,7 +51,6 @@ const AnimatedNumber = ({ value }) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    console.log(import.meta.env.VITE_BACKEND_URL);
     if (inView) {
       let start = 0;
       const end = parseInt(value.replace(/[^\d]/g, ""));

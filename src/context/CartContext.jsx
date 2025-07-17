@@ -11,34 +11,34 @@ export const CartProvider = ({ children }) => {
   const getInitialCart = () => {
     try {
       const storedCart = localStorage.getItem('cart');
-      console.log('getInitialCart: storedCart=', storedCart);
+      // console.log('getInitialCart: storedCart=', storedCart);
       if (!storedCart) {
         const initial = { items: [], timestamp: Date.now(), expired: false };
-        console.log('getInitialCart: No stored cart, returning', initial);
+        // console.log('getInitialCart: No stored cart, returning', initial);
         return initial;
       }
 
       const parsedCart = JSON.parse(storedCart);
-      console.log('getInitialCart: parsedCart=', parsedCart);
+      // console.log('getInitialCart: parsedCart=', parsedCart);
       if (
         !parsedCart ||
         !Array.isArray(parsedCart.items) ||
         !Number.isInteger(parsedCart.timestamp)
       ) {
         const invalid = { items: [], timestamp: Date.now(), expired: false };
-        console.log('getInitialCart: Invalid cart structure, returning', invalid);
+        // console.log('getInitialCart: Invalid cart structure, returning', invalid);
         return invalid;
       }
 
       if (Date.now() - parsedCart.timestamp > CART_EXPIRY_MS) {
         localStorage.removeItem('cart');
         const expired = { items: [], timestamp: Date.now(), expired: true };
-        console.log('getInitialCart: Cart expired, cleared localStorage, returning', expired);
+        // console.log('getInitialCart: Cart expired, cleared localStorage, returning', expired);
         return expired;
       }
 
       const valid = { ...parsedCart, expired: false };
-      console.log('getInitialCart: Valid cart, returning', valid);
+      // console.log('getInitialCart: Valid cart, returning', valid);
       return valid;
     } catch (err) {
       console.error('getInitialCart: Failed to parse cart from localStorage:', err);
@@ -68,7 +68,7 @@ export const CartProvider = ({ children }) => {
       try {
         const newCartData = { items: cart, timestamp: Date.now() };
         localStorage.setItem('cart', JSON.stringify(newCartData));
-        console.log('useEffect: Saved cart to localStorage:', newCartData);
+        // console.log('useEffect: Saved cart to localStorage:', newCartData);
       } catch (err) {
         console.error('useEffect: Failed to save cart to localStorage:', err);
       }
@@ -92,7 +92,7 @@ export const CartProvider = ({ children }) => {
       } else {
         newCart = [...safeCart, { service_id: serviceId, quantity: quantity, service_name: serviceName, price: servicePrice * quantity }];
       }
-      console.log('addToCart: Updated cart=', newCart);
+      // console.log('addToCart: Updated cart=', newCart);
       return newCart;
     });
   };
@@ -102,7 +102,7 @@ export const CartProvider = ({ children }) => {
       const safeCart = Array.isArray(prevCart) ? prevCart : [];
       const existingItem = safeCart.find(item => item.service_id === serviceId);
       if (!existingItem) {
-        console.log('updateQuantity: Item not found, no change');
+        // console.log('updateQuantity: Item not found, no change');
         return safeCart;
       }
       const newQuantity = existingItem.quantity + delta;
@@ -114,7 +114,7 @@ export const CartProvider = ({ children }) => {
           item.service_id === serviceId ? { ...item, quantity: newQuantity } : item
         );
       }
-      console.log('updateQuantity: Updated cart=', newCart);
+      // console.log('updateQuantity: Updated cart=', newCart);
       return newCart;
     });
   };
@@ -123,7 +123,7 @@ export const CartProvider = ({ children }) => {
     setCart(prevCart => {
       const safeCart = Array.isArray(prevCart) ? prevCart : [];
       const newCart = safeCart.filter(item => item.service_id !== serviceId);
-      console.log('removeFromCart: Updated cart=', newCart);
+      // console.log('removeFromCart: Updated cart=', newCart);
       return newCart;
 
     });
@@ -133,10 +133,9 @@ export const CartProvider = ({ children }) => {
     setCart([]);
     setCartExpired(true);
     localStorage.removeItem('cart');
-    console.log('clearCart: Cart cleared');
+    // console.log('clearCart: Cart cleared');
   };
 
-  console.log('CartProvider: Current cart state=', cart);
 
   return (
     <CartContext.Provider

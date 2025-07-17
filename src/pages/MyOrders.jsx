@@ -38,7 +38,6 @@ const MyOrders = () => {
       try {
         const response = await api.get('/api/orders');
         setOrders(response.data);
-        console.log('Fetched orders:', response.data);
       } catch (err) {
         console.error('Error fetching orders:', err);
         setError('Failed to load orders. Please try again.');
@@ -253,7 +252,7 @@ const MyOrders = () => {
                   <div className="p-5 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
                       <div>
-                        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 justify-between">
                           <span>Order #{order.slug}</span>
                           {getStatusDisplay(order.status)}
                         </h2>
@@ -264,7 +263,7 @@ const MyOrders = () => {
                       
                       <Link
                         to={`/orders/${order.slug}`}
-                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors text-sm font-medium"
+                        className="lg:flex hidden items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors text-sm font-medium"
                       >
                         View Details <FaChevronRight className="text-xs" />
                       </Link>
@@ -316,6 +315,15 @@ const MyOrders = () => {
                           </div>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="mt-[2rem] block lg:hidden">
+                      <Link
+                        to={`/orders/${order.slug}`}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors text-sm font-medium"
+                      >
+                        View Details <FaChevronRight className="text-xs" />
+                      </Link>
                     </div>
                   </div>
                 </motion.div>

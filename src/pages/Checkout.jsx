@@ -244,7 +244,7 @@ const PlaceAutocompleteElementWrapper = ({ onPlaceSelect, placeholder, type, reg
         autocompleteElementRef.current.placeholder = placeholder || 'Search for a place';
         autocompleteElementRef.current.style.width = '100%';
         autocompleteElementRef.current.style.height = '45px';
-        autocompleteElementRef.current.style.backgroundColor = "#F2F0EF"
+        // autocompleteElementRef.current.style.backgroundColor = "#F2F0EF"
         inputContainerRef.current.appendChild(autocomplete);
         autocomplete.addEventListener('gmp-select', handlePlaceSelect);
 

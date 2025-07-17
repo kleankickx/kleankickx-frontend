@@ -208,7 +208,7 @@ const GetOrder = () => {
   return (
     <div className="px-4 lg:px-24 py-8 mt-[4rem]">
       <div className="flex flex-col space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-row items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Order Details
@@ -271,7 +271,7 @@ const GetOrder = () => {
                   <div className="space-y-2">
                     <p className="text-sm text-gray-500">Order Date</p>
                     <div className="flex items-center gap-2">
-                      <FaCalendarAlt className="text-gray-400" />
+                      <FaCalendarAlt className="text-gray-400 text-2xl" />
                       <span>{formatDate(order.created_at)}</span>
                     </div>
                   </div>
@@ -298,7 +298,7 @@ const GetOrder = () => {
               {(order.delivery_address || order.pickup_address) && (
                 <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
                   <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                    Shipping Details
+                    Delivery and Pickup Details
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {order.delivery_address && (
@@ -350,7 +350,7 @@ const GetOrder = () => {
                 <p className="text-sm text-gray-600 mb-3">
                   Contact our support team at{' '}
                   <a
-                    href="mailto:support@kleankickx.com"
+                    href="mailto:kleankickx.sneakercare@gmail.com"
                     className="text-blue-600 hover:underline"
                   >
                     kleankickx.sneakercare@gmail.com
