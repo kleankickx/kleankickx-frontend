@@ -80,11 +80,11 @@ const Navbar = () => {
   return (
     <nav className="bg-gray-800 text-white py-3 shadow-md fixed inset-x-0 top-0 z-50">
       <div className="flex justify-between items-center px-4 lg:px-24 gap-8">
-        <NavLink to="/" className="flex items-center gap-2 w-full">
+        <NavLink to="/" className="flex items-center gap-2">
           <img src={Logo} alt="KleanKickx" className="w-[6rem] object-cover" />
         </NavLink>
 
-        <ul className="hidden md:flex items-center w-full justify-center gap-8">
+        <ul className="hidden md:flex items-center justify-center gap-8">
           {navItems.map((item) => (
             <li key={item.to}>
               <NavLink
@@ -99,7 +99,7 @@ const Navbar = () => {
           ))}
         </ul>
 
-        <ul className="hidden md:flex items-center w-full justify-center gap-4">
+        <ul className="hidden md:flex items-center justify-center gap-4">
           <li>
             <NavLink
               to="/services"
