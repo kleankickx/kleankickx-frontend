@@ -29,13 +29,11 @@ const Tooltip = ({ message, position = 'top', children }) => {
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart } = useContext(CartContext);
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, discounts, user } = useContext(AuthContext);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { api } = useContext(AuthContext)
-  // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
   const fetchServices = async () => {
@@ -62,9 +60,19 @@ const Cart = () => {
   }, []);
 
   const getService = (id) => services.find((s) => s.id === id) || {};
-  const total = cart
+  const subtotal = cart
     .reduce((t, it) => t + (getService(it.service_id).price || 0) * it.quantity, 0)
     .toFixed(2);
+  
+  // Calculate discount only if user exists and hasn't used their signup discount
+  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
+  const canUseDiscount = user && !user.signup_discount_used && signupDiscount;
+  const discountAmount = canUseDiscount 
+    ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100).toFixed(2)
+    : 0;
+  const total = canUseDiscount 
+    ? (parseFloat(subtotal) - parseFloat(discountAmount)).toFixed(2)
+    : subtotal;
 
   const handleRemove = (id) => {
     removeFromCart(id);
@@ -163,7 +171,6 @@ const Cart = () => {
             })}
           </div>
           
-          
           <aside className="bg-white border border-gray-200 rounded-lg shadow p-6 space-y-6 h-max sticky top-28">
             <h3 className="text-lg font-semibold">Order Summary</h3>
             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 text-sm">
@@ -177,19 +184,60 @@ const Cart = () => {
                 );
               })}
             </div>
+            
             <hr className="border-gray-200" />
-            <div className="flex justify-between font-semibold text-gray-700">
-              <span>Total</span>
-              <span>₵{total}</span>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
+                <span>₵{subtotal}</span>
+              </div>
+              
+              {canUseDiscount && (
+                <>
+                  <div className="flex flex-col bg-green-50 rounded-lg p-3 -mx-1">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-green-700 font-medium">Sign-Up Discount</span>
+                      </div>
+                      <span className="text-green-700 font-medium">-₵{discountAmount}</span>
+                    </div>
+                    <div className="text-xs text-green-600 mt-1">
+                      {signupDiscount.percentage}% off your first order
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                <span className="font-semibold text-gray-800">Total</span>
+                <div className="text-right">
+                  {canUseDiscount && (
+                    <div className="text-xs text-gray-400 line-through mb-0.5">₵{subtotal}</div>
+                  )}
+                  <span className="text-lg font-bold text-primary">₵{total}</span>
+                </div>
+              </div>
             </div>
-            <button onClick={handleCheckout} className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-md font-medium shadow cursor-pointer transition"
-              disabled={services.length === 0 || cart.length === 0} aria-label="Proceed to checkout"
+
+            <button
+              onClick={handleCheckout}
+              className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-md font-medium shadow-md cursor-pointer transition transform hover:scale-[1.01]"
+              disabled={services.length === 0 || cart.length === 0}
+              aria-label="Proceed to checkout"
             >
               {services.length === 0 || cart.length === 0 ? 'No services available' : 'Proceed to Checkout'}
             </button>
+
+            {canUseDiscount && (
+              <div className="text-xs text-gray-500 text-center">
+                Discount will be automatically applied at checkout
+              </div>
+            )}
           </aside>
-
-
         </div>
       ) : (
         <div className="text-center">

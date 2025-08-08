@@ -14,6 +14,8 @@ import {
   FaBroom,
   FaCheckDouble,
   FaCalendarAlt,
+  FaTag,
+  FaPercentage
 } from 'react-icons/fa';
 
 import { toast } from 'react-toastify';
@@ -36,6 +38,7 @@ const GetOrder = () => {
 
       try {
         const response = await api.get(`/api/orders/${orderSlug}/`);
+        console.log(response.data)
         setOrder(response.data);
       } catch (err) {
         console.error('Error fetching order:', err);
@@ -69,72 +72,71 @@ const GetOrder = () => {
 
   const getStatusDisplay = (status) => {
     const statusConfig = {
-    pending: {
-      icon: <FaInfoCircle className="text-blue-400" />,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50/80',
-      displayText: 'Pending'
-    },
-    processing: {
-      icon: <FaSpinner className="animate-spin text-amber-400" />,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50/80',
-      displayText: 'Processing'
-    },
-    pickup: {
-      icon: <FaTruck className="text-indigo-400" />,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50/80',
-      displayText: 'Pickup'
-    },
-    cleaning_ongoing: {
-      icon: <FaBroom className="text-purple-400" />,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50/80',
-      displayText: 'Cleaning Ongoing'
-    },
-    cleaning_completed: {
-      icon: <FaCheckDouble className="text-green-400" />,
-      color: 'text-green-600',
-      bg: 'bg-green-50/80',
-      displayText: 'Cleaning Completed'
-    },
-    scheduled_for_delivery: {
-      icon: <FaCalendarAlt className="text-teal-400" />,
-      color: 'text-teal-600',
-      bg: 'bg-teal-50/80',
-      displayText: 'Scheduled for Delivery'
-    },
-    delivered: {
-      icon: <FaCheckCircle className="text-emerald-400" />,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50/80',
-      displayText: 'Delivered'
-    },
-    cancelled: {
-      icon: <FaTimesCircle className="text-rose-400" />,
-      color: 'text-rose-600',
-      bg: 'bg-rose-50/80',
-      displayText: 'Cancelled'
-    },
-    default: {
-      icon: <FaInfoCircle className="text-gray-400" />,
-      color: 'text-gray-600',
-      bg: 'bg-gray-50/80',
-      displayText: 'Unknown'
-    }
-  };
+      pending: {
+        icon: <FaInfoCircle className="text-blue-400" />,
+        color: 'text-blue-600',
+        bg: 'bg-blue-50/80',
+        displayText: 'Pending'
+      },
+      processing: {
+        icon: <FaSpinner className="animate-spin text-amber-400" />,
+        color: 'text-amber-600',
+        bg: 'bg-amber-50/80',
+        displayText: 'Processing'
+      },
+      pickup: {
+        icon: <FaTruck className="text-indigo-400" />,
+        color: 'text-indigo-600',
+        bg: 'bg-indigo-50/80',
+        displayText: 'Pickup'
+      },
+      cleaning_ongoing: {
+        icon: <FaBroom className="text-purple-400" />,
+        color: 'text-purple-600',
+        bg: 'bg-purple-50/80',
+        displayText: 'Cleaning Ongoing'
+      },
+      cleaning_completed: {
+        icon: <FaCheckDouble className="text-green-400" />,
+        color: 'text-green-600',
+        bg: 'bg-green-50/80',
+        displayText: 'Cleaning Completed'
+      },
+      scheduled_for_delivery: {
+        icon: <FaCalendarAlt className="text-teal-400" />,
+        color: 'text-teal-600',
+        bg: 'bg-teal-50/80',
+        displayText: 'Scheduled for Delivery'
+      },
+      delivered: {
+        icon: <FaCheckCircle className="text-emerald-400" />,
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50/80',
+        displayText: 'Delivered'
+      },
+      cancelled: {
+        icon: <FaTimesCircle className="text-rose-400" />,
+        color: 'text-rose-600',
+        bg: 'bg-rose-50/80',
+        displayText: 'Cancelled'
+      },
+      default: {
+        icon: <FaInfoCircle className="text-gray-400" />,
+        color: 'text-gray-600',
+        bg: 'bg-gray-50/80',
+        displayText: 'Unknown'
+      }
+    };
 
-  // Convert status to lowercase and replace spaces with underscores to match the keys
-  const statusKey = status?.toLowerCase().replace(/ /g, '_') || 'default';
-  const config = statusConfig[statusKey] || statusConfig.default;
-  
-  return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
-      {config.icon} <span className="ml-2">{config.displayText}</span>
-    </span>
-  );
-};
+    const statusKey = status?.toLowerCase().replace(/ /g, '_') || 'default';
+    const config = statusConfig[statusKey] || statusConfig.default;
+    
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
+        {config.icon} <span className="ml-2">{config.displayText}</span>
+      </span>
+    );
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -200,6 +202,20 @@ const GetOrder = () => {
         <p>{address.region}</p>
         <p className="font-medium mt-2">
           Cost: GHS {parseFloat(address.cost).toFixed(2)}
+        </p>
+      </div>
+    </div>
+  );
+
+  const DiscountBadge = ({ discount, order }) => (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-emerald-100">
+      <div className="p-2 bg-emerald-100 rounded-full">
+        <FaTag className="text-emerald-600" />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-emerald-800">{discount.type}</p>
+        <p className="text-xs text-emerald-600">
+          {discount.percentage}% off (Saved GHS {parseFloat(order.discounted_amount).toFixed(2)})
         </p>
       </div>
     </div>
@@ -278,6 +294,35 @@ const GetOrder = () => {
                 </div>
               </div>
 
+              {/* Discount Display */}
+              {order.discount_applied && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-emerald-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-emerald-100 rounded-full">
+                        <FaPercentage className="text-emerald-600 text-xl" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-emerald-800">Discount Applied</h3>
+                        <p className="text-sm text-emerald-600">
+                          {order.discount_applied.type} ({order.discount_applied.percentage}%)
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-emerald-700">
+                        -GHS {parseFloat(order.discounted_amount).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Order Items */}
               <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
                 <h2 className="text-lg font-semibold mb-4 text-gray-900">
@@ -312,6 +357,8 @@ const GetOrder = () => {
               )}
             </div>
 
+            
+
             {/* Order Total */}
             <div className="space-y-6">
               <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
@@ -323,20 +370,47 @@ const GetOrder = () => {
                     <span className="text-gray-600">Subtotal</span>
                     <span>GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
                   </div>
+                  
+                  {order.discount_applied && (
+                    <div className="flex justify-between text-emerald-600">
+                      <div className="flex items-center gap-1">
+                        <FaTag className="text-sm" />
+                        <span>Discount ({order.discount_applied.percentage}%)</span>
+                      </div>
+                      <span>-GHS {parseFloat(order.discounted_amount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery</span>
-                    <span>{order.delivery_address.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}</span>
+                    <span>{order.delivery_address?.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}</span>
                   </div>
-                    <div className="flex justify-between">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Pickup</span>
-                    <span>{order.pickup_address.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}</span>
+                    <span>{order.pickup_address?.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}</span>
                   </div>
+                  
                   <div className="border-t border-gray-200 pt-3 flex justify-between">
                     <span className="font-semibold">Total</span>
-                    <span className="font-bold">
-                      GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      {order.discount_applied && (
+                        <div className="text-xs text-gray-400 line-through mb-1">
+                          GHS {(parseFloat(order.subtotal || order.total) + 
+                              parseFloat(order.delivery_address?.cost || 0) + 
+                              parseFloat(order.pickup_address?.cost || 0)).toFixed(2)}
+                        </div>
+                      )}
+                      <span className="font-bold text-lg text-emerald-600">
+                        GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
+
+                   {order.discount_applied && (
+                    <div className="mt-4">
+                      <DiscountBadge discount={order.discount_applied} order={order} />
+                    </div>
+                  )}
                 </div>
               </div>
 

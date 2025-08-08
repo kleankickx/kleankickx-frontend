@@ -36,7 +36,7 @@ const MyOrders = () => {
       setError(null);
 
       try {
-        const response = await api.get('/api/orders');
+        const response = await api.get('/api/orders/');
         setOrders(response.data);
       } catch (err) {
         console.error('Error fetching orders:', err);

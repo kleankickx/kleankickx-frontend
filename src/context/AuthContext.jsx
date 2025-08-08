@@ -172,6 +172,7 @@ const AuthProvider = ({ children }) => {
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token'));
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(!!accessToken);
+  const [discounts, setDiscounts] = useState([]);
 
   const decodeToken = (token) => {
     try {
@@ -181,10 +182,21 @@ const AuthProvider = ({ children }) => {
         first_name: decoded.first_name || '',
         last_name: decoded.last_name || '',
         is_verified: decoded.is_verified || false,
+        signup_discount_used: decoded.signup_discount_used || false,
       };
     } catch (err) {
       console.error('Failed to decode token:', err);
       return null;
+    }
+  };
+
+
+  const fetchDiscounts = async () => {
+    try {
+      const discountData = await api.get('/api/orders/discounts');
+      setDiscounts(discountData.data);
+    } catch (error) {
+      console.error('Failed to fetch discounts:', error);
     }
   };
 
@@ -195,11 +207,14 @@ const AuthProvider = ({ children }) => {
 
     if (storedAccess && storedRefresh) {
       const decodedUser = decodeToken(storedAccess);
+      console.log(decodedUser)
       if (decodedUser) {
         setAccessToken(storedAccess);
         setRefreshToken(storedRefresh);
         setUser(decodedUser);
         setIsAuthenticated(true);
+        fetchDiscounts()
+        
       } else {
         clearAuth();
       }
@@ -296,6 +311,8 @@ const AuthProvider = ({ children }) => {
         setAccessToken: authMethods.setAccessToken,
         setRefreshToken: authMethods.setRefreshToken,
         api,
+        discounts,
+        
       }}
     >
       {children}
