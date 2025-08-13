@@ -222,7 +222,7 @@ const GetOrder = () => {
   );
 
   return (
-    <div className="px-4 lg:px-24 py-8 mt-[4rem]">
+    <div className="px-4 lg:px-24 py-8">
       <div className="flex flex-col space-y-6">
         <div className="flex flex-row items-start justify-between gap-4">
           <div>

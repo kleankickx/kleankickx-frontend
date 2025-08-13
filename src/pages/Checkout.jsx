@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useContext, useCallback } from 'react';
-import { APIProvider, Map, MapControl, ControlPosition, useMap, useMapsLibrary, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import { useState, useEffect, useContext, useCallback } from 'react';
+import { APIProvider, Map} from '@vis.gl/react-google-maps';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
@@ -27,7 +27,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 
 const Checkout = () => {
-  const { accessToken, refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
+  const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
   
@@ -60,9 +60,26 @@ const Checkout = () => {
   const [transactionReference, setTransactionReference] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isPhoneValid, setIsPhoneValid] = useState(false);
+  const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
+
+  // Fetch user discount status
+  const fetchUserDiscountStatus = async () => {
+    try{
+      response = api.get('/api/users/discount-status/')
+      setSignupDiscountUsed(response.data)
+    } catch (error) {
+      console.log("Error: ", error)
+    }
+  }
+
+  // Fetch user discount status on component mount
+  useEffect(() => {
+      fetchUserDiscountStatus()
+  }, []);
 
   // Calculate order totals
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
@@ -70,11 +87,22 @@ const Checkout = () => {
   const pickupFee = useSame ? deliveryFee : pickup?.cost || 0;
 
   const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
-  const canUseDiscount = user && !user.signup_discount_used && signupDiscount;
+  // check if user can use discount
+  const canUseDiscount = user && !signupDiscountUsed && signupDiscount;
   const discountAmount = canUseDiscount 
     ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100).toFixed(2)
     : 0;
   const total = (parseFloat(subtotal) + parseFloat(deliveryFee) + parseFloat(pickupFee) - parseFloat(discountAmount)).toFixed(2);
+
+  // show alert if user can use discount
+  useEffect(() => {
+    if (canUseDiscount) {
+      toast.info(`Your ${signupDiscount.percentage}% sign-up discount has been applied!`);
+    }
+  }, [canUseDiscount, signupDiscount]);      
+
+    
+  
 
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
@@ -372,7 +400,7 @@ const Checkout = () => {
 
             while (retries > 0 && !success) {
               try {
-                const response = await api.post('/api/orders/create/', {
+                const response = await api.post('/api/orders/', {
                   user_id: user.id,
                   delivery_location: delivery,
                   pickup_location: useSame ? delivery : pickup,
@@ -513,7 +541,7 @@ const Checkout = () => {
       libraries={['places', 'geocoding']}
       onLoad={() => console.log('Google Maps API loaded successfully!')}
     >
-      <div className="max-w-5xl mx-auto px-4 py-8 mt-[4rem]">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {showAlert && (
           <div className="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center">
             <FiInfo className="mr-2 text-yellow-700" />

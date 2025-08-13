@@ -82,7 +82,7 @@ const Home = () => {
     <>
       {/* HERO */}
       <section className="bg-[#E5FDFF] h-full lg:h-screen">
-        <section className="py-[8rem] px-4 md:px-8 lg:px-24"
+        <section className="py-[4rem] px-4 md:px-8 lg:px-24"
           style={{}}>
         <div className="flex flex-col lg:flex-row items-center justify-between h-full text-center lg:text-left">
           <motion.div

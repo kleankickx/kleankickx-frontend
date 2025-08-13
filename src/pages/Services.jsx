@@ -37,7 +37,10 @@ const Services = () => {
   const [error, setError] = useState('');
   const { cart, addToCart } = useContext(CartContext);
   const [loading, setLoading] = useState(true);
-  const { api } = useContext(AuthContext)
+  const { api, discounts } = useContext(AuthContext)
+
+  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
+
 
   // backend URL from environment variable
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -191,10 +194,14 @@ const Services = () => {
                     ADD TO CART
                   </button>
                 </div>
+                
+                {signupDiscount && (
+                  <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
+                    {parseInt(signupDiscount.percentage)}% OFF
+                  </div>
+                )}
+                
 
-                <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
-                  10% OFF
-                </div>
                 </motion.div>
 
               ))}

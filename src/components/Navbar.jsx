@@ -21,6 +21,7 @@ const Navbar = () => {
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(true);
   const dropdownRef = useRef(null); // Desktop dropdown
   const mobileDropdownRef = useRef(null); // Mobile dropdown
   const navigate = useNavigate();
@@ -84,18 +85,18 @@ const Navbar = () => {
   ];
 
   const handleCloseBanner = () => {
-    setAnimateBanner(false); // start slide-out
+    setIsBannerVisible(false); // start slide-out
   };
 
   
 
   return (
-    <div className='fixed inset-x-0 top-0 z-40 mb-4'>
+    <div className='sticky inset-x-0 top-0 z-40'>
       {/* Discount Banner with Slide Animation */}
       {signupDiscount && (
         <div
           className={`bg-gradient-to-r from-green-500 to-green-600 text-white transform transition-transform duration-500 ease-in-out
-            ${isBannerVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}
+            
           `}
         >
           <div className="py-2 px-4">
@@ -368,6 +369,8 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+
+
     </div>
   );
 };

@@ -6,35 +6,18 @@ import { toast } from 'react-toastify';
 import { TrashIcon, MinusIcon, PlusIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { FaSpinner } from 'react-icons/fa6';
 import axios from 'axios';
+import Tooltip from '../components/Tooltip';
 
-const Tooltip = ({ message, position = 'top', children }) => {
-  const pos = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
-  }[position] || 'bottom-full left-1/2 -translate-x-1/2 mb-2';
-
-  return (
-    <div className="relative inline-flex group">
-      {children}
-      <span
-        className={`pointer-events-none absolute whitespace-nowrap bg-gray-800 text-white text-xs z-10 rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${pos}`}
-      >
-        {message}
-      </span>
-    </div>
-  );
-};
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart } = useContext(CartContext);
-  const { isAuthenticated, discounts, user } = useContext(AuthContext);
+  const { isAuthenticated, discounts, user, api } = useContext(AuthContext);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
 
   const fetchServices = async () => {
     setLoading(true);
@@ -55,9 +38,24 @@ const Cart = () => {
     }
   };
 
+  const fetchUserDiscountStatus = async () => {
+    try{
+      response = api.get('/api/users/discount-status/')
+      setSignupDiscountUsed(response.data)
+    } catch (error) {
+      console.log("Error: ", error)
+    }
+  }
+
   useEffect(() => {
-    fetchServices();
+    const initializeData = async () => {
+      await fetchServices();
+      await fetchUserDiscountStatus();
+    };
+    
+    initializeData();
   }, []);
+  
 
   const getService = (id) => services.find((s) => s.id === id) || {};
   const subtotal = cart
@@ -66,7 +64,7 @@ const Cart = () => {
   
   // Calculate discount only if user exists and hasn't used their signup discount
   const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
-  const canUseDiscount = user && !user.signup_discount_used && signupDiscount;
+  const canUseDiscount = user && !signupDiscountUsed && signupDiscount;
   const discountAmount = canUseDiscount 
     ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100).toFixed(2)
     : 0;
@@ -120,7 +118,7 @@ const Cart = () => {
   }
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-24 px-4 md:px-10 lg:px-20 pb-16">
+    <section className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-[2rem] px-4 md:px-10 lg:px-20 pb-16">
       <div className="max-w-7xl mx-auto mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800">🛒 Your Cart ({cart.length})</h2>
         <button onClick={() => navigate('/services')} className="px-5 py-2 rounded-md bg-primary text-white hover:bg-primary/80 transition cursor-pointer">

@@ -213,7 +213,7 @@ const AuthProvider = ({ children }) => {
         setRefreshToken(storedRefresh);
         setUser(decodedUser);
         setIsAuthenticated(true);
-        fetchDiscounts()
+       
         
       } else {
         clearAuth();
@@ -222,6 +222,12 @@ const AuthProvider = ({ children }) => {
       clearAuth();
     }
   }, []);
+
+  // fetch discounts on component mount
+  useEffect(() => {
+    fetchDiscounts();
+  }, []);
+
 
   const persistToken = (key, value) => {
     if (value) localStorage.setItem(key, value);
