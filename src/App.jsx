@@ -17,6 +17,7 @@ import About from './pages/About';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ReferralDashboard from './pages/ReferralDashboard';
 import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import GetOrder from './pages/GetOrder';
@@ -54,6 +55,14 @@ const AppContent = () => {
               <ProtectedRoute>
                 <Checkout />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/referral-dashboard"
+            element={
+              
+                <ReferralDashboard />
+              
             }
           />
           <Route

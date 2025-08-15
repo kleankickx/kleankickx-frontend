@@ -4,7 +4,8 @@ import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
 import { FiX, FiCheck, FiMapPin, FiTruck, FiPackage, FiNavigation, FiInfo,  } from 'react-icons/fi';
-import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaSpinner, FaGift,
+  FaUserFriends, FaInfoCircle  } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Paystack from '@paystack/inline-js'
@@ -16,36 +17,34 @@ import MapHandler from '../components/MapHandler';
 
 
 
-// --- Constants ---
-const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
-const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
-const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
-
-
-
-
 const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+ 
+
+
+
+  // --- Constants ---
+  const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+  const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
+  const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
+
   
   // State for locations and inputs
-  const [delivery, setDelivery] = useState(() => {
+  const getLocationFromStorage = (key) => {
     try {
-      return JSON.parse(localStorage.getItem('deliveryLocation'));
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : null;
     } catch {
       return null;
     }
-  });
-  const [pickup, setPickup] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('pickupLocation'));
-    } catch {
-      return null;
-    }
-  });
+  };
+
+  const [delivery, setDelivery] = useState(() => getLocationFromStorage('deliveryLocation'));
+  const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
   const [useSame, setUseSame] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [activeInput, setActiveInput] = useState(null);
@@ -61,48 +60,80 @@ const Checkout = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
+  const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // Fetch discount status after user loads
+        fetchUserDiscountStatus();
+        fetchUserReferralDiscountStatus();
+        setLoading(false);
+      } catch (error) {
+        console.error("Error during checkout init:", error);
+      } finally {
+        setLoading(false); // Always turn off loader
+      }
+    };
+
+    init();
+
+}, []);
 
 
   // Fetch user discount status
   const fetchUserDiscountStatus = async () => {
     try{
-      response = api.get('/api/users/discount-status/')
+      const response = await api.get('/api/users/discount-status/')
+      console.log(response.data)
       setSignupDiscountUsed(response.data)
     } catch (error) {
       console.log("Error: ", error)
     }
   }
 
-  // Fetch user discount status on component mount
-  useEffect(() => {
-      fetchUserDiscountStatus()
-  }, []);
+  const fetchUserReferralDiscountStatus = async () => {
+    try {
+      const response = await api.get('/api/users/referral-discount-status/');
+      console.log(response.data)
+      setReferralDiscountUsed(response.data);
+    } catch (error) {
+      console.log("Error fetching referral discount status:", error);
+    }
+  };
+
+  
 
   // Calculate order totals
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
   const deliveryFee = delivery?.cost || 0;
   const pickupFee = useSame ? deliveryFee : pickup?.cost || 0;
 
-  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
-  // check if user can use discount
-  const canUseDiscount = user && !signupDiscountUsed && signupDiscount;
-  const discountAmount = canUseDiscount 
-    ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100).toFixed(2)
+  // Get discounts from context
+  const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
+  const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
+
+  // Eligibility
+  const canUseSignup = user && !signupDiscountUsed.signup_discount_used && signupDiscount;
+  const canUseReferral = user && !referralDiscountUsed.first_order_completed && referralDiscount;
+
+  // Calculate discount amounts individually
+  const signupDiscountAmount = canUseSignup
+    ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
     : 0;
-  const total = (parseFloat(subtotal) + parseFloat(deliveryFee) + parseFloat(pickupFee) - parseFloat(discountAmount)).toFixed(2);
 
-  // show alert if user can use discount
-  useEffect(() => {
-    if (canUseDiscount) {
-      toast.info(`Your ${signupDiscount.percentage}% sign-up discount has been applied!`);
-    }
-  }, [canUseDiscount, signupDiscount]);      
+  // Apply referral discount on the  subtotal if both are active
+  const referralDiscountAmount = canUseReferral
+    ? ((parseFloat(subtotal) * parseFloat(referralDiscount.percentage)) / 100)
+    : 0;
 
-    
-  
+  // Final total
+  const total = parseFloat((subtotal + deliveryFee + pickupFee) - (signupDiscountAmount + referralDiscountAmount)).toFixed(2);
+
+ 
 
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
@@ -122,25 +153,13 @@ const Checkout = () => {
     }
   };
 
-  // Check user verification status
-  useEffect(() => {
-    if (!user || !user.email) return;
+  
 
-    if (!user.is_verified) {
-      navigate(`/temp-verify-email/?email=${user.email}`);
-      toast.warn('Please verify your email before proceeding to checkout.');
-    }
-  }, [user, navigate]);
-
-  // Save delivery region to localStorage
+  // Persist delivery and pickup regions to localStorage
   useEffect(() => {
     localStorage.setItem('deliveryRegion', deliveryRegion);
-  }, [deliveryRegion]);
-
-  // Save pickup region to localStorage
-  useEffect(() => {
     localStorage.setItem('pickupRegion', pickupRegion);
-  }, [pickupRegion]);
+  }, [deliveryRegion, pickupRegion]);
 
   // Sync pickup location when useSame is true
   useEffect(() => {
@@ -374,8 +393,28 @@ const Checkout = () => {
         return;
       }
 
+      const appliedDiscounts = [];
+
+      if (canUseSignup && signupDiscount && signupDiscountAmount > 0) {
+        appliedDiscounts.push({
+          type: signupDiscount.discount_type.split(' ')[0], // e.g., "signup"
+          percentage: signupDiscount.percentage,
+          amount: signupDiscountAmount
+        });
+      }
+
+      if (canUseReferral && referralDiscount && referralDiscountAmount > 0) {
+        appliedDiscounts.push({
+          type: referralDiscount.discount_type.split(' ')[0], // e.g., "referral"
+          percentage: referralDiscount.percentage,
+          amount: referralDiscountAmount
+        });
+      }
+
       const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       setTransactionReference(transactionRef);
+
+
 
       const handler = new Paystack();
       handler.newTransaction({
@@ -398,6 +437,7 @@ const Checkout = () => {
             let success = false;
             let lastError = null;
 
+            console.log(appliedDiscounts)
             while (retries > 0 && !success) {
               try {
                 const response = await api.post('/api/orders/', {
@@ -411,11 +451,7 @@ const Checkout = () => {
                   sub_total: subtotal,
                   transaction_id: transaction.reference,
                   phone_number: phoneNumber,
-                  discount_applied: discountAmount > 0 ? {
-                    type: signupDiscount.type.split(' ')[0],
-                    percentage: signupDiscount.percentage,
-                    amount: discountAmount
-                  } : null
+                  discounts_applied: appliedDiscounts.length > 0 ? appliedDiscounts : null
                 });
 
                 success = true;
@@ -536,6 +572,7 @@ const Checkout = () => {
   }, [paymentView]);
 
   return (
+    !loading ? (
     <APIProvider
       apiKey={Maps_API_KEY}
       libraries={['places', 'geocoding']}
@@ -558,245 +595,295 @@ const Checkout = () => {
         )}
 
         {!paymentView ? (
-          <>  
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-              <p className="text-gray-600 mt-2">Review your order and provide delivery details</p>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center">
-                    <FiTruck className="mr-2 text-primary" />
-                    Delivery Information
-                  </h2>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Delivery Location
-                        </label>
-                        <button
-                          onClick={handleUseCurrentLocation}
-                          disabled={locationLoading}
-                          className="flex items-center text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
-                        >
-                          <FiNavigation className="mr-1" />
-                          {locationLoading ? 'Detecting...' : 'Use Current Location'}
-                        </button>
-                      </div>
-                      <PlaceAutocompleteElementWrapper
-                        key={`delivery-${paymentView}`}
-                        onPlaceSelect={(loc) => handlePlaceSelect(loc, 'delivery')}
-                        currentInputValue={deliveryInputValue}
-                        initialLocation={delivery}
-                        placeholder="Search delivery address"
-                        type="delivery"
-                        region={deliveryRegion}
-                        onFocus={() => setActiveInput('delivery')}
-                      />
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="same"
-                        checked={useSame}
-                        onChange={(e) => setUseSame(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="same" className="ml-2 block text-sm text-gray-700">
-                        Use delivery address for pickup
-                      </label>
-                    </div>
-                    {!useSame && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Pickup Location
-                        </label>
-                        <PlaceAutocompleteElementWrapper
-                          key={`pickup-${paymentView}`}
-                          onPlaceSelect={(loc) => handlePlaceSelect(loc, 'pickup')}
-                          currentInputValue={pickupInputValue}
-                          initialLocation={pickup}
-                          placeholder="Search pickup address"
-                          type="pickup"
-                          region={pickupRegion}
-                          onFocus={() => setActiveInput('pickup')}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                    </svg>
-                    Contact Details
-                  </h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        value={user?.email || ''}
-                        disabled
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:text-gray-500 cursor-not-allowed"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number (Ghana)
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                          <span className="text-gray-500">🇬🇭 +233</span>
-                        </div>
-                        <input
-                          type="tel"
-                          id="phone"
-                          value={phoneNumber}
-                          onChange={handlePhoneChange}
-                          placeholder="24 123 4567"
-                          className="pl-20 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                          maxLength={13}
-                        />
-                        {phoneNumber && (
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                            {isPhoneValid ? (
-                              <FaCheckCircle className="text-green-500" />
-                            ) : (
-                              <FaTimesCircle className="text-red-500" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {phoneNumber && !isPhoneValid && (
-                        <p className="mt-1 text-sm text-red-600">
-                          Please enter a valid Ghana phone number (e.g., +233 24 123 4567 or 024 123 4567)
-                        </p>
-                      )}
-                      <p className="mt-1 text-xs text-gray-500">
-                        Format: +233 XX XXX XXXX or 0XX XXX XXXX
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          <>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="mb-8 text-center md:text-left">
+                <h1 className="text-3xl font-bold text-gray-900">Complete Your Order</h1>
+                <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
               </div>
 
-              <div className="space-y-6">
-                <div className="relative">
-                  <Map
-                    mapId={"YOUR_MAP_ID"}
-                    defaultZoom={delivery || pickup ? 16 : 12}
-                    defaultCenter={currentLocation}
-                    gestureHandling={'greedy'}
-                    disableDefaultUI={false}
-                    style={MAP_CONTAINER_STYLE}
-                  >
-                    <MapHandler
-                      delivery={delivery}
-                      pickup={pickup}
-                      useSame={useSame}
-                      currentLocation={currentLocation}
-                      activeInput={activeInput}
-                    />
-                  </Map>
-                </div>
+              <div className="flex flex-col lg:flex-row gap-8">
+                {/* Left Column - Customer Information */}
+                <div className="lg:w-1/2 space-y-6">
+                  {/* Delivery Information Card */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                      <h2 className="text-xl font-semibold flex items-center">
+                        <FiTruck className="mr-3 text-primary" />
+                        Delivery Information
+                      </h2>
+                    </div>
+                    <div className="p-6 space-y-5">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Delivery Address
+                          </label>
+                          <button
+                            onClick={handleUseCurrentLocation}
+                            disabled={locationLoading}
+                            className="flex items-center text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 transition-colors"
+                          >
+                            <FiNavigation className="mr-1.5" />
+                            {locationLoading ? 'Detecting...' : 'Use Current Location'}
+                          </button>
+                        </div>
+                        <PlaceAutocompleteElementWrapper
+                          key={`delivery-${paymentView}`}
+                          onPlaceSelect={(loc) => handlePlaceSelect(loc, 'delivery')}
+                          currentInputValue={deliveryInputValue}
+                          initialLocation={delivery}
+                          placeholder="Enter delivery address"
+                          type="delivery"
+                          region={deliveryRegion}
+                          onFocus={() => setActiveInput('delivery')}
+                        />
+                      </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-                  <div className="space-y-3">
-                    {cart.map((item) => (
-                      <div key={item.service_id} className={`flex justify-between py-2 border-gray-200 ${item === cart[cart.length - 1] ? '' : 'border-b'}`}>
-                        <div>
-                          <p className="font-medium">{item.service_name}</p>
-                          <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                      <div className="flex items-start pt-2">
+                        <div className="flex items-center h-5">
+                          <input
+                            type="checkbox"
+                            id="same"
+                            checked={useSame}
+                            onChange={(e) => setUseSame(e.target.checked)}
+                            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                          />
                         </div>
-                        <p className="font-medium">GHS {(item.quantity * item.price).toFixed(2)}</p>
+                        <label htmlFor="same" className="ml-3 text-sm text-gray-700">
+                          Use delivery address for pickup
+                        </label>
                       </div>
-                    ))}
+
+                      {!useSame && (
+                        <div className="pt-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Pickup Address
+                          </label>
+                          <PlaceAutocompleteElementWrapper
+                            key={`pickup-${paymentView}`}
+                            onPlaceSelect={(loc) => handlePlaceSelect(loc, 'pickup')}
+                            currentInputValue={pickupInputValue}
+                            initialLocation={pickup}
+                            placeholder="Enter pickup address"
+                            type="pickup"
+                            region={pickupRegion}
+                            onFocus={() => setActiveInput('pickup')}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-6 space-y-2 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between">
-                      <p className="text-gray-600">Subtotal</p>
-                      <p className="font-medium">GHS {subtotal.toFixed(2)}</p>
+
+                  {/* Contact Information Card */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                      <h2 className="text-xl font-semibold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                        </svg>
+                        Contact Details
+                      </h2>
                     </div>
-                    
-                    {canUseDiscount && (
-                      <div className="flex justify-between text-green-600">
-                        <div className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Sign-Up Discount ({signupDiscount.percentage}%)</span>
-                        </div>
-                        <span>-GHS {discountAmount}</span>
+                    <div className="p-6 space-y-5">
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          value={user?.email || ''}
+                          disabled
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
+                        />
                       </div>
-                    )}
-                    
-                    <div className="flex justify-between">
-                      <p className="text-gray-600">Delivery Fee</p>
-                      <p className="font-medium">
-                        {delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--'}
-                      </p>
-                    </div>
-                    <div className="flex justify-between">
-                      <p className="text-gray-600">Pickup Fee</p>
-                      <p className="font-medium">
-                        {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '--')}
-                      </p>
-                    </div>
-                    <div className="flex justify-between pt-4 mt-2 border-t border-gray-200">
-                      <p className="text-lg font-semibold">Total</p>
-                      <div className="text-right">
-                        {canUseDiscount && (
-                          <div className="text-xs text-gray-400 line-through">GHS {(parseFloat(subtotal) + parseFloat(deliveryFee) + parseFloat(pickupFee)).toFixed(2)}</div>
+                      
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone Number
+                        </label>
+                        <div className="relative rounded-lg overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-4 bg-gray-100 border-r border-gray-200">
+                            <span className="text-gray-700 flex items-center">
+                              <span className="mr-2">🇬🇭</span> +233
+                            </span>
+                          </div>
+                          <input
+                            type="tel"
+                            id="phone"
+                            value={phoneNumber}
+                            onChange={handlePhoneChange}
+                            placeholder="24 123 4567"
+                            className="pl-24 w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                            maxLength={13}
+                          />
+                          {phoneNumber && (
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                              {isPhoneValid ? (
+                                <FaCheckCircle className="text-green-500" />
+                              ) : (
+                                <FaTimesCircle className="text-red-500" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {phoneNumber && !isPhoneValid && (
+                          <p className="mt-2 text-sm text-red-600">
+                            Please enter a valid Ghana phone number (e.g., 024 123 4567)
+                          </p>
                         )}
-                        <p className="text-lg font-semibold text-blue-600">
-                          GHS {total}
+                        <p className="mt-2 text-xs text-gray-500">
+                          Format: 0XX XXX XXXX
                         </p>
                       </div>
                     </div>
                   </div>
-                  
-                  {canUseDiscount && (
-                    <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700 flex items-start">
-                      <svg className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Your {signupDiscount.percentage}% sign-up discount has been applied!</span>
+                </div>
+
+                {/* Right Column - Order Summary */}
+                <div className="lg:w-1/2 space-y-6">
+                  {/* Map Section */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="h-64 md:h-80 w-full relative">
+                      <Map
+                        mapId={"YOUR_MAP_ID"}
+                        defaultZoom={delivery || pickup ? 16 : 12}
+                        defaultCenter={currentLocation}
+                        gestureHandling={'greedy'}
+                        disableDefaultUI={false}
+                        style={{ height: '100%', width: '100%' }}
+                      >
+                        <MapHandler
+                          delivery={delivery}
+                          pickup={pickup}
+                          useSame={useSame}
+                          currentLocation={currentLocation}
+                          activeInput={activeInput}
+                        />
+                      </Map>
+                    </div>
+                  </div>
+
+                  {/* Order Summary Card */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                      <h2 className="text-xl font-semibold">Order Summary</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="divide-y divide-gray-200">
+                        {cart.map((item) => (
+                          <div key={item.service_id} className="py-4 first:pt-0 last:pb-0">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium text-gray-900">{item.service_name}</p>
+                                <p className="text-sm text-gray-500 mt-1">Quantity: {item.quantity}</p>
+                              </div>
+                              <p className="font-medium text-gray-900">GHS {(item.quantity * item.price).toFixed(2)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pricing Breakdown */}
+                      <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
+                        <div className="flex justify-between">
+                          <p className="text-gray-600">Subtotal</p>
+                          <p className="font-medium">GHS {subtotal.toFixed(2)}</p>
+                        </div>
+                        
+                        {canUseSignup && (
+                          <div className="bg-green-50 rounded-lg p-3 -mx-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-green-700 font-medium flex items-center">
+                                <FaGift className="mr-2" />
+                                {signupDiscount.discount_type}
+                              </span>
+                              <span className="text-green-700 font-medium">-GHS {signupDiscountAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-green-600 mt-1 ml-6">
+                              {signupDiscount.percentage}% off your order
+                            </div>
+                          </div>
+                        )}
+
+                        {canUseReferral && (
+                          <div className="bg-blue-50 rounded-lg p-3 -mx-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-blue-700 font-medium flex items-center">
+                                <FaUserFriends className="mr-2" />
+                                {referralDiscount.discount_type}
+                              </span>
+                              <span className="text-blue-700 font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-blue-600 mt-1 ml-6">
+                              {referralDiscount.percentage}% off your order
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between pt-2">
+                          <p className="text-gray-600">Delivery Fee</p>
+                          <p className="font-medium">
+                            {delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--'}
+                          </p>
+                        </div>
+                        <div className="flex justify-between">
+                          <p className="text-gray-600">Pickup Fee</p>
+                          <p className="font-medium">
+                            {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '--')}
+                          </p>
+                        </div>
+
+                        <div className="flex justify-between pt-4 mt-3 border-t border-gray-200">
+                          <p className="text-lg font-semibold">Total Amount</p>
+                          <div className="text-right">
+                            {(canUseSignup || canUseReferral) && (
+                              <div className="text-sm text-gray-400 line-through">GHS {subtotal}</div>
+                            )}
+                            <p className="text-xl font-bold text-primary">
+                              GHS {total}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {canUseSignup && signupDiscount && (
+                        <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700 flex items-start">
+                          <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Your {signupDiscount.percentage}% sign-up discount has been applied!</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Checkout Button */}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
+                    className={`w-full py-3.5 px-6 rounded-lg font-medium text-white transition-all ${
+                      placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg'
+                    }`}
+                  >
+                    {placing ? (
+                      <span className="flex items-center justify-center">
+                        <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+                        Processing...
+                      </span>
+                    ) : (
+                      'Proceed to Payment'
+                    )}
+                  </button>
+
+                  {cart.length === 0 && (
+                    <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-sm flex items-center">
+                      <FaExclamationTriangle className="mr-2" />
+                      Your cart is empty. Add items to proceed with checkout.
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={handleSubmit}
-                  disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
-                  className={`w-full py-3 px-4 rounded-lg cursor-pointer font-medium text-white transition-colors ${
-                    placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-primary hover:bg-primary/80'
-                  }`}
-                >
-                  {placing ? (
-                    <span className="flex items-center justify-center">
-                      <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-                      Continuing...
-                    </span>
-                  ) : (
-                    'Continue to Payment'
-                  )}
-                </button>
-                {cart.length === 0 && (
-                  <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-sm">
-                    Your cart is empty. Add items to proceed with checkout.
-                  </div>
-                )}
               </div>
             </div>
           </>
@@ -831,7 +918,7 @@ const Checkout = () => {
                 <span className="font-medium">GHS {subtotal.toFixed(2)}</span>
               </div>
               
-              {canUseDiscount && (
+              {canUseSignup && (
                 <div className="flex justify-between py-3 border-b border-gray-100/50 text-green-600">
                   <div className="flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -839,9 +926,23 @@ const Checkout = () => {
                     </svg>
                     Sign-Up Discount ({signupDiscount.percentage}%)
                   </div>
-                  <span className="font-medium">-GHS {discountAmount}</span>
+                  <span className="font-medium">-GHS {signupDiscountAmount.toFixed(2)}</span>
                 </div>
               )}
+
+              {canUseReferral && (
+                  <div className="flex justify-between py-3 border-b border-gray-100/50 text-blue-600">
+                  <div className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM12 15v2m-2 2h4" />
+                    </svg>
+                    Referral Discount ({referralDiscount.percentage}%)
+                  </div>
+                  <span className="font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              
+              
               
               <div className="flex justify-between py-3 border-b border-gray-100/50">
                 <div className="flex items-center text-gray-600">
@@ -938,6 +1039,14 @@ const Checkout = () => {
         )}
       </div>
     </APIProvider>
+    ):
+    (
+      <div className="flex items-center justify-center min-h-screen flex-col space-y-2">
+              <FaSpinner className="animate-spin h-8 w-8 text-primary" />
+              <p className="text-gray-600 mt-4">Loading your cart...</p>
+            </div> 
+    )
+
   );
 };
 

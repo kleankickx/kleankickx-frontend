@@ -195,6 +195,7 @@ const AuthProvider = ({ children }) => {
     try {
       const discountData = await api.get('/api/orders/discounts');
       setDiscounts(discountData.data);
+      console.log(discountData.data)
     } catch (error) {
       console.error('Failed to fetch discounts:', error);
     }
@@ -294,6 +295,7 @@ const AuthProvider = ({ children }) => {
       authMethods.setRefreshToken(refresh);
 
       const decoded = decodeToken(access);
+      console.log("Decoded", decoded)
       if (!decoded) throw new Error('Invalid access token');
 
       setUser(decoded);

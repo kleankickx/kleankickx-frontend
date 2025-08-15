@@ -59,7 +59,8 @@ const MyOrders = () => {
     if (user && !user.is_verified) {
       setLoading(false);
       setError('Please verify your email to view orders.');
-      navigate('/verify-email');
+      navigate(`/temp-verify-email/?email=${user.email}`);
+      toast.warn('Please verify your email before viewing orders.');
       return;
     }
     fetchOrders();

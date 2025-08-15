@@ -8,16 +8,17 @@ import { FaSpinner } from 'react-icons/fa6';
 import axios from 'axios';
 import Tooltip from '../components/Tooltip';
 
-
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart } = useContext(CartContext);
-  const { isAuthenticated, discounts, user, api } = useContext(AuthContext);
+  const { discounts, user, api } = useContext(AuthContext);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
-  const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
+
+  const [signupDiscountUsed, setSignupDiscountUsed] = useState(false);
+  const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
 
   const fetchServices = async () => {
     setLoading(true);
@@ -26,7 +27,6 @@ const Cart = () => {
       const servicePromises = cart
         .filter(item => item.service_id)
         .map(item => axios.get(`${baseURL}/api/services/${item.service_id}/`));
-      
       const responses = await Promise.all(servicePromises);
       setServices(responses.map(res => res.data));
     } catch (error) {
@@ -38,39 +38,60 @@ const Cart = () => {
     }
   };
 
-  const fetchUserDiscountStatus = async () => {
-    try{
-      response = api.get('/api/users/discount-status/')
-      setSignupDiscountUsed(response.data)
+  const fetchUserSignupDiscountStatus = async () => {
+    try {
+      const response = await api.get('/api/users/discount-status/');
+      setSignupDiscountUsed(response.data);
     } catch (error) {
-      console.log("Error: ", error)
+      console.log("Error fetching signup discount status:", error);
     }
-  }
+  };
+
+  const fetchUserReferralDiscountStatus = async () => {
+    try {
+      const response = await api.get('/api/users/referral-discount-status/');
+      console.log(response.data)
+      setReferralDiscountUsed(response.data);
+    } catch (error) {
+      console.log("Error fetching referral discount status:", error);
+    }
+  };
 
   useEffect(() => {
     const initializeData = async () => {
       await fetchServices();
-      await fetchUserDiscountStatus();
+      await fetchUserSignupDiscountStatus();
+      await fetchUserReferralDiscountStatus();
     };
-    
     initializeData();
   }, []);
-  
 
   const getService = (id) => services.find((s) => s.id === id) || {};
   const subtotal = cart
     .reduce((t, it) => t + (getService(it.service_id).price || 0) * it.quantity, 0)
     .toFixed(2);
-  
-  // Calculate discount only if user exists and hasn't used their signup discount
-  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
-  const canUseDiscount = user && !signupDiscountUsed && signupDiscount;
-  const discountAmount = canUseDiscount 
-    ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100).toFixed(2)
+
+  // Get discounts from context
+  const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
+  const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
+
+  console.log(referralDiscount)
+  // Eligibility
+  const canUseSignup = user && !signupDiscountUsed.signup_discount_used && signupDiscount;
+  const canUseReferral = user && !referralDiscountUsed.first_order_completed && referralDiscount;
+
+  // Calculate discount amounts individually
+  const signupDiscountAmount = canUseSignup
+    ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
     : 0;
-  const total = canUseDiscount 
-    ? (parseFloat(subtotal) - parseFloat(discountAmount)).toFixed(2)
-    : subtotal;
+
+  // Apply referral discount on the already signup-discounted subtotal if both are active
+  const referralDiscountAmount = canUseReferral
+    ? (((parseFloat(subtotal) - signupDiscountAmount) * parseFloat(referralDiscount.percentage)) / 100)
+    : 0;
+
+  // Final total
+  const total = (parseFloat(subtotal) - signupDiscountAmount - referralDiscountAmount).toFixed(2);
 
   const handleRemove = (id) => {
     removeFromCart(id);
@@ -79,10 +100,6 @@ const Cart = () => {
 
   const handleCheckout = () => {
     if (!cart.length) return toast.error('Your cart is empty');
-    if (!isAuthenticated) {
-      toast.warn('Login required');
-      return navigate('/login?continue=/checkout');
-    }
     navigate('/checkout');
   };
 
@@ -119,6 +136,7 @@ const Cart = () => {
 
   return (
     <section className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-[2rem] px-4 md:px-10 lg:px-20 pb-16">
+      {/* HEADER */}
       <div className="max-w-7xl mx-auto mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800">🛒 Your Cart ({cart.length})</h2>
         <button onClick={() => navigate('/services')} className="px-5 py-2 rounded-md bg-primary text-white hover:bg-primary/80 transition cursor-pointer">
@@ -126,8 +144,10 @@ const Cart = () => {
         </button>
       </div>
 
+      {/* CART */}
       {cart.length ? (
         <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
+          {/* ITEMS */}
           <div className="lg:col-span-2 space-y-6">
             {cart.map((it) => {
               const s = getService(it.service_id);
@@ -168,7 +188,8 @@ const Cart = () => {
               );
             })}
           </div>
-          
+
+          {/* SUMMARY */}
           <aside className="bg-white border border-gray-200 rounded-lg shadow p-6 space-y-6 h-max sticky top-28">
             <h3 className="text-lg font-semibold">Order Summary</h3>
             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 text-sm">
@@ -190,30 +211,35 @@ const Cart = () => {
                 <span>Subtotal</span>
                 <span>₵{subtotal}</span>
               </div>
-              
-              {canUseDiscount && (
-                <>
-                  <div className="flex flex-col bg-green-50 rounded-lg p-3 -mx-1">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-green-700 font-medium">Sign-Up Discount</span>
-                      </div>
-                      <span className="text-green-700 font-medium">-₵{discountAmount}</span>
-                    </div>
-                    <div className="text-xs text-green-600 mt-1">
-                      {signupDiscount.percentage}% off your first order
-                    </div>
+
+              {canUseSignup && (
+                <div className="flex flex-col bg-green-50 rounded-lg p-3 -mx-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700 font-medium">{signupDiscount.discount_type}</span>
+                    <span className="text-green-700 font-medium">-₵{signupDiscountAmount.toFixed(2)}</span>
                   </div>
-                </>
+                  <div className="text-xs text-green-600 mt-1">
+                    {signupDiscount.percentage}% off your order
+                  </div>
+                </div>
+              )}
+
+              {canUseReferral && (
+                <div className="flex flex-col bg-blue-50 rounded-lg p-3 -mx-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-blue-700 font-medium">{referralDiscount.discount_type}</span>
+                    <span className="text-blue-700 font-medium">-₵{referralDiscountAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    {referralDiscount.percentage}% off your order
+                  </div>
+                </div>
               )}
               
               <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                 <span className="font-semibold text-gray-800">Total</span>
                 <div className="text-right">
-                  {canUseDiscount && (
+                  {(canUseSignup || canUseReferral) && (
                     <div className="text-xs text-gray-400 line-through mb-0.5">₵{subtotal}</div>
                   )}
                   <span className="text-lg font-bold text-primary">₵{total}</span>
@@ -230,14 +256,15 @@ const Cart = () => {
               {services.length === 0 || cart.length === 0 ? 'No services available' : 'Proceed to Checkout'}
             </button>
 
-            {canUseDiscount && (
+            {(canUseSignup || canUseReferral) && (
               <div className="text-xs text-gray-500 text-center">
-                Discount will be automatically applied at checkout
+                Discounts will be automatically applied at checkout
               </div>
             )}
           </aside>
         </div>
       ) : (
+        // EMPTY CART
         <div className="text-center">
           <div className="max-w-md mx-auto">
             <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto mb-6 flex items-center justify-center">

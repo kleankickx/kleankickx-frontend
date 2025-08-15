@@ -184,6 +184,9 @@ const GetOrder = () => {
     </motion.div>
   );
 
+  
+  
+
   const AddressCard = ({ type, address }) => (
     <div className="p-4 rounded-lg border border-gray-200">
       <div className="flex items-center gap-2 mb-3">
@@ -295,33 +298,37 @@ const GetOrder = () => {
               </div>
 
               {/* Discount Display */}
-              {order.discount_applied && (
+             
+              {order.discounts_applied && order.discounts_applied.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-emerald-100"
+                  className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-emerald-100 space-y-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-emerald-100 rounded-full">
-                        <FaPercentage className="text-emerald-600 text-xl" />
+                  {order.discounts_applied.map((discount, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-emerald-100 rounded-full">
+                          <FaPercentage className="text-emerald-600 text-xl" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-emerald-800">Discount Applied</h3>
+                          <p className="text-sm text-emerald-600">
+                            {discount.discount_type} ({discount.percentage}%)
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-emerald-800">Discount Applied</h3>
-                        <p className="text-sm text-emerald-600">
-                          {order.discount_applied.type} ({order.discount_applied.percentage}%)
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-emerald-700">
+                           -GHS {order.discounted_amount}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-emerald-700">
-                        -GHS {parseFloat(order.discounted_amount).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
+                  ))}
                 </motion.div>
               )}
+
 
               {/* Order Items */}
               <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
@@ -371,15 +378,16 @@ const GetOrder = () => {
                     <span>GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
                   </div>
                   
-                  {order.discount_applied && (
-                    <div className="flex justify-between text-emerald-600">
-                      <div className="flex items-center gap-1">
-                        <FaTag className="text-sm" />
-                        <span>Discount ({order.discount_applied.percentage}%)</span>
+                    {order.discount_applied && order.discount_applied.type === "signup" && (
+                        <div className="flex justify-between text-emerald-600">
+                          <div className="flex items-center gap-1">
+                            <FaTag className="text-sm" />
+                            <span>Discount ({order.discount_applied.percentage}%)</span>
+                          </div>
+                          <span>-GHS {parseFloat(order.discounted_amount).toFixed(2)}</span>
                       </div>
-                      <span>-GHS {parseFloat(order.discounted_amount).toFixed(2)}</span>
-                    </div>
                   )}
+
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery</span>

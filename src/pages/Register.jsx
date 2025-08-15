@@ -1,5 +1,5 @@
 // src/components/Register.jsx
-import React, { useState, useContext } from 'react';
+import { useState, useContext, useEffect  } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -19,6 +19,19 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { googleLogin } = useContext(AuthContext); // Assuming you have a login function in context
+  const [referralCode, setReferralCode] = useState('');
+  const [showReferralField, setShowReferralField] = useState(false);
+  const [usingReferral, setUsingReferral] = useState(false);
+
+  // Detect referral code from URL on component mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+      setUsingReferral(true);
+    }
+  }, []);
 
   // backend URL from environment variable
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -68,12 +81,18 @@ const Register = () => {
     }
 
     try {
+      console.log("Ref", referralCode)
       await axios.post(
         `${backendUrl}/api/users/register/`,
-        { email, password, first_name: firstName, last_name: lastName },
+        { 
+          email: email, 
+          password: password, 
+          first_name: firstName, 
+          last_name: lastName, 
+          referral_code: referralCode ? referralCode : null 
+        },
         { withCredentials: true }
       );
-      refreshCartTimestamp(); // Prevent cart expiration during verification
       toast.success('Registration successful! Please check your email to verify.', {
         position: 'top-right',
       });
@@ -107,6 +126,28 @@ const Register = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }} className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
+
+        {/* Referral Code Banner (only shows if code detected from URL) */}
+        {usingReferral && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4 flex items-center">
+            <svg 
+              className="h-5 w-5 text-green-500 mr-2" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeWidth={2} 
+                d="M5 13l4 4L19 7" 
+              />
+            </svg>
+            <span className="text-green-700">
+              Referral code applied! You'll get a special discount after verification.
+            </span>
+          </div>
+        )}
+
         <h2 className="text-2xl font-bold text-black mb-6">
           Register
         </h2>
@@ -194,6 +235,35 @@ const Register = () => {
               disabled={loading}
             />
           </div>
+
+           {/* Referral Code Field (only shown if manually toggled or has code) */}
+          {(showReferralField || usingReferral) && (
+            <div>
+              <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700">
+                Referral Code
+              </label>
+              <input
+                id="referralCode"
+                type="text"
+                placeholder="Enter referral code"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-0 focus:outline-none"
+                disabled={usingReferral} // Disable if code came from URL
+              />
+            </div>
+          )}
+
+          {/* Toggle button for referral field (hidden if code exists) */}
+          {!usingReferral && (
+            <button
+              type="button"
+              onClick={() => setShowReferralField(!showReferralField)}
+              className="text-sm text-primary hover:underline focus:outline-none mb-4"
+            >
+              {showReferralField ? 'Hide referral code' : 'Have a referral code?'}
+            </button>
+          )}
           
           <button
             type="submit"

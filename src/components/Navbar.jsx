@@ -1,5 +1,5 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faShoppingCart,
@@ -93,7 +93,7 @@ const Navbar = () => {
   return (
     <div className='sticky inset-x-0 top-0 z-40'>
       {/* Discount Banner with Slide Animation */}
-      {signupDiscount && (
+      {signupDiscount && isBannerVisible && (
         <div
           className={`bg-gradient-to-r from-green-500 to-green-600 text-white transform transition-transform duration-500 ease-in-out
             
@@ -109,7 +109,7 @@ const Navbar = () => {
               </div>
               <button
                 onClick={handleCloseBanner}
-                className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+                className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
                 aria-label="Close banner"
               >
                 <svg
@@ -211,6 +211,14 @@ const Navbar = () => {
                       >
                         Logout
                       </button>
+                    </li>
+                    <li>
+                      <Link to="/referral-dashboard"
+                        
+                        className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Referrals
+                      </Link>
                     </li>
                   </ul>
                 )}
