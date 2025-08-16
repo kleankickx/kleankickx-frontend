@@ -28,7 +28,7 @@ const Navbar = () => {
 
   
   
-  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
+  const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
  
 
   // Close dropdown when clicking outside
