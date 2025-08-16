@@ -92,9 +92,9 @@ useEffect(() => {
     ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
     : 0;
 
-  // Apply referral discount on the already signup-discounted subtotal if both are active
+  // Apply referral discount on the  subtotal if both are active
   const referralDiscountAmount = canUseReferral
-    ? (((parseFloat(subtotal) - signupDiscountAmount) * parseFloat(referralDiscount.percentage)) / 100)
+    ? ((parseFloat(subtotal) * parseFloat(referralDiscount.percentage)) / 100)
     : 0;
 
   // Final total

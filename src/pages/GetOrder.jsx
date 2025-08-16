@@ -5,7 +5,7 @@ import {
   FaUserCircle,
   FaBox,
   FaStore,
-  FaChevronRight,
+  FaChevronLeft,
   FaInfoCircle, 
   FaCheckCircle, 
   FaTimesCircle, 
@@ -15,9 +15,12 @@ import {
   FaCheckDouble,
   FaCalendarAlt,
   FaTag,
-  FaPercentage
+  FaPercentage,
+  FaPhone,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaMoneyBillWave
 } from 'react-icons/fa';
-
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,7 +41,6 @@ const GetOrder = () => {
 
       try {
         const response = await api.get(`/api/orders/${orderSlug}/`);
-        console.log(response.data)
         setOrder(response.data);
       } catch (err) {
         console.error('Error fetching order:', err);
@@ -73,57 +75,57 @@ const GetOrder = () => {
   const getStatusDisplay = (status) => {
     const statusConfig = {
       pending: {
-        icon: <FaInfoCircle className="text-blue-400" />,
+        icon: <FaInfoCircle className="text-blue-500" />,
         color: 'text-blue-600',
-        bg: 'bg-blue-50/80',
+        bg: 'bg-blue-50',
         displayText: 'Pending'
       },
       processing: {
-        icon: <FaSpinner className="animate-spin text-amber-400" />,
+        icon: <FaSpinner className="animate-spin text-amber-500" />,
         color: 'text-amber-600',
-        bg: 'bg-amber-50/80',
+        bg: 'bg-amber-50',
         displayText: 'Processing'
       },
       pickup: {
-        icon: <FaTruck className="text-indigo-400" />,
+        icon: <FaTruck className="text-indigo-500" />,
         color: 'text-indigo-600',
-        bg: 'bg-indigo-50/80',
-        displayText: 'Pickup'
+        bg: 'bg-indigo-50',
+        displayText: 'Ready for Pickup'
       },
       cleaning_ongoing: {
-        icon: <FaBroom className="text-purple-400" />,
+        icon: <FaBroom className="text-purple-500" />,
         color: 'text-purple-600',
-        bg: 'bg-purple-50/80',
-        displayText: 'Cleaning Ongoing'
+        bg: 'bg-purple-50',
+        displayText: 'Cleaning in Progress'
       },
       cleaning_completed: {
-        icon: <FaCheckDouble className="text-green-400" />,
+        icon: <FaCheckDouble className="text-green-500" />,
         color: 'text-green-600',
-        bg: 'bg-green-50/80',
+        bg: 'bg-green-50',
         displayText: 'Cleaning Completed'
       },
       scheduled_for_delivery: {
-        icon: <FaCalendarAlt className="text-teal-400" />,
+        icon: <FaCalendarAlt className="text-teal-500" />,
         color: 'text-teal-600',
-        bg: 'bg-teal-50/80',
-        displayText: 'Scheduled for Delivery'
+        bg: 'bg-teal-50',
+        displayText: 'Scheduled Delivery'
       },
       delivered: {
-        icon: <FaCheckCircle className="text-emerald-400" />,
+        icon: <FaCheckCircle className="text-emerald-500" />,
         color: 'text-emerald-600',
-        bg: 'bg-emerald-50/80',
+        bg: 'bg-emerald-50',
         displayText: 'Delivered'
       },
       cancelled: {
-        icon: <FaTimesCircle className="text-rose-400" />,
-        color: 'text-rose-600',
-        bg: 'bg-rose-50/80',
+        icon: <FaTimesCircle className="text-red-500" />,
+        color: 'text-red-600',
+        bg: 'bg-red-50',
         displayText: 'Cancelled'
       },
       default: {
-        icon: <FaInfoCircle className="text-gray-400" />,
+        icon: <FaInfoCircle className="text-gray-500" />,
         color: 'text-gray-600',
-        bg: 'bg-gray-50/80',
+        bg: 'bg-gray-50',
         displayText: 'Unknown'
       }
     };
@@ -132,7 +134,7 @@ const GetOrder = () => {
     const config = statusConfig[statusKey] || statusConfig.default;
     
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
+      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${config.color} ${config.bg}`}>
         {config.icon} <span className="ml-2">{config.displayText}</span>
       </span>
     );
@@ -154,295 +156,324 @@ const GetOrder = () => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+      className="flex items-center justify-between p-4 rounded-lg bg-white border border-gray-100 hover:shadow-sm transition-all"
     >
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-md bg-gray-200 flex items-center justify-center">
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden">
           {item.service?.image ? (
             <img
               src={item.service.image}
               alt={item.service.name}
-              className="w-full h-full object-cover rounded-md"
+              className="w-full h-full object-cover"
             />
           ) : (
-            <FaBox className="text-gray-400" />
+            <FaBox className="text-gray-400 text-xl" />
           )}
         </div>
         <div>
-          <h4 className="text-sm font-medium text-gray-900">{item.service.name}</h4>
-          <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+          <h4 className="text-base font-medium text-gray-900">{item.service.name}</h4>
+          <p className="text-xs text-gray-500 mt-1">Quantity: {item.quantity}</p>
         </div>
       </div>
       <div className="text-right">
-        <p className="text-sm font-medium text-gray-900">
+        <p className="text-base font-semibold text-gray-900">
           GHS {parseFloat(item.total_price || item.price * item.quantity).toFixed(2)}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 mt-1">
           GHS {parseFloat(item.unit_price || item.price).toFixed(2)} each
         </p>
       </div>
     </motion.div>
   );
 
-  
-  
-
   const AddressCard = ({ type, address }) => (
-    <div className="p-4 rounded-lg border border-gray-200">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="p-5 rounded-lg border border-gray-200 bg-white">
+      <div className="flex items-center gap-3 mb-4">
         {type === 'delivery' ? (
-          <FaTruck className="text-blue-500" />
+          <>
+            <div className="p-2 bg-blue-100 rounded-full">
+              <FaTruck className="text-blue-600 text-lg" />
+            </div>
+            <h3 className="font-semibold text-gray-900">
+              Delivery Address
+            </h3>
+          </>
         ) : (
-          <FaStore className="text-green-500" />
+          <>
+            <div className="p-2 bg-green-100 rounded-full">
+              <FaStore className="text-green-600 text-lg" />
+            </div>
+            <h3 className="font-semibold text-gray-900">
+              Pickup Address
+            </h3>
+          </>
         )}
-        <h3 className="font-medium text-gray-900">
-          {type === 'delivery' ? 'Delivery' : 'Pickup'} Address
-        </h3>
       </div>
-      <div className="space-y-1 text-sm text-gray-600">
-        <p>{address.location_name}</p>
-        <p>{address.street_address}</p>
-        <p>{address.region}</p>
-        <p className="font-medium mt-2">
-          Cost: GHS {parseFloat(address.cost).toFixed(2)}
-        </p>
+      <div className="space-y-2 text-sm text-gray-700">
+        <div className="flex items-start gap-2">
+          <FaMapMarkerAlt className="text-gray-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">{address.location_name}</p>
+            <p>{address.street_address}</p>
+            <p>{address.region}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 pt-2 mt-2 border-t border-gray-100">
+          <FaMoneyBillWave className="text-gray-400" />
+          <span className="font-medium">
+            Cost: GHS {parseFloat(address.cost).toFixed(2)}
+          </span>
+        </div>
       </div>
     </div>
   );
 
-  const DiscountBadge = ({ discount, order }) => (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-emerald-100">
-      <div className="p-2 bg-emerald-100 rounded-full">
-        <FaTag className="text-emerald-600" />
+  const DiscountBadge = ({ order, discount }) => (
+    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-emerald-200">
+      <div className="p-2 bg-emerald-100 rounded-lg">
+        <FaTag className="text-emerald-600 text-lg" />
       </div>
-      <div>
-        <p className="text-sm font-medium text-emerald-800">{discount.type}</p>
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-emerald-800 capitalize">{discount.discount_type}</p>
         <p className="text-xs text-emerald-600">
-          {discount.percentage}% off (Saved GHS {parseFloat(order.discounted_amount).toFixed(2)})
+          {discount.percentage}% discount applied
         </p>
+      </div>
+      <div className="text-emerald-700 font-bold">
+        -GHS {parseFloat(order.subtotal * discount.percentage / 100).toFixed(2)}
       </div>
     </div>
   );
 
   return (
     <div className="px-4 lg:px-24 py-8">
-      <div className="flex flex-col space-y-6">
-        <div className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Order Details
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Order ID: {orderSlug}
-            </p>
-          </div>
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
           <button
             onClick={() => navigate('/orders')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white cursor-pointer transition-colors bg-primary hover:bg-primary/80 rounded-lg shadow-sm"
+            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors"
           >
-            <FaChevronRight className="transform rotate-180" />
+            <FaChevronLeft className="text-gray-500" />
             Back to orders
           </button>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Order #{orderSlug}
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
+          </p>
         </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 space-y-3">
-            <FaSpinner className="animate-spin text-primary text-4xl" />
-            <p className="text-gray-600">Loading order details...</p>
+        {order && (
+          <div className="w-full sm:w-auto">
+            {getStatusDisplay(order.status)}
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 space-y-4 bg-gray-50 rounded-xl">
-            <FaExclamationCircle className="text-red-500 text-4xl" />
-            <p className="text-gray-700 max-w-md text-center">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : order ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Order Summary */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                  Order Summary
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-500">Order ID</p>
-                    <p className="font-medium">{order.slug}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-500">Status</p>
-                    <div>{getStatusDisplay(order.status)}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-500">Customer</p>
-                    <div className="flex items-center gap-2">
-                      <FaUserCircle className="text-gray-400 text-2xl" />
-                      <span>
-                        {order.first_name || 'N/A'} {order.last_name || 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-500">Order Date</p>
-                    <div className="flex items-center gap-2">
-                      <FaCalendarAlt className="text-gray-400 text-2xl" />
-                      <span>{formatDate(order.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Discount Display */}
-             
-              {order.discounts_applied && order.discounts_applied.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-emerald-100 space-y-4"
-                >
-                  {order.discounts_applied.map((discount, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-emerald-100 rounded-full">
-                          <FaPercentage className="text-emerald-600 text-xl" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-emerald-800">Discount Applied</h3>
-                          <p className="text-sm text-emerald-600">
-                            {discount.discount_type} ({discount.percentage}%)
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-emerald-700">
-                           -GHS {order.discounted_amount}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-
-
-              {/* Order Items */}
-              <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                  Items ({order.items?.length || 0})
-                </h2>
-                {order.items && order.items.length > 0 ? (
-                  <div className="space-y-3">
-                    {order.items.map((item, index) => (
-                      <OrderItemCard key={index} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500">No items found</p>
-                )}
-              </div>
-
-              {/* Delivery/Pickup */}
-              {(order.delivery_address || order.pickup_address) && (
-                <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
-                  <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                    Delivery and Pickup Details
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {order.delivery_address && (
-                      <AddressCard type="delivery" address={order.delivery_address} />
-                    )}
-                    {order.pickup_address && (
-                      <AddressCard type="pickup" address={order.pickup_address} />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            
-
-            {/* Order Total */}
-            <div className="space-y-6">
-              <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                  Order Total
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span>GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
-                  </div>
-                  
-                    {order.discount_applied && order.discount_applied.type === "signup" && (
-                        <div className="flex justify-between text-emerald-600">
-                          <div className="flex items-center gap-1">
-                            <FaTag className="text-sm" />
-                            <span>Discount ({order.discount_applied.percentage}%)</span>
-                          </div>
-                          <span>-GHS {parseFloat(order.discounted_amount).toFixed(2)}</span>
-                      </div>
-                  )}
-
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Delivery</span>
-                    <span>{order.delivery_address?.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Pickup</span>
-                    <span>{order.pickup_address?.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}</span>
-                  </div>
-                  
-                  <div className="border-t border-gray-200 pt-3 flex justify-between">
-                    <span className="font-semibold">Total</span>
-                    <div className="text-right">
-                      {order.discount_applied && (
-                        <div className="text-xs text-gray-400 line-through mb-1">
-                          GHS {(parseFloat(order.subtotal || order.total) + 
-                              parseFloat(order.delivery_address?.cost || 0) + 
-                              parseFloat(order.pickup_address?.cost || 0)).toFixed(2)}
-                        </div>
-                      )}
-                      <span className="font-bold text-lg text-emerald-600">
-                        GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                   {order.discount_applied && (
-                    <div className="mt-4">
-                      <DiscountBadge discount={order.discount_applied} order={order} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-xs border border-gray-200">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                  Customer Support
-                </h2>
-                <p className="text-sm text-gray-600 mb-3">
-                  Need help with your order?
-                </p>
-                <p className="text-sm text-gray-600 mb-3">
-                  Contact our support team at{' '}
-                  <a
-                    href="mailto:kleankickx.sneakercare@gmail.com"
-                    className="text-blue-600 hover:underline"
-                  >
-                    kleankickx.sneakercare@gmail.com
-                  </a>
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        )}
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+          <FaSpinner className="animate-spin text-primary text-4xl" />
+          <p className="text-gray-600">Loading order details...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="flex flex-col items-center justify-center py-16 space-y-4 bg-gray-50 rounded-xl">
+          <FaExclamationCircle className="text-red-500 text-4xl" />
+          <p className="text-gray-700 max-w-md text-center">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* Order Content */}
+      {order && !loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Customer & Order Info */}
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                Order Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-3">CUSTOMER DETAILS</h3>
+                  <div className="flex items-center gap-3 mb-4">
+                    <FaUserCircle className="text-gray-400 text-2xl" />
+                    <div>
+                      <p className="font-medium">
+                        {order.first_name || 'N/A'} {order.last_name || 'N/A'}
+                      </p>
+                      <p className="text-sm text-gray-500">{order.email}</p>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-3">ORDER SUMMARY</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Order ID</span>
+                      <span className="font-medium">{order.slug}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Order Date</span>
+                      <span className="font-medium">{formatDate(order.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment Method</span>
+                      <span className="font-medium capitalize">{order.payment_method || 'Paystack'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Discount Display */}
+            {order.discounts_applied?.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-3"
+              >
+                {order.discounts_applied.map((discount, index) => (
+                  <DiscountBadge key={index} discount={discount} order={order} />
+                ))}
+              </motion.div>
+            )}
+
+            {/* Order Items */}
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                Order Items ({order.items?.length || 0})
+              </h2>
+              {order.items?.length > 0 ? (
+                <div className="space-y-4">
+                  {order.items.map((item, index) => (
+                    <OrderItemCard key={index} item={item} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FaBox className="mx-auto text-gray-300 text-4xl" />
+                  <p className="text-gray-500 mt-2">No items found in this order</p>
+                </div>
+              )}
+            </div>
+
+            {/* Delivery & Pickup */}
+            {(order.delivery_address || order.pickup_address) && (
+              <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                  Delivery & Pickup
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {order.delivery_address && (
+                    <AddressCard type="delivery" address={order.delivery_address} />
+                  )}
+                  {order.pickup_address && (
+                    <AddressCard type="pickup" address={order.pickup_address} />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Order Total */}
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                Order Total
+              </h2>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-medium">GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
+                </div>
+                
+                {order.discounts_applied?.map((discount, index) => (
+                  <div key={index} className="flex justify-between text-emerald-600">
+                    <span>Discount ({discount.percentage}%)</span>
+                    <span className="font-medium">-GHS {parseFloat(order.subtotal * discount.percentage / 100).toFixed(2)}</span>
+                  </div>
+                ))}
+
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery Fee</span>
+                  <span className="font-medium">
+                    {order.delivery_address?.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Pickup Fee</span>
+                  <span className="font-medium">
+                    {order.pickup_address?.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}
+                  </span>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
+                  <span className="font-semibold text-lg">Total Amount</span>
+                  <div className="text-right">
+                    {order.discounts_applied?.length > 0 && (
+                      <div className="text-sm text-gray-400 line-through mb-1">
+                        GHS {(parseFloat(order.subtotal || order.total) + 
+                            parseFloat(order.delivery_address?.cost || 0) + 
+                            parseFloat(order.pickup_address?.cost || 0)).toFixed(2)}
+                      </div>
+                    )}
+                    <span className="font-bold text-xl text-emerald-600">
+                      GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Support */}
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                Need Help?
+              </h2>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-full">
+                    <FaPhone className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Call us at</p>
+                    <a href="tel:+1234567890" className="font-medium text-gray-900 hover:text-blue-600">
+                      +1 (234) 567-890
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-full">
+                    <FaEnvelope className="text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Email us at</p>
+                    <a 
+                      href="mailto:kleankickx.sneakercare@gmail.com" 
+                      className="font-medium text-gray-900 hover:text-green-600"
+                    >
+                      kleankickx.sneakercare@gmail.com
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

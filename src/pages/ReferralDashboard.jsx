@@ -17,11 +17,11 @@ const Avatar = ({ email }) => {
   const initials = getInitials(email);
   
   return (
-    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-pink-100 text-pink-600 font-medium text-sm">
+    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-100 text-green-600 font-medium text-sm">
       {initials ? (
         initials
       ) : (
-        <UserIcon className="h-4 w-4 text-pink-500" />
+        <UserIcon className="h-4 w-4 text-green-500" />
       )}
     </div>
   );

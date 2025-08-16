@@ -168,7 +168,7 @@ const MyOrders = () => {
   );
 
   return (
-    <div className="px-4 lg:px-24 py-8 ">
+    <div className="px-4 lg:px-24 py-8 max-w-6xl mx-auto">
       <div className="flex flex-col space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
