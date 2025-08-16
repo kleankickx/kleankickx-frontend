@@ -21,50 +21,57 @@ const Cart = () => {
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
 
   const fetchServices = async () => {
+  try {
+    const servicePromises = cart
+      .filter(item => item.service_id)
+      .map(item => axios.get(`${baseURL}/api/services/${item.service_id}/`));
+
+    const responses = await Promise.all(servicePromises);
+    setServices(responses.map(res => res.data));
+  } catch (error) {
+    console.error('Failed to fetch services:', error);
+    setError('Failed to load service details. Please try again.');
+    toast.error('Failed to load some service details');
+  }
+};
+
+const fetchUserSignupDiscountStatus = async () => {
+  try {
+    const { data } = await api.get('/api/users/discount-status/');
+    setSignupDiscountUsed(data);
+  } catch (error) {
+    console.error("Error fetching signup discount status:", error);
+  }
+};
+
+const fetchUserReferralDiscountStatus = async () => {
+  try {
+    const { data } = await api.get('/api/users/referral-discount-status/');
+    console.log("status", data)
+    setReferralDiscountUsed(data);
+  } catch (error) {
+    console.error("Error fetching referral discount status:", error);
+  }
+};
+
+useEffect(() => {
+  const initializeData = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const servicePromises = cart
-        .filter(item => item.service_id)
-        .map(item => axios.get(`${baseURL}/api/services/${item.service_id}/`));
-      const responses = await Promise.all(servicePromises);
-      setServices(responses.map(res => res.data));
-    } catch (error) {
-      console.error('Failed to fetch services:', error);
-      setError('Failed to load service details. Please try again.');
-      toast.error('Failed to load some service details');
+      await Promise.all([
+        fetchServices(),
+        fetchUserSignupDiscountStatus(),
+        fetchUserReferralDiscountStatus(),
+      ]);
+    } catch (err) {
+      console.error("Initialization error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchUserSignupDiscountStatus = async () => {
-    try {
-      const response = await api.get('/api/users/discount-status/');
-      setSignupDiscountUsed(response.data);
-    } catch (error) {
-      console.log("Error fetching signup discount status:", error);
-    }
-  };
-
-  const fetchUserReferralDiscountStatus = async () => {
-    try {
-      const response = await api.get('/api/users/referral-discount-status/');
-      console.log(response.data)
-      setReferralDiscountUsed(response.data);
-    } catch (error) {
-      console.log("Error fetching referral discount status:", error);
-    }
-  };
-
-  useEffect(() => {
-    const initializeData = async () => {
-      await fetchServices();
-      await fetchUserSignupDiscountStatus();
-      await fetchUserReferralDiscountStatus();
-    };
-    initializeData();
-  }, []);
+  initializeData();
+}, []);
 
   const getService = (id) => services.find((s) => s.id === id) || {};
   const subtotal = cart
@@ -77,8 +84,8 @@ const Cart = () => {
 
   console.log(referralDiscount)
   // Eligibility
-  const canUseSignup = user && !signupDiscountUsed.signup_discount_used && signupDiscount;
-  const canUseReferral = user && !referralDiscountUsed.first_order_completed && referralDiscount;
+  const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount;
+  const canUseReferral = user && referralDiscountUsed?.first_order_completed === false && referralDiscount;
 
   // Calculate discount amounts individually
   const signupDiscountAmount = canUseSignup

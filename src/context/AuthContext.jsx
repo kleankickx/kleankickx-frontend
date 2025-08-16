@@ -282,13 +282,12 @@ const AuthProvider = ({ children }) => {
     }
   };
 
-  const googleLogin = async (credentialResponse) => {
+  const googleLogin = async (credentialResponse,  referralCode = null) => {
     try {
-      const response = await api.post(
-        '/api/users/google-login/',
-        { token: credentialResponse.credential },
-        { withCredentials: true }
-      );
+      const payload = { token: credentialResponse.credential };
+      if (referralCode) payload.referral_code = referralCode; // ✅ send referral
+      
+      const response = await api.post('/api/users/google-login/', payload, { withCredentials: true });
 
       const { access, refresh } = response.data;
       authMethods.setAccessToken(access);

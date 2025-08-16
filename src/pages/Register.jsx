@@ -108,7 +108,7 @@ const Register = () => {
   const handleGoogleRegisterSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      await googleLogin(credentialResponse);
+      await googleLogin(credentialResponse, referralCode);
       toast.success('Registered with Google!', { position: 'top-right' });
       navigate('/');
     } catch (err) {

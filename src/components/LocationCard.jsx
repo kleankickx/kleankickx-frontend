@@ -11,7 +11,7 @@ const LocationCard = ({ location, type, onClear }) => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             transition={{ duration: 0.3 }}
-            className={`mt-3 p-4 ${bgColor} ${textColor} rounded-lg shadow-sm border border-gray-100`}
+            className={`mt-3 p-4 ${bgColor} ${textColor} rounded-lg border border-gray-200`}
         >
             <div className="flex justify-between items-start">
                 <div className="flex items-start">

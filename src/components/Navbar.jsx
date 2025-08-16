@@ -215,10 +215,10 @@ const Navbar = () => {
                         Logout
                       </button>
                     </li>
-                    <li>
+                    <li className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded">
                       <Link to="/referral-dashboard"
                         
-                        className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
+                        className=""
                       >
                         Referrals
                       </Link>
