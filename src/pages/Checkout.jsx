@@ -129,6 +129,11 @@ const Checkout = () => {
   const referralDiscountAmount = canUseReferral
     ? ((parseFloat(subtotal) * parseFloat(referralDiscount.percentage)) / 100)
     : 0;
+  
+  // total before discount  
+  const totalBeforeDiscount = (subtotal + deliveryFee + pickupFee).toFixed(2);
+  
+
 
   // Final total
   const total = parseFloat((subtotal + deliveryFee + pickupFee) - (signupDiscountAmount + referralDiscountAmount)).toFixed(2);
@@ -836,7 +841,7 @@ const Checkout = () => {
                             <p className="text-lg font-semibold">Total Amount</p>
                             <div className="text-right">
                               {(canUseSignup || canUseReferral) && (
-                                <div className="text-sm text-gray-400 line-through">GHS {subtotal}</div>
+                                <div className="text-sm text-gray-400 line-through">GHS {totalBeforeDiscount}</div>
                               )}
                               <p className="text-xl font-bold text-primary">
                                 GHS {total}
