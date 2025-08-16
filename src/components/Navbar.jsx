@@ -100,12 +100,15 @@ const Navbar = () => {
           `}
         >
           <div className="py-2 px-4">
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-              <div>
-                <span className="font-bold mr-2">🎉 SPECIAL OFFER!</span>
-                <span className="lg:text-sm text-xs">
-                  Get {signupDiscount.percentage}% off on your first order when you sign up!
-                </span>
+            <div className="max-w-7xl mx-auto flex items-start justify-between gap-2">
+              <div className="flex items-start gap-1">
+                <span>🎉</span>
+                <div>
+                  <span className="font-bold mr-2">SPECIAL OFFER!</span>
+                  <span className="lg:text-sm text-xs">
+                    Get {signupDiscount.percentage}% off on your first order when you sign up!
+                  </span>
+                </div>
               </div>
               <button
                 onClick={handleCloseBanner}
