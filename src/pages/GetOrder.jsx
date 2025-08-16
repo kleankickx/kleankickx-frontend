@@ -402,7 +402,7 @@ const GetOrder = () => {
                 
                 {order.discounts_applied?.map((discount, index) => (
                   <div key={index} className="flex justify-between text-emerald-600">
-                    <span>Discount ({discount.percentage}%)</span>
+                    <span className='capitalize'>{discount.discount_type} Disc... ({discount.percentage}%)</span>
                     <span className="font-medium">-GHS {parseFloat(order.subtotal * discount.percentage / 100).toFixed(2)}</span>
                   </div>
                 ))}
