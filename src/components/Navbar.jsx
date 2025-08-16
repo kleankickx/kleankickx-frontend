@@ -77,6 +77,15 @@ const Navbar = () => {
     }
   };
 
+  const handleReferralRoute = (e) => {
+    e.stopPropagation();
+      closeMobileMenu();
+      setIsDropdownOpen(false);
+      navigate('/referral-dashboard');
+   
+  };
+
+
   const navItems = [
     { to: '/', label: 'Home' },
     { to: '/rate-and-services', label: 'Rate & Services' },
@@ -352,6 +361,14 @@ const Navbar = () => {
                         >
                           Logout
                         </button>
+                      </li>
+                      <li>
+                          <button
+                          onClick={handleReferralRoute}
+                          className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
+                        >
+                        Referrals
+                      </button>
                       </li>
                     </ul>
                   )}
