@@ -613,7 +613,7 @@ const Checkout = () => {
       onLoad={() => console.log('Google Maps API loaded successfully!')}
     >
       <div className="bg-gradient-to-br from-green-50 to-white">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="max-w-5xl mx-auto px-4 py-8">
           {showAlert && (
             <div className="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center">
               <FiInfo className="mr-2 text-yellow-700" />
@@ -675,20 +675,33 @@ const Checkout = () => {
                           />
                         </div>
 
-                        <div className="flex items-start pt-2">
-                          <div className="flex items-center h-5">
-                            <input
-                              type="checkbox"
-                              id="same"
-                              checked={useSame}
-                              onChange={(e) => setUseSame(e.target.checked)}
-                              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                            />
-                          </div>
-                          <label htmlFor="same" className="ml-3 text-sm text-gray-700">
-                            Use delivery address for pickup
-                          </label>
-                        </div>
+                        <label className="flex items-center cursor-pointer group">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                id="same"
+                                checked={useSame}
+                                onChange={(e) => setUseSame(e.target.checked)}
+                                className="sr-only"
+                              />
+                              <div className={`w-5 h-5 rounded border-2 transition-all duration-200 ease-in-out
+                                ${useSame 
+                                  ? 'bg-primary border-primary' 
+                                  : 'bg-white border-gray-300 group-hover:border-primary'
+                                }`}
+                              >
+                                {useSame && (
+                                  <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                              Use delivery address for pickup
+                            </span>
+                        </label>
+                        
 
                         {!useSame && (
                           <div className="pt-2">
@@ -1108,7 +1121,7 @@ const Checkout = () => {
     ) : (
       <div className="flex items-center justify-center min-h-screen flex-col space-y-2">
         <FaSpinner className="animate-spin h-8 w-8 text-primary" />
-        <p className="text-gray-600 mt-4">Loading your cart...</p>
+        <p className="text-gray-600 mt-4">Loading...</p>
       </div> 
     )
   );
