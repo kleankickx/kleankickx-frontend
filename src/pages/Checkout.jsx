@@ -1,38 +1,43 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
-import { APIProvider, Map} from '@vis.gl/react-google-maps';
-import { AuthContext } from '../context/AuthContext';
-import { CartContext } from '../context/CartContext';
-import { toast } from 'react-toastify';
-import { FiX, FiCheck, FiMapPin, FiTruck, FiPackage, FiNavigation, FiInfo,  } from 'react-icons/fi';
-import { FaCheckCircle, FaTimesCircle, FaSpinner, FaGift,
-  FaUserFriends, FaInfoCircle  } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import Paystack from '@paystack/inline-js'
-import PaystackIcon from "../assets/paystack.png"
-import { jwtDecode } from 'jwt-decode';
-import axios from 'axios';
-import PlaceAutocompleteElementWrapper from '../components/PlaceAutoCompleteElementWrapper';
-import MapHandler from '../components/MapHandler';
-
-
+import React, { useState, useEffect, useContext, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import { CartContext } from "../context/CartContext";
+import { APIProvider, Map } from "@vis.gl/react-google-maps";
+import { toast } from "react-toastify";
+import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import {
+  FiTruck,
+  FiInfo,
+  FiNavigation,
+  FiCheck,
+} from "react-icons/fi";
+import {
+  FaCheckCircle,
+  FaTimesCircle,
+  FaSpinner,
+  FaExclamationTriangle,
+  FaGift,
+  FaUserFriends,
+  FaInfoCircle,
+  FaStar
+} from "react-icons/fa";
+import PlaceAutocompleteElementWrapper from "../components/PlaceAutocompleteElementWrapper";
+import MapHandler from "../components/MapHandler";
+import REGION_CONFIG from '../utils/regionConfig'
 
 const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
- 
-
-
-
+  
   // --- Constants ---
   const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
   const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
   const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
 
-  
   // State for locations and inputs
   const getLocationFromStorage = (key) => {
     try {
@@ -61,6 +66,7 @@ const Checkout = () => {
   const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
+  const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState(null);
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -71,6 +77,8 @@ const Checkout = () => {
         // Fetch discount status after user loads
         fetchUserDiscountStatus();
         fetchUserReferralDiscountStatus();
+        fetchRedeemedPointsDiscount();
+
         setLoading(false);
       } catch (error) {
         console.error("Error during checkout init:", error);
@@ -80,15 +88,12 @@ const Checkout = () => {
     };
 
     init();
-
-}, []);
-
+  }, []);
 
   // Fetch user discount status
   const fetchUserDiscountStatus = async () => {
     try{
-      const response = await api.get('/api/users/discount-status/')
-      console.log(response.data)
+      const response = await api.get('/api/discounts/signup/status/')
       setSignupDiscountUsed(response.data)
     } catch (error) {
       console.log("Error: ", error)
@@ -97,15 +102,30 @@ const Checkout = () => {
 
   const fetchUserReferralDiscountStatus = async () => {
     try {
-      const response = await api.get('/api/users/referral-discount-status/');
-      console.log(response.data)
+      const response = await api.get('/api/discounts/referral/status/');
       setReferralDiscountUsed(response.data);
     } catch (error) {
       console.log("Error fetching referral discount status:", error);
     }
   };
 
-  
+  // Fetch redeemed points discount
+  const fetchRedeemedPointsDiscount = async () => {
+    try {
+      const response = await api.get('/api/referrals/redeem/');
+      if (response.data && !response.data.error) {
+        setRedeemedPointsDiscount(response.data);
+      } else {
+        setRedeemedPointsDiscount(null);
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        setRedeemedPointsDiscount(null);
+      } else {
+        console.log("Error fetching redeemed points discount:", error);
+      }
+    }
+  }
 
   // Calculate order totals
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
@@ -119,26 +139,24 @@ const Checkout = () => {
   // Eligibility
   const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount;
   const canUseReferral = user && referralDiscountUsed?.first_order_completed === false && referralDiscount;
+  const canUseRedeemedPoints = user && redeemedPointsDiscount && !redeemedPointsDiscount.is_applied;
 
   // Calculate discount amounts individually
   const signupDiscountAmount = canUseSignup
     ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
     : 0;
 
-  // Apply referral discount on the  subtotal if both are active
   const referralDiscountAmount = canUseReferral
     ? ((parseFloat(subtotal) * parseFloat(referralDiscount.percentage)) / 100)
     : 0;
-  
-  // total before discount  
-  const totalBeforeDiscount = (subtotal + deliveryFee + pickupFee).toFixed(2);
-  
 
+  const redeemedPointsDiscountAmount = canUseRedeemedPoints
+    ? ((parseFloat(subtotal) * parseFloat(redeemedPointsDiscount.percentage)) / 100)
+    : 0;
 
   // Final total
-  const total = parseFloat((subtotal + deliveryFee + pickupFee) - (signupDiscountAmount + referralDiscountAmount)).toFixed(2);
-
- 
+  const total = parseFloat((subtotal + deliveryFee + pickupFee) - 
+    (signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount)).toFixed(2);
 
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
@@ -155,8 +173,6 @@ const Checkout = () => {
       setIsPhoneValid(validateGhanaPhone(input));
     }
   };
-
-  
 
   // Persist delivery and pickup regions to localStorage
   useEffect(() => {
@@ -400,7 +416,7 @@ const Checkout = () => {
 
       if (canUseSignup && signupDiscount && signupDiscountAmount > 0) {
         appliedDiscounts.push({
-          type: signupDiscount.discount_type.split(' ')[0], // e.g., "signup"
+          type: signupDiscount.discount_type.split(' ')[0],
           percentage: signupDiscount.percentage,
           amount: signupDiscountAmount
         });
@@ -408,25 +424,37 @@ const Checkout = () => {
 
       if (canUseReferral && referralDiscount && referralDiscountAmount > 0) {
         appliedDiscounts.push({
-          type: referralDiscount.discount_type.split(' ')[0], // e.g., "referral"
+          type: referralDiscount.discount_type.split(' ')[0],
           percentage: referralDiscount.percentage,
           amount: referralDiscountAmount
+        });
+      }
+
+      if (canUseRedeemedPoints && redeemedPointsDiscount && redeemedPointsDiscountAmount > 0) {
+        appliedDiscounts.push({
+          type: "redeemed_points",
+          percentage: redeemedPointsDiscount.percentage,
+          amount: redeemedPointsDiscountAmount,
+          points_redeemed: redeemedPointsDiscount.points_redeemed
         });
       }
 
       const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       setTransactionReference(transactionRef);
 
+      const handler = window.PaystackPop && new window.PaystackPop();
+      if (!handler) {
+        toast.error("Payment system not loaded. Please try again.");
+        setPlacing(false);
+        return;
+      }
 
-
-      const handler = new Paystack();
       handler.newTransaction({
         key: PAYSTACK_PUBLIC_KEY,
         email: user.email,
         amount: total * 100,
         currency: 'GHS',
         reference: transactionRef,
-
         onSuccess: async (transaction) => {
           try {
             const beforeUnloadHandler = (e) => {
@@ -440,7 +468,6 @@ const Checkout = () => {
             let success = false;
             let lastError = null;
 
-            console.log(appliedDiscounts)
             while (retries > 0 && !success) {
               try {
                 const response = await api.post('/api/orders/', {
@@ -463,6 +490,15 @@ const Checkout = () => {
                 'pickupInputValue', 'deliveryRegion', 'pickupRegion'].forEach(key => {
                   localStorage.removeItem(key);
                 });
+
+                // If redeemed points discount was used, mark it as applied
+                if (canUseRedeemedPoints) {
+                  try {
+                    await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
+                  } catch (error) {
+                    console.error("Error marking discount as applied:", error);
+                  }
+                }
 
                 setDelivery(null);
                 setPickup(null);
@@ -542,11 +578,6 @@ const Checkout = () => {
         onCancel: () => {
           setPlacing(false);
           toast.info('Payment cancelled. Your order was not placed.');
-        },
-        onError: (error) => {
-          setPlacing(false);
-          console.error('Payment error:', error);
-          toast.error('Payment failed. Please try again.');
         }
       });
     } catch (error) {
@@ -644,20 +675,33 @@ const Checkout = () => {
                           />
                         </div>
 
-                        <div className="flex items-start pt-2">
-                          <div className="flex items-center h-5">
-                            <input
-                              type="checkbox"
-                              id="same"
-                              checked={useSame}
-                              onChange={(e) => setUseSame(e.target.checked)}
-                              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                            />
-                          </div>
-                          <label htmlFor="same" className="ml-3 text-sm text-gray-700">
-                            Use delivery address for pickup
-                          </label>
-                        </div>
+                        <label className="flex items-center cursor-pointer group">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                id="same"
+                                checked={useSame}
+                                onChange={(e) => setUseSame(e.target.checked)}
+                                className="sr-only"
+                              />
+                              <div className={`w-5 h-5 rounded border-2 transition-all duration-200 ease-in-out
+                                ${useSame 
+                                  ? 'bg-primary border-primary' 
+                                  : 'bg-white border-gray-300 group-hover:border-primary'
+                                }`}
+                              >
+                                {useSame && (
+                                  <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                              Use delivery address for pickup
+                            </span>
+                        </label>
+                        
 
                         {!useSame && (
                           <div className="pt-2">
@@ -746,10 +790,10 @@ const Checkout = () => {
                   {/* Right Column - Order Summary */}
                   <div className="lg:w-1/2 space-y-6">
                     {/* Map Section */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    {/* <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                       <div className="h-64 md:h-80 w-full relative">
                         <Map
-                          mapId={"YOUR_MAP_ID"}
+                          mapId={"checkout-map"}
                           defaultZoom={delivery || pickup ? 16 : 12}
                           defaultCenter={currentLocation}
                           gestureHandling={'greedy'}
@@ -765,7 +809,7 @@ const Checkout = () => {
                           />
                         </Map>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Order Summary Card */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -824,6 +868,21 @@ const Checkout = () => {
                             </div>
                           )}
 
+                          {canUseRedeemedPoints && (
+                            <div className="bg-amber-50 rounded-lg p-3 -mx-1">
+                              <div className="flex justify-between items-center">
+                                <span className="text-amber-700 font-medium flex items-center">
+                                  <FaStar className="mr-2" />
+                                  Redeemed Points Discount
+                                </span>
+                                <span className="text-amber-700 font-medium">-GHS {redeemedPointsDiscountAmount.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-amber-600 mt-1 ml-6">
+                                {redeemedPointsDiscount.percentage}% off your order ({redeemedPointsDiscount.points_redeemed} points redeemed)
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex justify-between pt-2">
                             <p className="text-gray-600">Delivery Fee</p>
                             <p className="font-medium">
@@ -840,8 +899,8 @@ const Checkout = () => {
                           <div className="flex justify-between pt-4 mt-3 border-t border-gray-200">
                             <p className="text-lg font-semibold">Total Amount</p>
                             <div className="text-right">
-                              {(canUseSignup || canUseReferral) && (
-                                <div className="text-sm text-gray-400 line-through">GHS {totalBeforeDiscount}</div>
+                              {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
+                                <div className="text-sm text-gray-400 line-through">GHS {subtotal}</div>
                               )}
                               <p className="text-xl font-bold text-primary">
                                 GHS {total}
@@ -854,6 +913,13 @@ const Checkout = () => {
                           <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700 flex items-start">
                             <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
                             <span>Your {signupDiscount.percentage}% sign-up discount has been applied!</span>
+                          </div>
+                        )}
+
+                        {canUseRedeemedPoints && redeemedPointsDiscount && (
+                          <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm text-amber-700 flex items-start">
+                            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
+                            <span>Your {redeemedPointsDiscount.percentage}% redeemed points discount has been applied!</span>
                           </div>
                         )}
                       </div>
@@ -954,42 +1020,52 @@ const Checkout = () => {
         </div>
       )}
 
-      {canUseReferral && (
-        <div className="flex justify-between py-2.5 text-blue-600">
-          <span className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM12 15v2m-2 2h4" />
-            </svg>
-            Referral Discount ({referralDiscount.percentage}%)
-          </span>
-          <span className="font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
-        </div>
-      )}
+                {canUseReferral && (
+                    <div className="flex justify-between py-3 border-b border-gray-100/50 text-blue-600">
+                    <div className="flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM12 15v2m-2 2h4" />
+                      </svg>
+                      Referral Discount ({referralDiscount.percentage}%)
+                    </div>
+                    <span className="font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
 
-      {/* Delivery */}
-      <div className="flex justify-between py-2.5">
-        <span className="text-gray-600 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-            <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1V5a1 1 0 00-1-1H3z" />
-          </svg>
-          Delivery Fee
-        </span>
-        <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
-      </div>
-
-      {/* Pickup */}
-      <div className="flex justify-between py-2.5">
-        <span className="text-gray-600 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-          </svg>
-          Pickup Fee
-        </span>
-        <span className="font-medium">
-          {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '0.00') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '0.00')}
-        </span>
-      </div>
+                {canUseRedeemedPoints && (
+                  <div className="flex justify-between py-3 border-b border-gray-100/50 text-amber-600">
+                    <div className="flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                      Points Discount ({redeemedPointsDiscount.percentage}%)
+                    </div>
+                    <span className="font-medium">-GHS {redeemedPointsDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between py-3 border-b border-gray-100/50">
+                  <div className="flex items-center text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                      <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1V5a1 1 0 00-1-1H3z" />
+                    </svg>
+                    Delivery Fee
+                  </div>
+                  <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
+                </div>
+                
+                <div className="flex justify-between py-3">
+                  <div className="flex items-center text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    Pickup Fee
+                  </div>
+                  <span className="font-medium">
+                    {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '0.00') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '0.00')}
+                  </span>
+                </div>
 
       {/* Total */}
       <div className="border-t border-gray-200 mt-4 pt-4">
@@ -1073,16 +1149,13 @@ const Checkout = () => {
           )}
         </div>
       </div>
-
     </APIProvider>
-    ):
-    (
+    ) : (
       <div className="flex items-center justify-center min-h-screen flex-col space-y-2">
-              <FaSpinner className="animate-spin h-8 w-8 text-primary" />
-              <p className="text-gray-600 mt-4">Loading your cart...</p>
-            </div> 
+        <FaSpinner className="animate-spin h-8 w-8 text-primary" />
+        <p className="text-gray-600 mt-4">Loading...</p>
+      </div> 
     )
-
   );
 };
 

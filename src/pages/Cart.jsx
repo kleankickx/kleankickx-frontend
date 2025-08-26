@@ -37,7 +37,7 @@ const Cart = () => {
 
 const fetchUserSignupDiscountStatus = async () => {
   try {
-    const { data } = await api.get('/api/users/discount-status/');
+    const { data } = await api.get('/api/discounts/signup/status/');
     setSignupDiscountUsed(data);
   } catch (error) {
     console.error("Error fetching signup discount status:", error);
@@ -46,7 +46,7 @@ const fetchUserSignupDiscountStatus = async () => {
 
 const fetchUserReferralDiscountStatus = async () => {
   try {
-    const { data } = await api.get('/api/users/referral-discount-status/');
+    const { data } = await api.get('/api/discounts/referral/status/');
     console.log("status", data)
     setReferralDiscountUsed(data);
   } catch (error) {
