@@ -193,7 +193,7 @@ const AuthProvider = ({ children }) => {
 
   const fetchDiscounts = async () => {
     try {
-      const discountData = await api.get('/api/discounts/');
+      const discountData = await axios.get('/api/discounts/');
       setDiscounts(discountData.data);
       console.log(discountData.data)
     } catch (error) {
