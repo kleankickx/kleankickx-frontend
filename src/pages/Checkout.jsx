@@ -22,7 +22,8 @@ import {
   FaInfoCircle,
   FaStar
 } from "react-icons/fa";
-import PlaceAutocompleteElementWrapper from "../components/PlaceAutocompleteElementWrapper"
+
+import PlaceAutocompleteElementWrapper from "../context/PlaceAutoCompleteElementWrapper"
 
 import MapHandler from "../components/MapHandler";
 import REGION_CONFIG from '../utils/regionConfig'
