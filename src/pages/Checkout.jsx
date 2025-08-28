@@ -23,7 +23,7 @@ import {
   FaStar
 } from "react-icons/fa";
 
-import PlaceAutocompleteElementWrapper from "../context/PlaceAutoCompleteElementWrapper"
+import PlaceAutocompleteElementWrapper from "../components/PlaceAutoCompleteElementWrapper"
 
 import MapHandler from "../components/MapHandler";
 import REGION_CONFIG from '../utils/regionConfig'

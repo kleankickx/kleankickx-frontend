@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
-import LocationCard from '../components/LocationCard'
+import LocationCard from './LocationCard'
 import { AnimatePresence } from 'framer-motion';
 import REGION_CONFIG from '../utils/regionConfig'
 
