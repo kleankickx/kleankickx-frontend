@@ -324,9 +324,25 @@ export default function ReferralDashboard() {
               </p>
 
               {/* Active Discount */}
-              {activeDiscount && (
+              {activeDiscount ? (
                 <div className="mt-4">
-                <DiscountStatusBadge discount={activeDiscount} />
+                  <DiscountStatusBadge discount={activeDiscount} />
+                </div>
+              ) : (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 flex flex-col items-center justify-center text-center">
+                  <AnimatePresence>
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <XCircleIcon className="h-8 w-8 text-gray-300 mb-2" />
+                    </motion.div>
+                  </AnimatePresence>
+
+                  <p className="text-sm font-medium text-gray-500">No active discount</p>
+                  <p className="mt-1 text-xs text-gray-400">redeem points to get discounts!</p>
                 </div>
               )}
             </>
@@ -380,9 +396,9 @@ export default function ReferralDashboard() {
               </motion.button>
               
 
-              {points < 100 && !activeDiscount && (
+              {points < 50 && !activeDiscount && (
                 <div className="text-center py-4 text-gray-500">
-                  <p>Minimum 100 points needed to redeem</p>
+                  <p>Minimum 50 points needed to redeem</p>
                   <p className="text-sm mt-1">Refer friends to earn points!</p>
                 </div>
               )}
@@ -471,7 +487,7 @@ export default function ReferralDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-600">
-                      {ref.first_order_completed ? "100 pts" : "0 pts"}
+                      {ref.first_order_completed ? "50 pts" : "0 pts"}
                     </td>
                   </motion.tr>
                 ))}

@@ -126,7 +126,7 @@ const FailedOrders = () => {
                             </div>
                             <div>
                                 <p className="text-gray-600">Amount:</p>
-                                <p className="font-medium">GHS {failedOrders[0].total_amount.toFixed(2)}</p>
+                                <p className="font-medium">GHS {failedOrders[0].total_amount}</p>
                             </div>
                             <div>
                                 <p className="text-gray-600">Items:</p>

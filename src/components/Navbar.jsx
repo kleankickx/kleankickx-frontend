@@ -7,13 +7,15 @@ import {
   faBars,
   faTimes,
   faChevronDown,
-  faTimesCircle,
+  faUserFriends,  
+  faKey, // Key icon for 'Change Password'
+  faRightFromBracket, // Logout icon
 } from '@fortawesome/free-solid-svg-icons';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import Logo from '../assets/klean_logo.png';
-import { secondsToMilliseconds } from 'framer-motion';
+
 
 const Navbar = () => {
   const { cart } = useContext(CartContext);
@@ -80,8 +82,8 @@ const Navbar = () => {
   const handleReferralRoute = (e) => {
     e.stopPropagation();
       closeMobileMenu();
-      setIsDropdownOpen(false);
       navigate('/referral-dashboard');
+      setIsDropdownOpen(false);
    
   };
 
@@ -211,26 +213,30 @@ const Navbar = () => {
                           navigate('/change-password');
                           setIsDropdownOpen(false);
                         }}
-                        className="w-full text-left rounded px-4 py-2 cursor-pointer hover:bg-gray-100"
+                        className="flex items-center w-full text-left rounded px-4 py-2 cursor-pointer hover:bg-gray-100"
                       >
+                        <FontAwesomeIcon icon={faKey} className="mr-2 h-4 w-4" /> {/* Change Password Icon */}
                         Change Password
                       </button>
                     </li>
+
+                    <li className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded">
+                      <Link to="/referral-dashboard" className="flex items-center">
+                        <FontAwesomeIcon icon={faUserFriends} className="mr-2 h-4 w-4" /> {/* Referrals Icon */}
+                        Referrals
+                      </Link>
+                    </li>
+
+                    {/* divider */}
+                    <li className="border-t border-gray-200 my-2" />
                     <li>
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
+                        className="flex items-center w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
                       >
+                        <FontAwesomeIcon icon={faRightFromBracket} className="mr-2 h-4 w-4" /> {/* Logout Icon */}
                         Logout
                       </button>
-                    </li>
-                    <li className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded">
-                      <Link to="/referral-dashboard"
-                        
-                        className=""
-                      >
-                        Referrals
-                      </Link>
                     </li>
                   </ul>
                 )}
@@ -239,6 +245,7 @@ const Navbar = () => {
               <>
                 <li>
                   <NavLink to="/register" className="hover:text-gray-300">
+
                     Register
                   </NavLink>
                 </li>
@@ -293,7 +300,7 @@ const Navbar = () => {
               <FontAwesomeIcon icon={faTimes} />
             </button>
 
-            <ul className="flex flex-col gap-4 text-lg">
+            <ul className="flex flex-col gap-4">
               {navItems.map((item) => (
                 <li key={item.to}>
                   <NavLink
@@ -351,15 +358,8 @@ const Navbar = () => {
                           }}
                           className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
                         >
+                          <FontAwesomeIcon icon={faKey} className="mr-2" />
                           Change Password
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
-                        >
-                          Logout
                         </button>
                       </li>
                       <li>
@@ -367,9 +367,22 @@ const Navbar = () => {
                           onClick={handleReferralRoute}
                           className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
                         >
+                        <FontAwesomeIcon icon={faUserFriends} className="mr-2" />
                         Referrals
                       </button>
                       </li>
+
+                      <li className="border-t border-gray-600 my-2" />
+                      <li>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
+                        >
+                          <FontAwesomeIcon icon={faRightFromBracket} className="mr-2" />
+                          Logout
+                        </button>
+                      </li>
+                      
                     </ul>
                   )}
                 </div>

@@ -843,7 +843,7 @@ const Checkout = () => {
                           {canUseSignup && (
                             <div className="bg-green-50 rounded-lg p-3 -mx-1">
                               <div className="flex justify-between items-center">
-                                <span className="text-green-700 font-medium flex items-center">
+                                <span className="text-green-700 font-medium flex items-center capitalize">
                                   <FaGift className="mr-2" />
                                   {signupDiscount.discount_type}
                                 </span>
@@ -858,7 +858,7 @@ const Checkout = () => {
                           {canUseReferral && (
                             <div className="bg-blue-50 rounded-lg p-3 -mx-1">
                               <div className="flex justify-between items-center">
-                                <span className="text-blue-700 font-medium flex items-center">
+                                <span className="text-blue-700 font-medium flex items-center capitalize">
                                   <FaUserFriends className="mr-2" />
                                   {referralDiscount.discount_type}
                                 </span>
