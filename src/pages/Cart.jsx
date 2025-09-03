@@ -15,7 +15,7 @@ const Cart = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false);
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);

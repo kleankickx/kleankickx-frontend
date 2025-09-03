@@ -71,7 +71,7 @@ const Checkout = () => {
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState(null);
 
   // Base URL for backend API
-  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   
   useEffect(() => {
     const init = async () => {

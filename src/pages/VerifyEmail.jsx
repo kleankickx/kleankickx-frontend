@@ -13,7 +13,7 @@ const VerifyEmail = () => {
   const { login } = useContext(AuthContext);
 
   const hasVerified = useRef(false);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
   const [status, setStatus] = useState('verifying'); // verifying | success | error
   const [error, setError] = useState('');

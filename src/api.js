@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Base URL for backend API
-const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
 // Factory function that creates an API client using provided auth methods/state
 export const createApiClient = (auth) => {

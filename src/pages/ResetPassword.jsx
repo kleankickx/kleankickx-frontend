@@ -23,7 +23,7 @@ const ResetPassword = () => {
   const { api } = useContext(AuthContext)
 
   const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+    import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
