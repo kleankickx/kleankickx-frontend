@@ -112,7 +112,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen flex-col space-y-2">
+      <div className="flex items-center justify-center min-h-[50vh] flex-col space-y-2">
         <FaSpinner className="animate-spin h-8 w-8 text-primary" />
         <p className="text-gray-600 mt-4">Loading your cart...</p>
       </div>

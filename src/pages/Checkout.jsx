@@ -931,7 +931,7 @@ const Checkout = () => {
                     <button
                       onClick={handleSubmit}
                       disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
-                      className={`w-full py-3.5 px-6 rounded-lg font-medium text-white transition-all ${
+                      className={`w-full py-3.5 px-6 rounded-lg font-medium text-white transition-all cursor-pointer ${
                         placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg'
@@ -1092,7 +1092,7 @@ const Checkout = () => {
     <button
       onClick={handlePayment}
       disabled={placing}
-      className={`w-full py-3.5 px-6 rounded-xl font-semibold text-white transition-all duration-300 flex items-center justify-center relative overflow-hidden group ${
+      className={`w-full py-3.5 px-6 rounded-xl font-semibold text-white transition-all duration-300 flex items-center justify-center relative overflow-hidden group cursor-pointer ${
         placing 
           ? 'bg-gray-300 cursor-not-allowed shadow-inner' 
           : 'bg-gradient-to-r from-emerald-600 to-primary hover:from-emerald-700 hover:to-primary-dark shadow-md hover:shadow-lg'
