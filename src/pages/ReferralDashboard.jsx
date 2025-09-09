@@ -167,7 +167,8 @@ export default function ReferralDashboard() {
 
   const fetchActiveDiscount = async () => {
     try {
-      const res = await api.get("/api/referrals/redeem/", { withCredentials: true });
+      const res = await api.get("/api/referrals/active-discount/", { withCredentials: true });
+      
       if (res.data && !res.data.error) {
         setActiveDiscount(res.data);
       } else {
