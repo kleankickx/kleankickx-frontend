@@ -380,7 +380,7 @@ export default function ReferralDashboard() {
              
               <motion.button
                 onClick={redeemPoints}
-                disabled={loading.redeeming || points < 100}
+                disabled={loading.redeeming || points < 50}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
