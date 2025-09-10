@@ -68,7 +68,7 @@ const Checkout = () => {
   const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
-  const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState(null);
+  const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
@@ -114,8 +114,8 @@ const Checkout = () => {
   // Fetch redeemed points discount
   const fetchRedeemedPointsDiscount = async () => {
     try {
-      const response = await api.get('/api/referrals/redeem/');
-      if (response.data && !response.data.error) {
+      const response = await api.get('/api/referrals/active-discount/');
+      if (response.data) {
         setRedeemedPointsDiscount(response.data);
       } else {
         setRedeemedPointsDiscount(null);

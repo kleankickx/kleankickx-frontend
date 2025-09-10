@@ -115,7 +115,7 @@ export default function ReferralDashboard() {
   const [link, setLink] = useState("");
   const [referrals, setReferrals] = useState([]);
   const [points, setPoints] = useState(0);
-  const [activeDiscount, setActiveDiscount] = useState(null);
+  const [activeDiscount, setActiveDiscount] = useState({});
   const [redeemedHistory, setRedeemedHistory] = useState([]);
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -169,11 +169,13 @@ export default function ReferralDashboard() {
     try {
       const res = await api.get("/api/referrals/active-discount/", { withCredentials: true });
       
-      if (res.data && !res.data.error) {
+      if (res.data) {
+        console.log("Active discount data:", res.data);
         setActiveDiscount(res.data);
       } else {
         setActiveDiscount(null);
       }
+      console.log(activeDiscount);
     } catch (err) {
       if (err.response && err.response.status === 404) {
         setActiveDiscount(null);
@@ -196,7 +198,7 @@ export default function ReferralDashboard() {
   };
 
   const redeemPoints = async () => {
-    if (loading.redeeming || points < 100) return;
+    if (loading.redeeming || points < 50) return;
     
     try {
       setLoading((prev) => ({ ...prev, redeeming: true }));
@@ -325,11 +327,7 @@ export default function ReferralDashboard() {
               </p>
 
               {/* Active Discount */}
-              {activeDiscount ? (
-                <div className="mt-4">
-                  <DiscountStatusBadge discount={activeDiscount} />
-                </div>
-              ) : (
+              {Object.keys(activeDiscount).length === 0 ? (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 flex flex-col items-center justify-center text-center">
                   <AnimatePresence>
                     <motion.div
@@ -344,6 +342,11 @@ export default function ReferralDashboard() {
 
                   <p className="text-sm font-medium text-gray-500">No active discount</p>
                   <p className="mt-1 text-xs text-gray-400">redeem points to get discounts!</p>
+                </div>
+                
+              ) : (
+                <div className="mt-4">
+                  <DiscountStatusBadge discount={activeDiscount} />
                 </div>
               )}
             </>
@@ -397,8 +400,8 @@ export default function ReferralDashboard() {
               </motion.button>
               
 
-              {points < 50 && !activeDiscount && (
-                <div className="text-center py-4 text-gray-500">
+              {points <= 50 &&  (
+                <div className="text-center pt-4 text-gray-500">
                   <p>Minimum 50 points needed to redeem</p>
                   <p className="text-sm mt-1">Refer friends to earn points!</p>
                 </div>
