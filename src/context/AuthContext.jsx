@@ -195,7 +195,6 @@ const AuthProvider = ({ children }) => {
     try {
       const discountData = await api.get('/api/discounts/');
       setDiscounts(discountData.data);
-      console.log(discountData.data)
     } catch (error) {
       console.error('Failed to fetch discounts:', error);
     }

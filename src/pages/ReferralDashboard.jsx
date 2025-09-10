@@ -170,12 +170,12 @@ export default function ReferralDashboard() {
       const res = await api.get("/api/referrals/active-discount/", { withCredentials: true });
       
       if (res.data) {
-        console.log("Active discount data:", res.data);
+        
         setActiveDiscount(res.data);
       } else {
         setActiveDiscount(null);
       }
-      console.log(activeDiscount);
+      
     } catch (err) {
       if (err.response && err.response.status === 404) {
         setActiveDiscount(null);
@@ -306,7 +306,7 @@ export default function ReferralDashboard() {
                 />
                 <button
                   onClick={copyToClipboard}
-                  className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm flex items-center transition-all duration-200 shadow-sm hover:shadow-md"
+                  className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm flex items-center transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
                 >
                   {copied ? (
                     <>
