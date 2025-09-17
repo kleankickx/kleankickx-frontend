@@ -160,6 +160,8 @@ const Checkout = () => {
   const total = parseFloat((subtotal + deliveryFee + pickupFee) - 
     (signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount)).toFixed(2);
 
+  const totalWithoutDiscounts = parseFloat(subtotal + deliveryFee + pickupFee).toFixed(2);
+
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
     const cleaned = number.replace(/\D/g, '');
@@ -902,7 +904,7 @@ const Checkout = () => {
                             <p className="text-lg font-semibold">Total Amount</p>
                             <div className="text-right">
                               {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
-                                <div className="text-sm text-gray-400 line-through">GHS {subtotal}</div>
+                                <div className="text-sm text-gray-400 line-through">GHS {totalWithoutDiscounts}</div>
                               )}
                               <p className="text-xl font-bold text-primary">
                                 GHS {total}
