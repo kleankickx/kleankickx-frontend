@@ -444,7 +444,7 @@ const GetOrder = () => {
                 Need Help?
               </h2>
               <div className="space-y-4">
-                <div className="flex items-center gap-3">
+                {/* <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-full">
                     <FaPhone className="text-blue-600" />
                   </div>
@@ -454,7 +454,7 @@ const GetOrder = () => {
                       +1 (234) 567-890
                     </a>
                   </div>
-                </div>
+                </div> */}
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-full">
                     <FaEnvelope className="text-green-600" />
