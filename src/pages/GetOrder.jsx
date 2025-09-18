@@ -243,7 +243,7 @@ const colorMap = {
     text: "text-blue-600",
     amountText: "text-blue-700",
   },
-  "promo_code": {
+  "referral": {
     bgFrom: "from-purple-50",
     bgTo: "to-purple-50",
     border: "border-purple-200",
@@ -268,7 +268,7 @@ const colorMap = {
 const DiscountBadge = ({ order, discount, percentage }) => {
     // Get the color scheme based on the discount type
     const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
-
+    const formattedDiscountType = discount.discount_type.replace('_', ' ');
     return (
         <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
             <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
@@ -276,7 +276,7 @@ const DiscountBadge = ({ order, discount, percentage }) => {
             </div>
             <div className="flex-1">
                 <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
-                    {discount.discount_type}
+                    {formattedDiscountType} Discount  
                 </p>
                 <p className={`text-xs ${colorScheme.text}`}>
                     {percentage}% discount applied
