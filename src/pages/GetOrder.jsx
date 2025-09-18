@@ -26,6 +26,7 @@ import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 
+
 const GetOrder = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -228,22 +229,65 @@ const GetOrder = () => {
     </div>
   );
 
-  const DiscountBadge = ({ order, discount }) => (
-    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-emerald-200">
-      <div className="p-2 bg-emerald-100 rounded-lg">
-        <FaTag className="text-emerald-600 text-lg" />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-emerald-800 capitalize">{discount.discount_type}</p>
-        <p className="text-xs text-emerald-600">
-          {discount.percentage}% discount applied
-        </p>
-      </div>
-      <div className="text-emerald-700 font-bold">
-        -GHS {parseFloat(order.subtotal * discount.percentage / 100).toFixed(2)}
-      </div>
-    </div>
-  );
+  
+
+// Define a color map for different discount types
+const colorMap = {
+  "redeemed_points": {
+    bgFrom: "from-blue-50",
+    bgTo: "to-blue-50",
+    border: "border-blue-200",
+    iconBg: "bg-blue-100",
+    iconText: "text-blue-600",
+    titleText: "text-blue-800",
+    text: "text-blue-600",
+    amountText: "text-blue-700",
+  },
+  "promo_code": {
+    bgFrom: "from-purple-50",
+    bgTo: "to-purple-50",
+    border: "border-purple-200",
+    iconBg: "bg-purple-100",
+    iconText: "text-purple-600",
+    titleText: "text-purple-800",
+    text: "text-purple-600",
+    amountText: "text-purple-700",
+  },
+  "default": { // Use a default color for other types
+    bgFrom: "from-green-50",
+    bgTo: "to-emerald-50",
+    border: "border-emerald-200",
+    iconBg: "bg-emerald-100",
+    iconText: "text-emerald-600",
+    titleText: "text-emerald-800",
+    text: "text-emerald-600",
+    amountText: "text-emerald-700",
+  },
+};
+
+const DiscountBadge = ({ order, discount, percentage }) => {
+    // Get the color scheme based on the discount type
+    const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
+
+    return (
+        <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
+            <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
+                <FaTag className={`${colorScheme.iconText} text-lg`} />
+            </div>
+            <div className="flex-1">
+                <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
+                    {discount.discount_type}
+                </p>
+                <p className={`text-xs ${colorScheme.text}`}>
+                    {percentage}% discount applied
+                </p>
+            </div>
+            <div className={`${colorScheme.amountText} font-bold`}>
+                -GHS {parseFloat(order.subtotal * percentage / 100).toFixed(2)}
+            </div>
+        </div>
+    );
+};
 
   return (
     <div className="px-4 lg:px-24 py-8">
@@ -344,9 +388,16 @@ const GetOrder = () => {
                 transition={{ duration: 0.3 }}
                 className="space-y-3"
               >
-                {order.discounts_applied.map((discount, index) => (
-                  <DiscountBadge key={index} discount={discount} order={order} />
-                ))}
+                {order.discounts_applied?.map((discount, index) => {
+                  // Determine the percentage based on the discount type
+                  const percentage = discount.discount_type === "redeemed_points"
+                      ? order.redeemed_discount_percentage 
+                      : discount.percentage;
+
+                  return (
+                      <DiscountBadge key={index} order={order} discount={discount} percentage={percentage} />
+                  );
+                })}
               </motion.div>
             )}
 
@@ -400,12 +451,28 @@ const GetOrder = () => {
                   <span className="font-medium">GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
                 </div>
                 
-                {order.discounts_applied?.map((discount, index) => (
-                  <div key={index} className="flex justify-between text-emerald-600">
-                    <span className='capitalize'>{discount.discount_type} Disc... ({discount.percentage}%)</span>
-                    <span className="font-medium">-GHS {parseFloat(order.subtotal * discount.percentage / 100).toFixed(2)}</span>
-                  </div>
-                ))}
+                {order.discounts_applied?.map((discount, index) => {
+                    // Check if the current discount is the "redeemed_points" type
+                    const isRedeemedPoints = discount.discount_type === "redeemed_points";
+                    
+                    // Determine the percentage to display
+                    // Use the specific percentage from the order object if it's the redeemed points discount
+                    const percentageToDisplay = isRedeemedPoints 
+                        ? (order.redeemed_discount_percentage || 0) 
+                        : (discount.percentage || 0);
+
+                    // Calculate the discounted amount
+                    const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
+
+                    return (
+                        <div key={index} className="flex justify-between text-emerald-600">
+                            <span className='capitalize'>
+                                {discount.discount_type} Discount ({percentageToDisplay}%)
+                            </span>
+                            <span className="font-medium">-GHS {discountAmount}</span>
+                        </div>
+                    );
+                })}
 
                 <div className="flex justify-between">
                   <span className="text-gray-600">Delivery Fee</span>
