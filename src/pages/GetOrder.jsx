@@ -465,7 +465,7 @@ const DiscountBadge = ({ order, discount, percentage }) => {
                       const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
 
                       // Format the discount type for a clean display
-                      const formattedDiscountType = discount.discount_type.replace(/_/g, ' ');
+                      const formattedDiscountType = discount.discount_type.replace('_', ' ');
 
                       return (
                           <div key={index} className="flex justify-between text-emerald-600">
