@@ -29,7 +29,7 @@ import ScrollToTop from './components/ScrollToTop';
 
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbarOn = ['/login', '/register'];
+  const hideNavbarOn = ['/login', '/register', '/temp-verify-email'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
 
 
