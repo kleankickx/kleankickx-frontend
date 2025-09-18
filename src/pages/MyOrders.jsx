@@ -447,26 +447,29 @@ const MyOrders = () => {
                             </div>
 
                             {order.discounts_applied?.map((discount, index) => {
-                              // Check if the current discount is the "redeemed_points" type
-                              const isRedeemedPoints = discount.discount_type === "redeemed_points";
-                              
-                              // Determine the percentage to display
-                              // Use the specific percentage from the order object if it's the redeemed points discount
-                              const percentageToDisplay = isRedeemedPoints 
-                                  ? (order.redeemed_discount_percentage || 0) 
-                                  : (discount.percentage || 0);
+                                  // Check if the current discount is the "redeemed_points" type
+                                  const isRedeemedPoints = discount.discount_type === "redeemed_points";
 
-                              // Calculate the discounted amount
-                              const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
+                                  // Determine the percentage to display
+                                  // Use the specific percentage from the order object if it's the redeemed points discount
+                                  const percentageToDisplay = isRedeemedPoints
+                                      ? (order.redeemed_discount_percentage || 0)
+                                      : (discount.percentage || 0);
 
-                              return (
-                                  <div key={index} className="flex justify-between text-emerald-600">
-                                      <span className='capitalize'>
-                                          {discount.discount_type} Discount ({percentageToDisplay}%)
-                                      </span>
-                                      <span className="font-medium">-GHS {discountAmount}</span>
-                                  </div>
-                              );
+                                  // Calculate the discounted amount
+                                  const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
+
+                                  // Format the discount type for a clean display
+                                  const formattedDiscountType = discount.discount_type.replace(/_/g, ' ');
+
+                                  return (
+                                      <div key={index} className="flex justify-between text-emerald-600">
+                                          <span className='capitalize'>
+                                              {formattedDiscountType} Discount ({percentageToDisplay}%)
+                                          </span>
+                                          <span className="font-medium">-GHS {discountAmount}</span>
+                                      </div>
+                                  );
                             })}
 
 
