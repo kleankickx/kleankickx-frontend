@@ -522,7 +522,7 @@ export default function ReferralDashboard() {
             <p>No redemption history yet</p>
           </div>
         ) : (
-          <div className="overflow-hidden border border-gray-200 rounded-lg">
+          <div className="overflow-x-auto border border-gray-200 rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
