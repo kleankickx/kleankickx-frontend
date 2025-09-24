@@ -6,6 +6,7 @@ import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import { toast } from "react-toastify";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
+import PaymentCard from "../components/PaymentCard";
 import {
   FiTruck,
   FiInfo,
@@ -20,11 +21,11 @@ import {
   FaGift,
   FaUserFriends,
   FaInfoCircle,
-  FaStar
+  FaStar,
+  FaTags,
 } from "react-icons/fa";
 
 import PlaceAutocompleteElementWrapper from "../components/PlaceAutoCompleteElementWrapper"
-
 import MapHandler from "../components/MapHandler";
 import REGION_CONFIG from '../utils/regionConfig'
 
@@ -32,13 +33,13 @@ const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   
   // --- Constants ---
   const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
   const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
-  const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
+  // const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
 
   // State for locations and inputs
   const getLocationFromStorage = (key) => {
@@ -69,19 +70,21 @@ const Checkout = () => {
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
+  const [availablePromotions, setAvailablePromotions] = useState([]);
+  const [appliedPromotion, setAppliedPromotion] = useState(null);
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   
   useEffect(() => {
     const init = async () => {
+      setLoading(true);
       try {
         // Fetch discount status after user loads
         fetchUserDiscountStatus();
         fetchUserReferralDiscountStatus();
         fetchRedeemedPointsDiscount();
-
-        setLoading(false);
+        fetchAvailablePromotions();
       } catch (error) {
         console.error("Error during checkout init:", error);
       } finally {
@@ -129,6 +132,30 @@ const Checkout = () => {
     }
   }
 
+  // Fetch available promotions for today and auto-apply the first valid one
+  const fetchAvailablePromotions = async () => {
+    try {
+      const response = await api.get('/api/promotions/today');
+      const promotions = response.data;
+      setAvailablePromotions(promotions);
+      
+      // Auto-apply the first valid promotion
+      if (promotions.length > 0) {
+        const validPromotion = promotions.find(promo => 
+          new Date(promo.end_date) > new Date() && 
+          promo.is_active === true
+        );
+        
+        if (validPromotion) {
+          setAppliedPromotion(validPromotion);
+          toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+        }
+      }
+    } catch (error) {
+      console.log("Error fetching promotions:", error);
+    }
+  }
+
   // Calculate order totals
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
   const deliveryFee = delivery?.cost || 0;
@@ -137,6 +164,11 @@ const Checkout = () => {
   // Get discounts from context
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
   const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
+
+  // Calculate promo discount
+  const promoDiscountAmount = appliedPromotion 
+    ? ((parseFloat(subtotal) * parseFloat(appliedPromotion.discount_percentage)) / 100)
+    : 0;
 
   // Eligibility
   const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount;
@@ -158,7 +190,7 @@ const Checkout = () => {
 
   // Final total
   const total = parseFloat((subtotal + deliveryFee + pickupFee) - 
-    (signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount)).toFixed(2);
+    (signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount + promoDiscountAmount)).toFixed(2);
 
   const totalWithoutDiscounts = parseFloat(subtotal + deliveryFee + pickupFee).toFixed(2);
 
@@ -443,6 +475,17 @@ const Checkout = () => {
         });
       }
 
+      // Add auto-applied promotion discount
+      if (appliedPromotion && promoDiscountAmount > 0) {
+        appliedDiscounts.push({
+          type: "promotion",
+          percentage: appliedPromotion.discount_percentage,
+          amount: promoDiscountAmount,
+          promotion_id: appliedPromotion.id,
+          promotion_code: appliedPromotion.code
+        });
+      }
+
       const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       setTransactionReference(transactionRef);
 
@@ -511,6 +554,7 @@ const Checkout = () => {
                 setDeliveryRegion('');
                 setPickupRegion('');
                 setUseSame(true);
+                setAppliedPromotion(null);
 
                 window.removeEventListener('beforeunload', beforeUnloadHandler);
                 navigate(`/orders/${response.data.order_slug}`);
@@ -793,32 +837,60 @@ const Checkout = () => {
 
                   {/* Right Column - Order Summary */}
                   <div className="lg:w-1/2 space-y-6">
-                    {/* Map Section */}
-                    {/* <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                      <div className="h-64 md:h-80 w-full relative">
-                        <Map
-                          mapId={"checkout-map"}
-                          defaultZoom={delivery || pickup ? 16 : 12}
-                          defaultCenter={currentLocation}
-                          gestureHandling={'greedy'}
-                          disableDefaultUI={false}
-                          style={{ height: '100%', width: '100%' }}
-                        >
-                          <MapHandler
-                            delivery={delivery}
-                            pickup={pickup}
-                            useSame={useSame}
-                            currentLocation={currentLocation}
-                            activeInput={activeInput}
-                          />
-                        </Map>
+                    {/* Promotions card section - Simplified */}
+                    {availablePromotions.length > 0 && (
+                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl shadow-md border border-purple-100 overflow-hidden">
+                        <div className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <FaTags className="text-purple-500 text-xl mr-3" />
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Today's Special Offer</h3>
+                                <p className="text-sm text-gray-600">
+                                  {appliedPromotion ? (
+                                    <span className="text-green-600 font-medium">
+                                      ✅ {appliedPromotion.discount_percentage}% discount applied automatically!
+                                    </span>
+                                  ) : (
+                                    "Checking for available promotions..."
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            {appliedPromotion && (
+                              <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                                -{appliedPromotion.discount_percentage}% OFF
+                              </div>
+                            )}
+                          </div>
+                          
+
+                          {appliedPromotion && appliedPromotion.description && (
+                            <p className="text-sm text-gray-700 mt-2 bg-white/50 p-2 rounded-lg">
+                              {appliedPromotion.description}
+                            </p>
+                          )}
+                          
+                          {appliedPromotion && (
+                            <div className="mt-3 text-xs text-gray-500 flex items-center">
+                              <FaInfoCircle className="mr-1" />
+                              Valid until: {new Date(appliedPromotion.end_date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div> */}
+                    )}
 
                     {/* Order Summary Card */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                    <div id="order-summary" className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                         <h2 className="text-xl font-semibold">Order Summary</h2>
+                        {appliedPromotion && (
+                          <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                            <FaTags className="mr-1" />
+                            Promo Applied
+                          </div>
+                        )}
                       </div>
                       <div className="p-6">
                         <div className="divide-y divide-gray-200">
@@ -887,6 +959,22 @@ const Checkout = () => {
                             </div>
                           )}
 
+                          {/* Auto-applied Promotion Discount */}
+                          {appliedPromotion && (
+                            <div className="bg-purple-50 rounded-lg p-3 -mx-1">
+                              <div className="flex justify-between items-center">
+                                <span className="text-purple-700 font-medium flex items-center">
+                                  <FaTags className="mr-2" />
+                                  Special Promotion
+                                </span>
+                                <span className="text-purple-700 font-medium">-GHS {promoDiscountAmount.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-purple-600 mt-1 ml-6">
+                                {appliedPromotion.discount_percentage}% off your order
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex justify-between pt-2">
                             <p className="text-gray-600">Delivery Fee</p>
                             <p className="font-medium">
@@ -903,7 +991,7 @@ const Checkout = () => {
                           <div className="flex justify-between pt-4 mt-3 border-t border-gray-200">
                             <p className="text-lg font-semibold">Total Amount</p>
                             <div className="text-right">
-                              {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
+                              {(canUseSignup || canUseReferral || canUseRedeemedPoints || appliedPromotion) && (
                                 <div className="text-sm text-gray-400 line-through">GHS {totalWithoutDiscounts}</div>
                               )}
                               <p className="text-xl font-bold text-primary">
@@ -924,6 +1012,13 @@ const Checkout = () => {
                           <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm text-amber-700 flex items-start">
                             <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
                             <span>Your {redeemedPointsDiscount.percentage}% redeemed points discount has been applied!</span>
+                          </div>
+                        )}
+
+                        {appliedPromotion && (
+                          <div className="mt-4 p-3 bg-purple-50 rounded-lg text-sm text-purple-700 flex items-start">
+                            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
+                            <span>Special promotion applied! You save {appliedPromotion.discount_percentage}% on your order.</span>
                           </div>
                         )}
                       </div>
@@ -960,196 +1055,31 @@ const Checkout = () => {
               </div>
             </>
           ) : (
-            <div className="bg-white lg:p-8 p-6 rounded-2xl shadow-lg border border-gray-100 max-w-md px-4 mx-auto">
-  {/* Payment Header */}
-  <div className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-600 to-primary p-6 text-white">
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5"></div>
-    <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10"></div>
-    <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/10"></div>
-    
-    <div className="relative z-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Complete Payment</h2>
-          <p className="text-white/90 mt-1">Secure transaction powered by</p>
-        </div>
-        <div className="flex space-x-2">
-          <div className="h-10 w-16 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm">
-            <span className="text-xs font-bold tracking-wider">PAYSTACK</span>
-          </div>
-        </div>
-      </div>
-      <div className="mt-4 flex items-center text-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-        </svg>
-        End-to-end encrypted transaction
-      </div>
-    </div>
-  </div>
+            // Payment view remains the same as before
+            <div className="">
+              {/* ... Payment view content remains unchanged ... */}
+              <PaymentCard
+                subtotal={subtotal}
+                signupDiscount={signupDiscount}
+                signupDiscountAmount={signupDiscountAmount}
+                referralDiscount={referralDiscount}
+                referralDiscountAmount={referralDiscountAmount}
+                redeemedPointsDiscount={redeemedPointsDiscount}
+                redeemedPointsDiscountAmount={redeemedPointsDiscountAmount}
+                delivery={delivery}
+                pickup={pickup}
+                useSame={useSame}
+                total={total}
+                handlePayment={handlePayment}
+                placing={placing}
+                setPaymentView={setPaymentView}
+                setShowAlert={setShowAlert}
+                canUseSignup={canUseSignup}
+                canUseReferral={canUseReferral}
+                canUseRedeemedPoints={canUseRedeemedPoints}
+              />
 
-  {/* Order Summary */}
-  <div className="mb-8 bg-white/80 p-6 rounded-xl border border-gray-100 shadow-sm backdrop-blur-sm">
-    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-        <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-      </svg>
-      Order Summary
-    </h3>
-
-    <div className="space-y-3">
-      {/* Subtotal */}
-      <div className="flex justify-between py-2.5">
-        <span className="text-gray-600 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
-          </svg>
-          Subtotal
-        </span>
-        <span className="font-medium">GHS {subtotal.toFixed(2)}</span>
-      </div>
-
-      {/* Discounts */}
-      {canUseSignup && (
-        <div className="flex justify-between py-2.5 text-emerald-600">
-          <span className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Sign-Up Discount ({signupDiscount.percentage}%)
-          </span>
-          <span className="font-medium">-GHS {signupDiscountAmount.toFixed(2)}</span>
-        </div>
-      )}
-
-                {canUseReferral && (
-                    <div className="flex justify-between py-3 border-b border-gray-100/50 text-blue-600">
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM12 15v2m-2 2h4" />
-                      </svg>
-                      Referral Discount ({referralDiscount.percentage}%)
-                    </div>
-                    <span className="font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {canUseRedeemedPoints && (
-                  <div className="flex justify-between py-3 border-b border-gray-100/50 text-amber-600">
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                      </svg>
-                      Points Discount ({redeemedPointsDiscount.percentage}%)
-                    </div>
-                    <span className="font-medium">-GHS {redeemedPointsDiscountAmount.toFixed(2)}</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between py-3 border-b border-gray-100/50">
-                  <div className="flex items-center text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                      <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1V5a1 1 0 00-1-1H3z" />
-                    </svg>
-                    Delivery Fee
-                  </div>
-                  <span className="font-medium">GHS {delivery ? delivery.cost.toFixed(2) : '0.00'}</span>
-                </div>
-                
-                <div className="flex justify-between py-3">
-                  <div className="flex items-center text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                    Pickup Fee
-                  </div>
-                  <span className="font-medium">
-                    {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '0.00') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '0.00')}
-                  </span>
-                </div>
-
-      {/* Total */}
-      <div className="border-t border-gray-200 mt-4 pt-4">
-        <div className="flex justify-between items-center">
-          <span className="text-lg font-semibold text-gray-800 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-            </svg>
-            Total Amount
-          </span>
-          <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-primary">
-            GHS {total}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* Payment Actions */}
-  <div className="space-y-4">
-    {/* Pay Now Button */}
-    <button
-      onClick={handlePayment}
-      disabled={placing}
-      className={`w-full py-3.5 px-6 rounded-xl font-semibold text-white transition-all duration-300 flex items-center justify-center relative overflow-hidden group cursor-pointer ${
-        placing 
-          ? 'bg-gray-300 cursor-not-allowed shadow-inner' 
-          : 'bg-gradient-to-r from-emerald-600 to-primary hover:from-emerald-700 hover:to-primary-dark shadow-md hover:shadow-lg'
-      }`}
-    >
-      {placing ? (
-        <>
-          <FaSpinner className="animate-spin mr-3 h-5 w-5 text-white" />
-          Processing Payment...
-        </>
-      ) : (
-        <>
-          <span className="relative z-10 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2.5 text-white/90" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-            </svg>
-            Pay Now
-          </span>
-          <span className="absolute inset-0 bg-white/10 group-hover:bg-white/15 transition-all duration-500 transform group-hover:scale-110"></span>
-        </>
-      )}
-    </button>
-
-    {/* Back Button */}
-    <button
-      onClick={() => {
-        setPaymentView(false)
-        setShowAlert(true)
-      }}
-      className="w-full py-3 px-6 rounded-xl font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 transition-all duration-300 flex items-center justify-center hover:shadow-sm group"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500 group-hover:text-gray-700 transition-colors" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-      </svg>
-      Back to Checkout
-    </button>
-  </div>
-
-  {/* Security Footer */}
-  <div className="mt-8 pt-6 border-t border-gray-100">
-    <div className="flex flex-col items-center text-center">
-      <div className="flex items-center text-emerald-600 mb-2">
-        <div className="relative">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <span className="ml-2 text-sm font-medium">Secure Payment Processing</span>
-      </div>
-      <p className="text-xs text-gray-500 max-w-xs">
-        Your payment information is encrypted and securely processed by Paystack
-      </p>
-    </div>
-  </div>
-</div>
+            </div>
           )}
         </div>
       </div>
@@ -1164,3 +1094,6 @@ const Checkout = () => {
 };
 
 export default Checkout;
+
+
+

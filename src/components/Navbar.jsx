@@ -92,6 +92,7 @@ const Navbar = () => {
     { to: '/', label: 'Home' },
     { to: '/rate-and-services', label: 'Rate & Services' },
     { to: '/about-us', label: 'About Us' },
+    { to: '/promotions', label: 'Promotions' },
     ...(isAuthenticated ? [{ to: '/orders', label: 'My Orders' }] : []),
   ];
 

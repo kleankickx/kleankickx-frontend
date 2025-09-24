@@ -17,6 +17,7 @@ import About from './pages/About';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Promotions from './pages/Promotions';
 import ReferralDashboard from './pages/ReferralDashboard';
 import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -94,6 +95,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <FailedOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="promotions"
+            element={
+              <ProtectedRoute>
+                <Promotions />
               </ProtectedRoute>
             }
           />
