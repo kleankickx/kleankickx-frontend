@@ -69,6 +69,9 @@ const Checkout = () => {
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
   const [availablePromotions, setAvailablePromotions] = useState([]);
   const [appliedPromotion, setAppliedPromotion] = useState(null);
+  const [activeInput, setActiveInput] = useState(null);
+  const [transactionReference, setTransactionReference] = useState(null);
+  
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
