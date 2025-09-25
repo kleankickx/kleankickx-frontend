@@ -71,7 +71,7 @@ const Checkout = () => {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [activeInput, setActiveInput] = useState(null);
   const [transactionReference, setTransactionReference] = useState(null);
-  
+
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
@@ -459,7 +459,7 @@ const Checkout = () => {
       }
 
       const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      setTransactionReference(transactionRef);
+      setTransactionReference(transactionRef); // would remove this
 
       const handler = window.PaystackPop && new window.PaystackPop();
       if (!handler) {
