@@ -78,7 +78,7 @@ const Promotion = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className={`grid gap-6 ${promotions.length === 1 ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}
+                        className={`grid gap-6 ${promotions.length === 1 ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}
                     >
                         {promotions.length > 0 ? (
                             promotions.map((promo, index) => {
