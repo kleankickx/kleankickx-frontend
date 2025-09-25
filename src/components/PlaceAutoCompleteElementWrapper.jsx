@@ -165,6 +165,7 @@ const PlaceAutocompleteElementWrapper = ({ onPlaceSelect, placeholder, type, reg
         autocompleteElementRef.current.style.width = '100%';
         autocompleteElementRef.current.style.height = '45px';
         // autocompleteElementRef.current.style.backgroundColor = "#F2F0EF"
+        autocompleteElementRef.current.style.border = "1px solid #D1D5DB"
         inputContainerRef.current.appendChild(autocomplete);
         autocomplete.addEventListener('gmp-select', handlePlaceSelect);
 
@@ -210,4 +211,7 @@ const PlaceAutocompleteElementWrapper = ({ onPlaceSelect, placeholder, type, reg
     );
 };
 
-export default PlaceAutocompleteElementWrapper
+export default PlaceAutocompleteElementWrapper;
+
+
+

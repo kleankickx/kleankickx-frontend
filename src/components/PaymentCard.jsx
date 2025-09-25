@@ -20,6 +20,8 @@ const PaymentCard = ({
   canUseSignup,
   canUseReferral,
   canUseRedeemedPoints,
+  appliedPromotion,
+  promoDiscountAmount,
 }) => {
   return (
     <div className="bg-white lg:p-8 p-6 rounded-2xl shadow-lg border border-gray-100 max-w-md px-4 mx-auto">
@@ -123,6 +125,17 @@ const PaymentCard = ({
               </div>
               <span className="font-medium">
                 -GHS {redeemedPointsDiscountAmount.toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          {appliedPromotion && (
+            <div className="flex justify-between py-3 border-b border-gray-100/50 text-amber-600">
+              <div className="flex items-center">
+                Promational Discount ({appliedPromotion.discount_percentage}%)
+              </div>
+              <span className="font-medium">
+                -GHS {promoDiscountAmount.toFixed(2)}
               </span>
             </div>
           )}

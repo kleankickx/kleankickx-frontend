@@ -5,7 +5,8 @@ import {
   FaCopy, 
   FaClock, 
   FaCheck, 
-  FaArrowRight 
+  FaArrowRight ,
+    FaSpinner,
 } from 'react-icons/fa';
 
 const Promotion = () => {
@@ -48,8 +49,9 @@ const Promotion = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-gray-600 text-lg font-medium">Loading promotions...</p>
+            <div className="flex items-center flex-col justify-center h-screen">
+                <FaSpinner className="animate-spin text-4xl text-primary" />
+                <p className="text-gray-700">Loading promotions...</p>
             </div>
         );
     }

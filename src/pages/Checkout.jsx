@@ -33,7 +33,7 @@ const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // --- Constants ---
   const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -55,16 +55,13 @@ const Checkout = () => {
   const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
   const [useSame, setUseSame] = useState(true);
   const [placing, setPlacing] = useState(false);
-  const [activeInput, setActiveInput] = useState(null);
   const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
   const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
-  const [currentLocation, setCurrentLocation] = useState(DEFAULT_CENTER);
   const [locationLoading, setLocationLoading] = useState(true);
   const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
   const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
   const [showAlert, setShowAlert] = useState(true);
   const [paymentView, setPaymentView] = useState(false);
-  const [transactionReference, setTransactionReference] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
@@ -78,13 +75,12 @@ const Checkout = () => {
   
   useEffect(() => {
     const init = async () => {
-      setLoading(true);
       try {
         // Fetch discount status after user loads
-        fetchUserDiscountStatus();
-        fetchUserReferralDiscountStatus();
-        fetchRedeemedPointsDiscount();
-        fetchAvailablePromotions();
+        await fetchUserDiscountStatus();
+        await fetchUserReferralDiscountStatus();
+        await fetchRedeemedPointsDiscount();
+        await fetchAvailablePromotions();
       } catch (error) {
         console.error("Error during checkout init:", error);
       } finally {
@@ -240,34 +236,6 @@ const Checkout = () => {
     }
   }, []);
 
-  // Detect user location
-  useEffect(() => {
-    const detectUserLocation = () => {
-      if (!navigator.geolocation) {
-        setLocationLoading(false);
-        toast.info("Geolocation not supported, using default location (Accra).");
-        return;
-      }
-      setLocationLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          setLocationLoading(false);
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          setLocationLoading(false);
-          toast.info("Failed to detect location, using default (Accra).");
-        },
-        { timeout: 5000 }
-      );
-    };
-    detectUserLocation();
-  }, []);
-
   // Handle place selection from map
   const handlePlaceSelect = useCallback((location, type) => {
     if (type === 'delivery') {
@@ -317,71 +285,72 @@ const Checkout = () => {
     };
   }, [handlePlaceSelect]);
 
+
   // Handle use current location
-  const handleUseCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocation not supported by your browser");
-      return;
-    }
-    setLocationLoading(true);
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-      });
-      const userLocation = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
-      const geocoder = new window.google.maps.Geocoder();
-      const { results } = await new Promise((resolve, reject) => {
-        geocoder.geocode({ location: userLocation }, (results, status) => {
-          if (status === 'OK' && results && results.length > 0) {
-            resolve({ results });
-          } else {
-            reject(new Error(status));
-          }
-        });
-      });
-      const place = results[0];
-      let detectedRegion = deliveryRegion;
-      const administrativeAreaLevel1 = place.address_components.find(comp =>
-        comp.types.includes('administrative_area_level_1')
-      )?.long_name;
-      if (administrativeAreaLevel1) {
-        const matchedRegion = AVAILABLE_REGIONS.find(r => administrativeAreaLevel1.includes(r));
-        if (matchedRegion) {
-          detectedRegion = matchedRegion;
-          setDeliveryRegion(detectedRegion);
-        }
-      }
-      const regionData = REGION_CONFIG[detectedRegion];
-      let locality = place.address_components.find(comp =>
-        comp.types.includes('locality') || comp.types.includes('sublocality')
-      )?.long_name.toLowerCase() || '';
-      let area = regionData.availableAreas[regionData.defaultArea];
-      for (const [areaKey, areaInfo] of Object.entries(regionData.availableAreas)) {
-        if (locality.includes(areaKey)) {
-          area = areaInfo;
-          break;
-        }
-      }
-      const locationInfo = {
-        address: place.formatted_address,
-        name: 'Your Current Location',
-        region: detectedRegion,
-        areaName: area.name,
-        cost: area.fee,
-        lat: userLocation.lat,
-        lng: userLocation.lng
-      };
-      handlePlaceSelect(locationInfo, 'delivery');
-    } catch (error) {
-      console.error("Error getting current location:", error);
-      toast.error("Could not get current location. Please try searching instead.");
-    } finally {
-      setLocationLoading(false);
-    }
-  };
+  // const handleUseCurrentLocation = async () => {
+  //   if (!navigator.geolocation) {
+  //     toast.error("Geolocation not supported by your browser");
+  //     return;
+  //   }
+  //   setLocationLoading(true);
+  //   try {
+  //     const position = await new Promise((resolve, reject) => {
+  //       navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+  //     });
+  //     const userLocation = {
+  //       lat: position.coords.latitude,
+  //       lng: position.coords.longitude
+  //     };
+  //     const geocoder = new window.google.maps.Geocoder();
+  //     const { results } = await new Promise((resolve, reject) => {
+  //       geocoder.geocode({ location: userLocation }, (results, status) => {
+  //         if (status === 'OK' && results && results.length > 0) {
+  //           resolve({ results });
+  //         } else {
+  //           reject(new Error(status));
+  //         }
+  //       });
+  //     });
+  //     const place = results[0];
+  //     let detectedRegion = deliveryRegion;
+  //     const administrativeAreaLevel1 = place.address_components.find(comp =>
+  //       comp.types.includes('administrative_area_level_1')
+  //     )?.long_name;
+  //     if (administrativeAreaLevel1) {
+  //       const matchedRegion = AVAILABLE_REGIONS.find(r => administrativeAreaLevel1.includes(r));
+  //       if (matchedRegion) {
+  //         detectedRegion = matchedRegion;
+  //         setDeliveryRegion(detectedRegion);
+  //       }
+  //     }
+  //     const regionData = REGION_CONFIG[detectedRegion];
+  //     let locality = place.address_components.find(comp =>
+  //       comp.types.includes('locality') || comp.types.includes('sublocality')
+  //     )?.long_name.toLowerCase() || '';
+  //     let area = regionData.availableAreas[regionData.defaultArea];
+  //     for (const [areaKey, areaInfo] of Object.entries(regionData.availableAreas)) {
+  //       if (locality.includes(areaKey)) {
+  //         area = areaInfo;
+  //         break;
+  //       }
+  //     }
+  //     const locationInfo = {
+  //       address: place.formatted_address,
+  //       name: 'Your Current Location',
+  //       region: detectedRegion,
+  //       areaName: area.name,
+  //       cost: area.fee,
+  //       lat: userLocation.lat,
+  //       lng: userLocation.lng
+  //     };
+  //     handlePlaceSelect(locationInfo, 'delivery');
+  //   } catch (error) {
+  //     console.error("Error getting current location:", error);
+  //     toast.error("Could not get current location. Please try searching instead.");
+  //   } finally {
+  //     setLocationLoading(false);
+  //   }
+  // };
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -653,8 +622,17 @@ const Checkout = () => {
     });
   }, [paymentView]);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <FaSpinner className="animate-spin text-4xl text-primary" />
+        <p className="ml-4 text-lg text-gray-700">Loading checkout...</p>
+      </div>
+    );
+  }
+
   return (
-    !loading ? (
+    
     <APIProvider
       apiKey={Maps_API_KEY}
       libraries={['places', 'geocoding']}
@@ -702,14 +680,14 @@ const Checkout = () => {
                             <label className="block text-sm font-medium text-gray-700">
                               Delivery Address
                             </label>
-                            <button
+                            {/* <button
                               onClick={handleUseCurrentLocation}
                               disabled={locationLoading}
                               className="flex items-center text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 transition-colors"
                             >
                               <FiNavigation className="mr-1.5" />
                               {locationLoading ? 'Detecting...' : 'Use Current Location'}
-                            </button>
+                            </button> */}
                           </div>
                           <PlaceAutocompleteElementWrapper
                             key={`delivery-${paymentView}`}
@@ -839,22 +817,14 @@ const Checkout = () => {
                   <div className="lg:w-1/2 space-y-6">
                     {/* Promotions card section - Simplified */}
                     {availablePromotions.length > 0 && (
-                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl shadow-md border border-purple-100 overflow-hidden">
-                        <div className="p-6">
-                          <div className="flex items-center justify-between">
+                      <div className=" rounded-xl bg-white shadow-md border border-gray-100 overflow-hidden">
+                        <div className="">
+                          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50">
                             <div className="flex items-center">
                               <FaTags className="text-purple-500 text-xl mr-3" />
                               <div>
                                 <h3 className="text-lg font-semibold text-gray-900">Today's Special Offer</h3>
-                                <p className="text-sm text-gray-600">
-                                  {appliedPromotion ? (
-                                    <span className="text-green-600 font-medium">
-                                      ✅ {appliedPromotion.discount_percentage}% discount applied automatically!
-                                    </span>
-                                  ) : (
-                                    "Checking for available promotions..."
-                                  )}
-                                </p>
+                                
                               </div>
                             </div>
                             {appliedPromotion && (
@@ -864,19 +834,51 @@ const Checkout = () => {
                             )}
                           </div>
                           
+                          <div className="px-6 py-4">
+                            <div className="relative bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200 overflow-hidden mt-4">
+                              {/* Main ticket content */}
+                              <div className="flex">
+                                {/* Image section */}
+                                <div className="relative p-4">
+                                  <img 
+                                    src={appliedPromotion?.image || PromotionPlaceholder} 
+                                    alt="Promotion" 
+                                    className="w-28 h-32 rounded-lg  border-2 border-gray-100" 
+                                  />
+                                </div>
 
-                          {appliedPromotion && appliedPromotion.description && (
-                            <p className="text-sm text-gray-700 mt-2 bg-white/50 p-2 rounded-lg">
-                              {appliedPromotion.description}
-                            </p>
-                          )}
-                          
-                          {appliedPromotion && (
-                            <div className="mt-3 text-xs text-gray-500 flex items-center">
-                              <FaInfoCircle className="mr-1" />
-                              Valid until: {new Date(appliedPromotion.end_date).toLocaleDateString()}
+                                {/* Content section */}
+                                <div className="flex-1 p-4 pr-6">
+                                  <h4 className="font-bold text-gray-900 uppercase tracking-wide text-lg">
+                                    {appliedPromotion ? appliedPromotion.name : 'No active promotions at the moment'}
+                                  </h4>
+                                  
+                                  {appliedPromotion && appliedPromotion.description && (
+                                    <p className="text-gray-600 mt-2 text-sm leading-relaxed">
+                                      {appliedPromotion.description}
+                                    </p>
+                                  )}
+
+                                  
+                                </div>
+                              </div>
+
+                              
+
+                              {/* Corner accents */}
+                              <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
+                              <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-gray-300 rounded-tr-lg"></div>
+                              <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-gray-300 rounded-bl-lg"></div>
+                              <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-gray-300 rounded-br-lg"></div>
                             </div>
-                          )}
+                            
+                            {appliedPromotion && (
+                              <div className="mt-4  text-xs text-gray-500 flex items-center">
+                                <FaInfoCircle className="mr-1" />
+                                Valid until: {new Date(appliedPromotion.end_date).toLocaleDateString()}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1077,6 +1079,8 @@ const Checkout = () => {
                 canUseSignup={canUseSignup}
                 canUseReferral={canUseReferral}
                 canUseRedeemedPoints={canUseRedeemedPoints}
+                appliedPromotion={appliedPromotion}
+                promoDiscountAmount={promoDiscountAmount}
               />
 
             </div>
@@ -1084,12 +1088,7 @@ const Checkout = () => {
         </div>
       </div>
     </APIProvider>
-    ) : (
-      <div className="flex items-center justify-center min-h-screen flex-col space-y-2">
-        <FaSpinner className="animate-spin h-8 w-8 text-primary" />
-        <p className="text-gray-600 mt-4">Loading...</p>
-      </div> 
-    )
+     
   );
 };
 
