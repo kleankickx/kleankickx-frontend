@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import { useState, useEffect, useContext, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { CartContext } from "../context/CartContext";
@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import PaymentCard from "../components/PaymentCard";
+import DeliveryInformationCard from "../components/DeliveryInformationCard";
 import {
   FiTruck,
   FiInfo,
@@ -28,6 +29,12 @@ import {
 import PlaceAutocompleteElementWrapper from "../components/PlaceAutoCompleteElementWrapper"
 import MapHandler from "../components/MapHandler";
 import REGION_CONFIG from '../utils/regionConfig'
+import PersonalInformationCard from "../components/PersonalInformationCard";
+import PromotionCard from "../components/PromotionCard";
+import OrderSummaryCard from "../components/OrderSummaryCard";
+import { calculateOrderSummary } from '../utils/calculateOrderSummary'
+import { usePlaceOrder } from '../hooks/usePlaceOrder'; // The new hook
+
 
 const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
@@ -54,7 +61,6 @@ const Checkout = () => {
   const [delivery, setDelivery] = useState(() => getLocationFromStorage('deliveryLocation'));
   const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
   const [useSame, setUseSame] = useState(true);
-  const [placing, setPlacing] = useState(false);
   const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
   const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
   const [locationLoading, setLocationLoading] = useState(true);
@@ -155,43 +161,41 @@ const Checkout = () => {
     }
   }
 
-  // Calculate order totals
-  const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
-  const deliveryFee = delivery?.cost || 0;
-  const pickupFee = useSame ? deliveryFee : pickup?.cost || 0;
 
-  // Get discounts from context
-  const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
-  const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
+  // Call the calculation function, memoizing the result
+  const summary = useMemo(() => {
+    return calculateOrderSummary({
+      cart,
+      delivery,
+      pickup,
+      useSame,
+      discounts,
+      appliedPromotion,
+      user,
+      signupDiscountUsed,
+      referralDiscountUsed,
+      redeemedPointsDiscount,
+    });
+  }, [
+    cart, 
+    delivery, 
+    pickup, 
+    useSame, 
+    discounts, 
+    appliedPromotion, 
+    user, 
+    signupDiscountUsed, 
+    referralDiscountUsed, 
+    redeemedPointsDiscount
+  ]);
 
-  // Calculate promo discount
-  const promoDiscountAmount = appliedPromotion 
-    ? ((parseFloat(subtotal) * parseFloat(appliedPromotion.discount_percentage)) / 100)
-    : 0;
-
-  // Eligibility
-  const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount;
-  const canUseReferral = user && referralDiscountUsed?.first_order_completed === false && referralDiscount;
-  const canUseRedeemedPoints = user && redeemedPointsDiscount && !redeemedPointsDiscount.is_applied;
-
-  // Calculate discount amounts individually
-  const signupDiscountAmount = canUseSignup
-    ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
-    : 0;
-
-  const referralDiscountAmount = canUseReferral
-    ? ((parseFloat(subtotal) * parseFloat(referralDiscount.percentage)) / 100)
-    : 0;
-
-  const redeemedPointsDiscountAmount = canUseRedeemedPoints
-    ? ((parseFloat(subtotal) * parseFloat(redeemedPointsDiscount.percentage)) / 100)
-    : 0;
-
-  // Final total
-  const total = parseFloat((subtotal + deliveryFee + pickupFee) - 
-    (signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount + promoDiscountAmount)).toFixed(2);
-
-  const totalWithoutDiscounts = parseFloat(subtotal + deliveryFee + pickupFee).toFixed(2);
+   // Initialize the hook with all necessary dependencies
+    const { placing, handlePayment } = usePlaceOrder({
+        user, navigate, logout, api, baseURL, PAYSTACK_PUBLIC_KEY,
+        setAccessToken, setRefreshToken, clearCart,
+        setDelivery, setPickup, setDeliveryInputValue, setPickupInputValue,
+        setDeliveryRegion, setPickupRegion, setUseSame, setAppliedPromotion
+    });
 
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
@@ -379,232 +383,9 @@ const Checkout = () => {
   };
 
   // Handle payment with Paystack
-  const handlePayment = async () => {
-    if (placing) return;
-
-    try {
-      setPlacing(true);
-      
-      // First check token validity
-      try {
-        if (!refreshToken) throw new Error('No refresh token');
-        
-        const decoded = jwtDecode(refreshToken);
-        const currentTime = Date.now() / 1000;
-        const timeLeft = decoded.exp - currentTime;
-        
-        if (timeLeft < 60) {
-          const response = await axios.post(`${baseURL}/api/token/refresh/`, {
-            refresh: refreshToken
-          }, {
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          const newAccessToken = response.data.access;
-          const newRefreshToken = response.data.refresh || refreshToken;
-          
-          setAccessToken(newAccessToken);
-          localStorage.setItem('access_token', newAccessToken);
-          
-          if (response.data.refresh) {
-            setRefreshToken(newRefreshToken);
-            localStorage.setItem('refresh_token', newRefreshToken);
-          }
-        }
-      } catch (tokenError) {
-        console.error('Token refresh error:', tokenError);
-        logout();
-        toast.error('Session expired. Please login again to complete your order.');
-        navigate('/login?continuePath=/checkout');
-        setPlacing(false);
-        return;
-      }
-
-      const appliedDiscounts = [];
-
-      if (canUseSignup && signupDiscount && signupDiscountAmount > 0) {
-        appliedDiscounts.push({
-          type: signupDiscount.discount_type.split(' ')[0],
-          percentage: signupDiscount.percentage,
-          amount: signupDiscountAmount
-        });
-      }
-
-      if (canUseReferral && referralDiscount && referralDiscountAmount > 0) {
-        appliedDiscounts.push({
-          type: referralDiscount.discount_type.split(' ')[0],
-          percentage: referralDiscount.percentage,
-          amount: referralDiscountAmount
-        });
-      }
-
-      if (canUseRedeemedPoints && redeemedPointsDiscount && redeemedPointsDiscountAmount > 0) {
-        appliedDiscounts.push({
-          type: "redeemed_points",
-          percentage: redeemedPointsDiscount.percentage,
-          amount: redeemedPointsDiscountAmount,
-          points_redeemed: redeemedPointsDiscount.points_redeemed
-        });
-      }
-
-      // Add auto-applied promotion discount
-      if (appliedPromotion && promoDiscountAmount > 0) {
-        appliedDiscounts.push({
-          type: "promotion",
-          percentage: appliedPromotion.discount_percentage,
-          amount: promoDiscountAmount,
-          promotion_id: appliedPromotion.id,
-          promotion_code: appliedPromotion.code
-        });
-      }
-
-      const transactionRef = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      setTransactionReference(transactionRef); // would remove this
-
-      const handler = window.PaystackPop && new window.PaystackPop();
-      if (!handler) {
-        toast.error("Payment system not loaded. Please try again.");
-        setPlacing(false);
-        return;
-      }
-
-      handler.newTransaction({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: user.email,
-        amount: total * 100,
-        currency: 'GHS',
-        reference: transactionRef,
-        onSuccess: async (transaction) => {
-          try {
-            const beforeUnloadHandler = (e) => {
-              e.preventDefault();
-              e.returnValue = 'Your order is being processed. Please wait...';
-              return e.returnValue;
-            };
-            window.addEventListener('beforeunload', beforeUnloadHandler);
-
-            let retries = 3;
-            let success = false;
-            let lastError = null;
-
-            while (retries > 0 && !success) {
-              try {
-                const response = await api.post('/api/orders/', {
-                  user_id: user.id,
-                  delivery_location: delivery,
-                  pickup_location: useSame ? delivery : pickup,
-                  total_amount: total,
-                  cart_items: cart,
-                  delivery_cost: deliveryFee,
-                  pickup_cost: useSame ? deliveryFee : pickupFee,
-                  sub_total: subtotal,
-                  transaction_id: transaction.reference,
-                  phone_number: phoneNumber,
-                  discounts_applied: appliedDiscounts.length > 0 ? appliedDiscounts : null
-                });
-
-                success = true;
-                clearCart();
-                ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 
-                'pickupInputValue', 'deliveryRegion', 'pickupRegion'].forEach(key => {
-                  localStorage.removeItem(key);
-                });
-
-                // If redeemed points discount was used, mark it as applied
-                if (canUseRedeemedPoints) {
-                  try {
-                    await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
-                  } catch (error) {
-                    console.error("Error marking discount as applied:", error);
-                  }
-                }
-
-                setDelivery(null);
-                setPickup(null);
-                setDeliveryInputValue('');
-                setPickupInputValue('');
-                setDeliveryRegion('');
-                setPickupRegion('');
-                setUseSame(true);
-                setAppliedPromotion(null);
-
-                window.removeEventListener('beforeunload', beforeUnloadHandler);
-                navigate(`/orders/${response.data.order_slug}`);
-                toast.success('Order placed successfully! Thank you for your purchase.');
-              } catch (error) {
-                lastError = error;
-                retries--;
-                
-                if (error.response?.status === 401 && retries > 0) {
-                  try {
-                    const refreshResponse = await axios.post(`${api.defaults.baseURL}/api/token/refresh/`, {
-                      refresh: localStorage.getItem('refresh_token')
-                    }, {
-                      headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    const newAccessToken = refreshResponse.data.access;
-                    const newRefreshToken = refreshResponse.data.refresh || refreshToken;
-                    
-                    setAccessToken(newAccessToken);
-                    localStorage.setItem('access_token', newAccessToken);
-                    
-                    if (refreshResponse.data.refresh) {
-                      setRefreshToken(newRefreshToken);
-                      localStorage.setItem('refresh_token', newRefreshToken);
-                    }
-                  } catch (refreshError) {
-                    logout();
-                    retries = 0;
-                    throw refreshError;
-                  }
-                } else if (retries > 0) {
-                  await new Promise(resolve => 
-                    setTimeout(resolve, 1000 * (4 - retries))
-                  );
-                }
-              }
-            }
-
-            if (!success) {
-              throw lastError || new Error('Failed to create order after retries');
-            }
-          } catch (error) {
-            console.error('Error placing order:', error);
-            const failedOrder = {
-              user_id: user.id,
-              delivery_location: delivery,
-              pickup_location: useSame ? delivery : pickup,
-              total_amount: total,
-              cart_items: cart,
-              transaction_id: transaction.reference,
-              phone_number: phoneNumber,
-              error: error.message
-            };
-            localStorage.setItem('failedOrder', JSON.stringify(failedOrder));
-            
-            if (error.response?.status === 401) {
-              toast.error('Session expired. Please login again to complete your order.');
-              logout();
-              navigate('/login?returnUrl=/checkout');
-            } else {
-              toast.error('Failed to place order. Please check your orders page or contact support.');
-              navigate('/orders/failed');
-            }
-          } finally {
-            setPlacing(false);
-          }
-        },
-        onCancel: () => {
-          setPlacing(false);
-          toast.info('Payment cancelled. Your order was not placed.');
-        }
-      });
-    } catch (error) {
-      setPlacing(false);
-      console.error('Error initializing payment:', error);
-      toast.error('Error initializing payment. Please try again.');
-    }
+  const onPayment = async() => {
+    // The hook handles token checks, Paystack initialization, and order submission
+    await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame);
   };
 
   // Load Paystack script
@@ -627,9 +408,9 @@ const Checkout = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <FaSpinner className="animate-spin text-4xl text-primary" />
-        <p className="ml-4 text-lg text-gray-700">Loading checkout...</p>
+        <p className="ml-4 text-gray-700">Loading checkout...</p>
       </div>
     );
   }
@@ -669,365 +450,54 @@ const Checkout = () => {
                 <div className="flex flex-col lg:flex-row gap-8">
                   {/* Left Column - Customer Information */}
                   <div className="lg:w-1/2 space-y-6">
-                    {/* Delivery Information Card */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
-                        <h2 className="text-xl font-semibold flex items-center">
-                          <FiTruck className="mr-3 text-primary" />
-                          Delivery Information
-                        </h2>
-                      </div>
-                      <div className="p-6 space-y-5">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                              Delivery Address
-                            </label>
-                            {/* <button
-                              onClick={handleUseCurrentLocation}
-                              disabled={locationLoading}
-                              className="flex items-center text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 transition-colors"
-                            >
-                              <FiNavigation className="mr-1.5" />
-                              {locationLoading ? 'Detecting...' : 'Use Current Location'}
-                            </button> */}
-                          </div>
-                          <PlaceAutocompleteElementWrapper
-                            key={`delivery-${paymentView}`}
-                            onPlaceSelect={(loc) => handlePlaceSelect(loc, 'delivery')}
-                            currentInputValue={deliveryInputValue}
-                            initialLocation={delivery}
-                            placeholder="Enter delivery address"
-                            type="delivery"
-                            region={deliveryRegion}
-                            onFocus={() => setActiveInput('delivery')}
-                          />
-                        </div>
-
-                        <label className="flex items-center cursor-pointer group">
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                id="same"
-                                checked={useSame}
-                                onChange={(e) => setUseSame(e.target.checked)}
-                                className="sr-only"
-                              />
-                              <div className={`w-5 h-5 rounded border-2 transition-all duration-200 ease-in-out
-                                ${useSame 
-                                  ? 'bg-primary border-primary' 
-                                  : 'bg-white border-gray-300 group-hover:border-primary'
-                                }`}
-                              >
-                                {useSame && (
-                                  <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-                            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                              Use delivery address for pickup
-                            </span>
-                        </label>
-                        
-
-                        {!useSame && (
-                          <div className="pt-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Pickup Address
-                            </label>
-                            <PlaceAutocompleteElementWrapper
-                              key={`pickup-${paymentView}`}
-                              onPlaceSelect={(loc) => handlePlaceSelect(loc, 'pickup')}
-                              currentInputValue={pickupInputValue}
-                              initialLocation={pickup}
-                              placeholder="Enter pickup address"
-                              type="pickup"
-                              region={pickupRegion}
-                              onFocus={() => setActiveInput('pickup')}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
+                   
                     {/* Contact Information Card */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
-                        <h2 className="text-xl font-semibold flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                          </svg>
-                          Contact Details
-                        </h2>
-                      </div>
-                      <div className="p-6 space-y-5">
-                        <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                            Email Address
-                          </label>
-                          <input
-                            type="email"
-                            id="email"
-                            value={user?.email || ''}
-                            disabled
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                            Phone Number
-                          </label>
-                          <div className="relative rounded-lg overflow-hidden">
-                            <div className="absolute inset-y-0 left-0 flex items-center px-4 bg-gray-100 border-r border-gray-200">
-                              <span className="text-gray-700 flex items-center">
-                                <span className="mr-2">🇬🇭</span> +233
-                              </span>
-                            </div>
-                            <input
-                              type="tel"
-                              id="phone"
-                              value={phoneNumber}
-                              onChange={handlePhoneChange}
-                              placeholder="24 123 4567"
-                              className="pl-24 w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-0"
-                              maxLength={13}
-                            />
-                            {phoneNumber && (
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-4">
-                                {isPhoneValid ? (
-                                  <FaCheckCircle className="text-green-500" />
-                                ) : (
-                                  <FaTimesCircle className="text-red-500" />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          {phoneNumber && !isPhoneValid && (
-                            <p className="mt-2 text-sm text-red-600">
-                              Please enter a valid Ghana phone number (e.g., 024 123 4567)
-                            </p>
-                          )}
-                        
-                        </div>
-                      </div>
-                    </div>
+                    <PersonalInformationCard
+                      phoneNumber={phoneNumber}
+                      isPhoneValid={isPhoneValid}
+                      handlePhoneChange={handlePhoneChange}
+                      user={user}
+                    />
+
+                    <DeliveryInformationCard
+                      // Logic Props
+                      useSame={useSame}
+                      setUseSame={setUseSame}
+                      handlePlaceSelect={handlePlaceSelect}
+                      setActiveInput={setActiveInput}
+                      paymentView={paymentView}
+
+                      // Data Props for Delivery
+                      delivery={delivery}
+                      deliveryInputValue={deliveryInputValue}
+                      deliveryRegion={deliveryRegion}
+
+                      // Data Props for Pickup
+                      pickup={pickup}
+                      pickupInputValue={pickupInputValue}
+                      pickupRegion={pickupRegion}
+                    />
                   </div>
 
                   {/* Right Column - Order Summary */}
                   <div className="lg:w-1/2 space-y-6">
                     {/* Promotions card section - Simplified */}
                     {availablePromotions.length > 0 && (
-                      <div className=" rounded-xl bg-white shadow-md border border-gray-100 overflow-hidden">
-                        <div className="">
-                          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50">
-                            <div className="flex items-center">
-                              <FaTags className="text-purple-500 text-xl mr-3" />
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Today's Special Offer</h3>
-                                
-                              </div>
-                            </div>
-                            {appliedPromotion && (
-                              <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
-                                -{appliedPromotion.discount_percentage}% OFF
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="px-6 py-4">
-                            <div className="relative bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200 overflow-hidden mt-4">
-                              {/* Main ticket content */}
-                              <div className="flex">
-                                {/* Image section */}
-                                <div className="relative p-4">
-                                  <img 
-                                    src={appliedPromotion?.image || PromotionPlaceholder} 
-                                    alt="Promotion" 
-                                    className="w-28 h-32 rounded-lg  border-2 border-gray-100" 
-                                  />
-                                </div>
-
-                                {/* Content section */}
-                                <div className="flex-1 p-4 pr-6">
-                                  <h4 className="font-bold text-gray-900 uppercase tracking-wide text-lg">
-                                    {appliedPromotion ? appliedPromotion.name : 'No active promotions at the moment'}
-                                  </h4>
-                                  
-                                  {appliedPromotion && appliedPromotion.description && (
-                                    <p className="text-gray-600 mt-2 text-sm leading-relaxed">
-                                      {appliedPromotion.description}
-                                    </p>
-                                  )}
-
-                                  
-                                </div>
-                              </div>
-
-                              
-
-                              {/* Corner accents */}
-                              <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
-                              <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-gray-300 rounded-tr-lg"></div>
-                              <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-gray-300 rounded-bl-lg"></div>
-                              <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-gray-300 rounded-br-lg"></div>
-                            </div>
-                            
-                            {appliedPromotion && (
-                              <div className="mt-4  text-xs text-gray-500 flex items-center">
-                                <FaInfoCircle className="mr-1" />
-                                Valid until: {new Date(appliedPromotion.end_date).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <PromotionCard
+                        appliedPromotion={appliedPromotion}
+                      />
+                      
                     )}
 
                     {/* Order Summary Card */}
-                    <div id="order-summary" className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h2 className="text-xl font-semibold">Order Summary</h2>
-                        {appliedPromotion && (
-                          <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-                            <FaTags className="mr-1" />
-                            Promo Applied
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-6">
-                        <div className="divide-y divide-gray-200">
-                          {cart.map((item) => (
-                            <div key={item.service_id} className="py-4 first:pt-0 last:pb-0">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-medium text-gray-900">{item.service_name}</p>
-                                  <p className="text-sm text-gray-500 mt-1">Quantity: {item.quantity}</p>
-                                </div>
-                                <p className="font-medium text-gray-900">GHS {(item.quantity * item.price).toFixed(2)}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Pricing Breakdown */}
-                        <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
-                          <div className="flex justify-between">
-                            <p className="text-gray-600">Subtotal</p>
-                            <p className="font-medium">GHS {subtotal.toFixed(2)}</p>
-                          </div>
-                          
-                          {canUseSignup && (
-                            <div className="bg-green-50 rounded-lg p-3 -mx-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-green-700 font-medium flex items-center capitalize">
-                                  <FaGift className="mr-2" />
-                                  {signupDiscount.discount_type}
-                                </span>
-                                <span className="text-green-700 font-medium">-GHS {signupDiscountAmount.toFixed(2)}</span>
-                              </div>
-                              <div className="text-xs text-green-600 mt-1 ml-6">
-                                {signupDiscount.percentage}% off your order
-                              </div>
-                            </div>
-                          )}
-
-                          {canUseReferral && (
-                            <div className="bg-blue-50 rounded-lg p-3 -mx-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-blue-700 font-medium flex items-center capitalize">
-                                  <FaUserFriends className="mr-2" />
-                                  {referralDiscount.discount_type}
-                                </span>
-                                <span className="text-blue-700 font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
-                              </div>
-                              <div className="text-xs text-blue-600 mt-1 ml-6">
-                                {referralDiscount.percentage}% off your order
-                              </div>
-                            </div>
-                          )}
-
-                          {canUseRedeemedPoints && (
-                            <div className="bg-amber-50 rounded-lg p-3 -mx-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-amber-700 font-medium flex items-center">
-                                  <FaStar className="mr-2" />
-                                  Redeemed Points Discount
-                                </span>
-                                <span className="text-amber-700 font-medium">-GHS {redeemedPointsDiscountAmount.toFixed(2)}</span>
-                              </div>
-                              <div className="text-xs text-amber-600 mt-1 ml-6">
-                                {redeemedPointsDiscount.percentage}% off your order ({redeemedPointsDiscount.points_redeemed} points redeemed)
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Auto-applied Promotion Discount */}
-                          {appliedPromotion && (
-                            <div className="bg-purple-50 rounded-lg p-3 -mx-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-purple-700 font-medium flex items-center">
-                                  <FaTags className="mr-2" />
-                                  Special Promotion
-                                </span>
-                                <span className="text-purple-700 font-medium">-GHS {promoDiscountAmount.toFixed(2)}</span>
-                              </div>
-                              <div className="text-xs text-purple-600 mt-1 ml-6">
-                                {appliedPromotion.discount_percentage}% off your order
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex justify-between pt-2">
-                            <p className="text-gray-600">Delivery Fee</p>
-                            <p className="font-medium">
-                              {delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--'}
-                            </p>
-                          </div>
-                          <div className="flex justify-between">
-                            <p className="text-gray-600">Pickup Fee</p>
-                            <p className="font-medium">
-                              {useSame ? (delivery ? `GHS ${delivery.cost.toFixed(2)}` : '--') : (pickup ? `GHS ${pickup.cost.toFixed(2)}` : '--')}
-                            </p>
-                          </div>
-
-                          <div className="flex justify-between pt-4 mt-3 border-t border-gray-200">
-                            <p className="text-lg font-semibold">Total Amount</p>
-                            <div className="text-right">
-                              {(canUseSignup || canUseReferral || canUseRedeemedPoints || appliedPromotion) && (
-                                <div className="text-sm text-gray-400 line-through">GHS {totalWithoutDiscounts}</div>
-                              )}
-                              <p className="text-xl font-bold text-primary">
-                                GHS {total}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {canUseSignup && signupDiscount && (
-                          <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700 flex items-start">
-                            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-                            <span>Your {signupDiscount.percentage}% sign-up discount has been applied!</span>
-                          </div>
-                        )}
-
-                        {canUseRedeemedPoints && redeemedPointsDiscount && (
-                          <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm text-amber-700 flex items-start">
-                            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-                            <span>Your {redeemedPointsDiscount.percentage}% redeemed points discount has been applied!</span>
-                          </div>
-                        )}
-
-                        {appliedPromotion && (
-                          <div className="mt-4 p-3 bg-purple-50 rounded-lg text-sm text-purple-700 flex items-start">
-                            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-                            <span>Special promotion applied! You save {appliedPromotion.discount_percentage}% on your order.</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <OrderSummaryCard 
+                      // Spread all the calculated values directly to the UI component
+                      cart={cart}
+                      appliedPromotion={appliedPromotion}
+                      useSame={useSame}
+                      {...summary} 
+                    />
+                  
 
                     {/* Checkout Button */}
                     <button
@@ -1062,28 +532,22 @@ const Checkout = () => {
           ) : (
             // Payment view remains the same as before
             <div className="">
-              {/* ... Payment view content remains unchanged ... */}
+              {/* Payment view content remains */}
               <PaymentCard
-                subtotal={subtotal}
-                signupDiscount={signupDiscount}
-                signupDiscountAmount={signupDiscountAmount}
-                referralDiscount={referralDiscount}
-                referralDiscountAmount={referralDiscountAmount}
-                redeemedPointsDiscount={redeemedPointsDiscount}
-                redeemedPointsDiscountAmount={redeemedPointsDiscountAmount}
-                delivery={delivery}
-                pickup={pickup}
+                // 1. Spread all the calculated totals, discounts, and flags from the summary object
+                {...summary} 
+                
+                // 2. Explicitly pass objects that are needed but weren't created inside the utility
+                
+                appliedPromotion={appliedPromotion}
+
+                // 3. Pass all handler functions and local state needed for interaction
                 useSame={useSame}
-                total={total}
-                handlePayment={handlePayment}
+                handlePayment={onPayment}
                 placing={placing}
                 setPaymentView={setPaymentView}
                 setShowAlert={setShowAlert}
-                canUseSignup={canUseSignup}
-                canUseReferral={canUseReferral}
-                canUseRedeemedPoints={canUseRedeemedPoints}
-                appliedPromotion={appliedPromotion}
-                promoDiscountAmount={promoDiscountAmount}
+                
               />
 
             </div>
