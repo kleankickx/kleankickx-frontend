@@ -144,13 +144,13 @@ const PaymentCard = ({
   // REMOVED: const [selectedProvider, setSelectedProvider] = React.useState('momo_mtn');
 
   return (
-    <div className="container mx-auto p-4 lg:p-8 max-w-4xl font-inter">
+    <div className="">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Finalize Order & Pay</h1>
         {/* Back Button */}
         <button
           onClick={() => setPaymentView(false)}
-          className="font-medium text-gray-700 cursor-pointer flex items-center "
+          className="font-medium text-gray-700 cursor-pointer flex items-center text-sm"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500 group-hover:text-gray-700 transition-colors" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
