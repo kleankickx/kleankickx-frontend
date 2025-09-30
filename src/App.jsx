@@ -24,7 +24,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import GetOrder from './pages/GetOrder';
 import MyOrders from './pages/MyOrders';
 import FailedOrders from './pages/FailedOrders';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useCallback } from 'react';
 import { AuthContext } from './context/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -131,23 +131,44 @@ const LoadingSplash = () => (
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [appLoading, setAppLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Function to transition the splash screen out
+  const finishLoading = useCallback(() => {
+    if (hasLoaded) return;
+    setHasLoaded(true);
+
+    // 1. Start the fade-out (set appLoading to false)
+    setAppLoading(false);
+
+    // 2. Hide the component completely after the CSS fade duration (e.g., 800ms)
+    setTimeout(() => {
+      setShowSplash(false);
+    }, 800); 
+  }, [hasLoaded]);
 
   useEffect(() => {
-    
+    // --- Primary Mechanism: Browser's Full Load Event ---
     const handleLoad = () => {
-      setTimeout(() => {
-        setAppLoading(false);
-      }, 500);
+      // Ensure a minimum display time of 500ms before finishing
+      setTimeout(finishLoading, 500); 
     };
 
-    // Attach the event listener to the window
     window.addEventListener('load', handleLoad);
 
-    // Clean up the event listener when the component unmounts
+    // --- Fallback Mechanism: Max Timeout ---
+    // If the 'load' event hasn't fired after 8 seconds, force the app to load.
+    const fallbackTimeout = setTimeout(() => {
+        console.warn('Fallback: Forcing app load after timeout.');
+        finishLoading();
+    }, 8000); // 8 seconds is usually enough for a slow mobile connection
+
+    // --- Cleanup Function ---
     return () => {
       window.removeEventListener('load', handleLoad);
+      clearTimeout(fallbackTimeout);
     };
-  }, []); // Empty dependency array ensures this runs once after the initial render
+  }, [finishLoading]);// Empty dependency array ensures this runs once after the initial render
 
    
 
