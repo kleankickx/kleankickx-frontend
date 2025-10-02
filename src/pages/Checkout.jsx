@@ -34,6 +34,8 @@ import PromotionCard from "../components/PromotionCard";
 import OrderSummaryCard from "../components/OrderSummaryCard";
 import { calculateOrderSummary } from '../utils/calculateOrderSummary'
 import { usePlaceOrder } from '../hooks/usePlaceOrder'; // The new hook
+import { Link } from "react-router-dom";
+import { motion } from 'framer-motion';
 
 
 const Checkout = () => {
@@ -63,20 +65,18 @@ const Checkout = () => {
   const [useSame, setUseSame] = useState(true);
   const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
   const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
-  const [locationLoading, setLocationLoading] = useState(true);
   const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
   const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
   const [showAlert, setShowAlert] = useState(true);
   const [paymentView, setPaymentView] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
   const [availablePromotions, setAvailablePromotions] = useState([]);
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [activeInput, setActiveInput] = useState(null);
-  const [transactionReference, setTransactionReference] = useState(null);
+  
+  
 
 
   // Base URL for backend API
@@ -189,14 +189,37 @@ const Checkout = () => {
     redeemedPointsDiscount
   ]);
 
-   // Initialize the hook with all necessary dependencies
-    const { placing, handlePayment } = usePlaceOrder({
-        user, navigate, logout, api, baseURL, PAYSTACK_PUBLIC_KEY,
-        setAccessToken, setRefreshToken, clearCart,
-        setDelivery, setPickup, setDeliveryInputValue, setPickupInputValue,
-        setDeliveryRegion, setPickupRegion, setUseSame, setAppliedPromotion
-    });
+  // Initialize the hook with all necessary dependencies
+  const { placing, handlePayment } = usePlaceOrder({
+      user, navigate, logout, api, baseURL, PAYSTACK_PUBLIC_KEY,
+      setAccessToken, setRefreshToken, clearCart,
+      setDelivery, setPickup, setDeliveryInputValue, setPickupInputValue,
+      setDeliveryRegion, setPickupRegion, setUseSame, setAppliedPromotion
+  });
 
+  // Helper function to format the number for display (024 123 4567)
+  const formatPhoneNumberDisplay = (number) => {
+      // 1. Clean the number to just digits
+      const cleaned = number ? String(number).replace(/\D/g, '') : '';
+      if (!cleaned) return '';
+      
+      // 2. Remove any leading '233' or '0' to get the 9-digit local number
+      let localNumber = cleaned;
+      if (localNumber.startsWith('233')) {
+          localNumber = localNumber.substring(3); // Remove +233
+      } else if (localNumber.startsWith('0')) {
+          localNumber = localNumber.substring(1); // Remove leading 0
+      }
+
+      // 3. Ghana local numbers (excluding the leading 0) are 9 digits.
+      if (localNumber.length === 9) {
+          // Format as (NN) NNN NNNN -> e.g., 24 123 4567
+          return localNumber.replace(/(\d{2})(\d{3})(\d{4})/, '0$1 $2 $3');
+      }
+      
+      // Fallback: Return the cleaned number as is if the length is still being typed
+      return number; 
+  }
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
     const cleaned = number.replace(/\D/g, '');
@@ -204,10 +227,19 @@ const Checkout = () => {
     return ghanaRegex.test(cleaned);
   };
 
+  const [phoneNumber, setPhoneNumber] = useState(
+      user?.phone_number ? formatPhoneNumberDisplay(user.phone_number) : ''
+  );
+  const [isPhoneValid, setIsPhoneValid] = useState(
+      user?.phone_number ? validateGhanaPhone(user.phone_number) : false
+  );
+
+  
+
   const handlePhoneChange = (e) => {
     let input = e.target.value;
    
-    if (input.length <= 13) {
+    if (input.length <= 14) {
       setPhoneNumber(input);
       setIsPhoneValid(validateGhanaPhone(input));
     }
@@ -400,20 +432,15 @@ const Checkout = () => {
   }, []);
 
   useEffect(() => {
+
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
+    setShowAlert(true); // Reset alert visibility on payment view change
   }, [paymentView]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <FaSpinner className="animate-spin text-4xl text-primary" />
-        <p className="ml-4 text-gray-700">Loading checkout...</p>
-      </div>
-    );
-  }
+ 
 
   return (
     
@@ -424,134 +451,164 @@ const Checkout = () => {
     >
       <div className="bg-gradient-to-br from-green-50 to-white">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          {showAlert && (
-            <div className="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center">
-              <FiInfo className="mr-2 text-yellow-700" />
-              <p className="text-sm text-yellow-700">
-                Current options for delivery and pickup are Accra, Tema, Kasoa.
-                <button
-                  onClick={() => setShowAlert(false)}
-                  className="ml-4 text-yellow-700 hover:text-yellow-900 underline"
-                >
-                  Dismiss
-                </button>
-              </p>
+          
+          {cart.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[60vh]">
+              <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-sm flex items-center ">
+                <FaExclamationTriangle className="mr-2" />
+                Your cart is empty. Add items to proceed with checkout.
+              </div>
+              <Link to="/services" className="text-primary hover:underline mt-2">
+                Go to kleaning services
+              </Link>
             </div>
-          )}
-
-          {!paymentView ? (
-            <>
-              <div className="py-8">
-                <div className="mb-8 text-center md:text-left">
-                  <h1 className="text-3xl font-bold text-gray-900">Complete Your Order</h1>
-                  <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
-                </div>
-
-                <div className="flex flex-col lg:flex-row gap-8">
-                  {/* Left Column - Customer Information */}
-                  <div className="lg:w-1/2 space-y-6">
-                   
-                    {/* Contact Information Card */}
-                    <PersonalInformationCard
-                      phoneNumber={phoneNumber}
-                      isPhoneValid={isPhoneValid}
-                      handlePhoneChange={handlePhoneChange}
-                      user={user}
-                    />
-
-                    <DeliveryInformationCard
-                      // Logic Props
-                      useSame={useSame}
-                      setUseSame={setUseSame}
-                      handlePlaceSelect={handlePlaceSelect}
-                      setActiveInput={setActiveInput}
-                      paymentView={paymentView}
-
-                      // Data Props for Delivery
-                      delivery={delivery}
-                      deliveryInputValue={deliveryInputValue}
-                      deliveryRegion={deliveryRegion}
-
-                      // Data Props for Pickup
-                      pickup={pickup}
-                      pickupInputValue={pickupInputValue}
-                      pickupRegion={pickupRegion}
-                    />
-                  </div>
-
-                  {/* Right Column - Order Summary */}
-                  <div className="lg:w-1/2 space-y-6">
-                    {/* Promotions card section - Simplified */}
-                    {availablePromotions.length > 0 && (
-                      <PromotionCard
-                        appliedPromotion={appliedPromotion}
-                      />
-                      
-                    )}
-
-                    {/* Order Summary Card */}
-                    <OrderSummaryCard 
-                      // Spread all the calculated values directly to the UI component
-                      cart={cart}
-                      appliedPromotion={appliedPromotion}
-                      useSame={useSame}
-                      {...summary} 
-                    />
-                  
-
-                    {/* Checkout Button */}
+            ) : (
+              <div>
+                
+                <div className={`mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center ${!showAlert ? 'hidden': ''}`}>
+                  <FiInfo className="mr-2 text-yellow-700" />
+                  <p className="text-sm text-yellow-700">
+                    Current options for delivery and pickup are Accra, Tema, Kasoa.
                     <button
-                      onClick={handleSubmit}
-                      disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
-                      className={`w-full py-3.5 px-6 rounded-lg font-medium text-white transition-all cursor-pointer ${
-                        placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg'
-                      }`}
+                      onClick={() => setShowAlert(false)}
+                      className="ml-4 text-yellow-700 hover:text-yellow-900 underline"
                     >
-                      {placing ? (
-                        <span className="flex items-center justify-center">
-                          <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-                          Processing...
-                        </span>
-                      ) : (
-                        'Proceed to Payment'
-                      )}
+                      Dismiss
                     </button>
+                  </p>
+                </div>
+                
 
-                    {cart.length === 0 && (
-                      <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-sm flex items-center">
-                        <FaExclamationTriangle className="mr-2" />
-                        Your cart is empty. Add items to proceed with checkout.
-                      </div>
-                    )}
+                <div className="">
+                  <div className={`mb-4 ${paymentView ? 'hidden' : ''}`}>
+                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Complete Your Order</h1>
+                    <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
                   </div>
+                  {!loading && cart.length > 0 ? (
+                    <div>
+                      {!paymentView ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 30 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6 }}
+                        >
+                          <div className="py-8">
+                            <div className="flex flex-col lg:flex-row gap-8">
+                              {/* Left Column - Customer Information */}
+                              <div className="lg:w-1/2 space-y-6">
+                              
+                                {/* Contact Information Card */}
+                                <PersonalInformationCard
+                                  phoneNumber={phoneNumber}
+                                  isPhoneValid={isPhoneValid}
+                                  handlePhoneChange={handlePhoneChange}
+                                  user={user}
+                                />
+
+                                <DeliveryInformationCard
+                                  // Logic Props
+                                  useSame={useSame}
+                                  setUseSame={setUseSame}
+                                  handlePlaceSelect={handlePlaceSelect}
+                                  setActiveInput={setActiveInput}
+                                  paymentView={paymentView}
+
+                                  // Data Props for Delivery
+                                  delivery={delivery}
+                                  deliveryInputValue={deliveryInputValue}
+                                  deliveryRegion={deliveryRegion}
+
+                                  // Data Props for Pickup
+                                  pickup={pickup}
+                                  pickupInputValue={pickupInputValue}
+                                  pickupRegion={pickupRegion}
+                                />
+                              </div>
+
+                              {/* Right Column - Order Summary */}
+                              <div className="lg:w-1/2 space-y-6">
+                                {/* Promotions card section - Simplified */}
+                                {availablePromotions.length > 0 && (
+                                  <PromotionCard
+                                    appliedPromotion={appliedPromotion}
+                                  />
+                                  
+                                )}
+
+                                {/* Order Summary Card */}
+                                <OrderSummaryCard 
+                                  // Spread all the calculated values directly to the UI component
+                                  cart={cart}
+                                  appliedPromotion={appliedPromotion}
+                                  useSame={useSame}
+                                  {...summary} 
+                                />
+                              
+
+                                {/* Checkout Button */}
+                                <button
+                                  onClick={handleSubmit}
+                                  disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
+                                  className={`w-full py-3.5 px-6 rounded-lg font-medium text-white transition-all cursor-pointer ${
+                                    placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
+                                      ? 'bg-gray-400 cursor-not-allowed'
+                                      : 'bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg'
+                                  }`}
+                                >
+                                  {placing ? (
+                                    <span className="flex items-center justify-center">
+                                      <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+                                      Processing...
+                                    </span>
+                                  ) : (
+                                    'Proceed to Payment'
+                                  )}
+                                </button>
+
+                                
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        // Payment view remains the same as before
+                        <motion.div
+                          initial={{ opacity: 0, y: 30 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6 }} 
+                            className="">
+                          {/* Payment view content remains */}
+                          <PaymentCard
+                            // 1. Spread all the calculated totals, discounts, and flags from the summary object
+                            {...summary} 
+                            
+                            // 2. Explicitly pass objects that are needed but weren't created inside the utility
+                            
+                            appliedPromotion={appliedPromotion}
+
+                            // 3. Pass all handler functions and local state needed for interaction
+                            useSame={useSame}
+                            handlePayment={onPayment}
+                            placing={placing}
+                            setPaymentView={setPaymentView}
+                            setShowAlert={setShowAlert}
+                            
+                          />
+
+                        </motion.div>
+                      )}
+                    
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-[40vh]">
+                      <FaSpinner className="animate-spin text-4xl text-primary" />
+                      <p className="ml-4 text-gray-700 mt-2">Loading checkout...</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </>
-          ) : (
-            // Payment view remains the same as before
-            <div className="">
-              {/* Payment view content remains */}
-              <PaymentCard
-                // 1. Spread all the calculated totals, discounts, and flags from the summary object
-                {...summary} 
-                
-                // 2. Explicitly pass objects that are needed but weren't created inside the utility
-                
-                appliedPromotion={appliedPromotion}
-
-                // 3. Pass all handler functions and local state needed for interaction
-                useSame={useSame}
-                handlePayment={onPayment}
-                placing={placing}
-                setPaymentView={setPaymentView}
-                setShowAlert={setShowAlert}
-                
-              />
-
-            </div>
-          )}
+            )
+          }
         </div>
       </div>
     </APIProvider>

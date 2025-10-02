@@ -146,7 +146,7 @@ const PaymentCard = ({
   return (
     <div className="">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Finalize Order & Pay</h1>
+        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-gray-900">Finalize Order & Pay</h1>
         {/* Back Button */}
         <button
           onClick={() => setPaymentView(false)}

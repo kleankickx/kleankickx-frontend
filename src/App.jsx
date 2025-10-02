@@ -133,6 +133,7 @@ function App() {
   const [appLoading, setAppLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
+
   // Function to transition the splash screen out
   const finishLoading = useCallback(() => {
     if (hasLoaded) return;
@@ -141,10 +142,6 @@ function App() {
     // 1. Start the fade-out (set appLoading to false)
     setAppLoading(false);
 
-    // 2. Hide the component completely after the CSS fade duration (e.g., 800ms)
-    setTimeout(() => {
-      setShowSplash(false);
-    }, 800); 
   }, [hasLoaded]);
 
   useEffect(() => {

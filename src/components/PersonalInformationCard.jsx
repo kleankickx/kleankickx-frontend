@@ -6,9 +6,8 @@ const PersonalInformationCard = ({
   handlePhoneChange,
   isPhoneValid,
 }) => {
-  // Use a default value for phoneNumber if the user has one, 
-  // otherwise rely on the passed-in state/prop.
-  const initialPhoneNumber = user?.phone_number || phoneNumber;
+  
+  
   
   return (
     // Contact Information Card
@@ -70,7 +69,7 @@ const PersonalInformationCard = ({
         {/* Phone Number Field */}
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-            Phone Number
+            Phone Number <span className="text-red-500">*</span>
           </label>
           <div className="relative rounded-lg overflow-hidden">
             {/* Country Code Prefix */}
@@ -86,15 +85,15 @@ const PersonalInformationCard = ({
               id="phone"
               // Use initialPhoneNumber (from user prop) if handlePhoneChange hasn't been used yet,
               // otherwise rely on the passed-in state (phoneNumber).
-              value={initialPhoneNumber} 
+              value={phoneNumber} 
               onChange={handlePhoneChange}
               placeholder="24 123 4567"
               className="pl-24 w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-0"
-              maxLength={13}
+              maxLength={14}
             />
 
             {/* Validation Icon */}
-            {initialPhoneNumber && ( // Use initialPhoneNumber for validation check too
+            {phoneNumber && ( // Use initialPhoneNumber for validation check too
               <div className="absolute inset-y-0 right-0 flex items-center pr-4">
                 {isPhoneValid ? (
                   <FaCheckCircle className="text-green-500" />
@@ -106,7 +105,7 @@ const PersonalInformationCard = ({
           </div>
 
           {/* Validation Error Message */}
-          {initialPhoneNumber && !isPhoneValid && (
+          {phoneNumber && !isPhoneValid && (
             <p className="mt-2 text-sm text-red-600">
               Please enter a valid Ghana phone number (e.g., 024 123 4567)
             </p>

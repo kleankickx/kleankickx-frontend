@@ -183,6 +183,7 @@ const AuthProvider = ({ children }) => {
         last_name: decoded.last_name || '',
         is_verified: decoded.is_verified || false,
         signup_discount_used: decoded.signup_discount_used || false,
+        phone_number: decoded.phone_number || '',
       };
     } catch (err) {
       console.error('Failed to decode token:', err);
