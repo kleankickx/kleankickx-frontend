@@ -290,7 +290,7 @@ const DiscountBadge = ({ order, discount, percentage }) => {
 };
 
   return (
-    <div className="bg-gray-50">
+    <div className="bg-gray-50 min-h-screen">
       <div className="px-4 lg:px-24 py-8">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
