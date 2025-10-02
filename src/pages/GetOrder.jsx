@@ -290,260 +290,262 @@ const DiscountBadge = ({ order, discount, percentage }) => {
 };
 
   return (
-    <div className="px-4 lg:px-24 py-8">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <button
-            onClick={() => navigate('/orders')}
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <FaChevronLeft className="text-gray-500" />
-            Back to orders
-          </button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            Order #{orderSlug}
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
-          </p>
+    <div className="bg-gray-50">
+      <div className="px-4 lg:px-24 py-8">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <button
+              onClick={() => navigate('/orders')}
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            >
+              <FaChevronLeft className="text-gray-500" />
+              Back to orders
+            </button>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+              Order #{orderSlug}
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
+            </p>
+          </div>
+          {order && (
+            <div className="w-full sm:w-auto">
+              {getStatusDisplay(order.status)}
+            </div>
+          )}
         </div>
-        {order && (
-          <div className="w-full sm:w-auto">
-            {getStatusDisplay(order.status)}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-16 space-y-4">
+            <FaSpinner className="animate-spin text-primary text-4xl" />
+            <p className="text-gray-600">Loading order details...</p>
           </div>
         )}
-      </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center py-16 space-y-4">
-          <FaSpinner className="animate-spin text-primary text-4xl" />
-          <p className="text-gray-600">Loading order details...</p>
-        </div>
-      )}
+        {/* Error State */}
+        {error && !loading && (
+          <div className="flex flex-col items-center justify-center py-16 space-y-4 bg-gray-50 rounded-xl">
+            <FaExclamationCircle className="text-red-500 text-4xl" />
+            <p className="text-gray-700 max-w-md text-center">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <div className="flex flex-col items-center justify-center py-16 space-y-4 bg-gray-50 rounded-xl">
-          <FaExclamationCircle className="text-red-500 text-4xl" />
-          <p className="text-gray-700 max-w-md text-center">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {/* Order Content */}
-      {order && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Customer & Order Info */}
-            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                Order Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-3">CUSTOMER DETAILS</h3>
-                  <div className="flex items-center gap-3 mb-4">
-                    <FaUserCircle className="text-gray-400 text-2xl" />
-                    <div>
-                      <p className="font-medium">
-                        {order.first_name || 'N/A'} {order.last_name || 'N/A'}
-                      </p>
-                      <p className="text-sm text-gray-500">{order.email}</p>
+        {/* Order Content */}
+        {order && !loading && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Customer & Order Info */}
+              <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                  Order Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">CUSTOMER DETAILS</h3>
+                    <div className="flex items-center gap-3 mb-4">
+                      <FaUserCircle className="text-gray-400 text-2xl" />
+                      <div>
+                        <p className="font-medium">
+                          {order.first_name || 'N/A'} {order.last_name || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-500">{order.email}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-3">ORDER SUMMARY</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Order ID</span>
-                      <span className="font-medium">{order.slug}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Order Date</span>
-                      <span className="font-medium">{formatDate(order.created_at)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Payment Method</span>
-                      <span className="font-medium capitalize">{order.payment_method || 'Paystack'}</span>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">ORDER SUMMARY</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Order ID</span>
+                        <span className="font-medium">{order.slug}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Order Date</span>
+                        <span className="font-medium">{formatDate(order.created_at)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Method</span>
+                        <span className="font-medium capitalize">{order.payment_method || 'Paystack'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Discount Display */}
-            {order.discounts_applied?.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-3"
-              >
-                {order.discounts_applied?.map((discount, index) => {
-                  // Determine the percentage based on the discount type
-                  const percentage = discount.discount_type === "redeemed_points"
-                      ? order.redeemed_discount_percentage 
-                      : discount.percentage;
+              {/* Discount Display */}
+              {order.discounts_applied?.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-3"
+                >
+                  {order.discounts_applied?.map((discount, index) => {
+                    // Determine the percentage based on the discount type
+                    const percentage = discount.discount_type === "redeemed_points"
+                        ? order.redeemed_discount_percentage 
+                        : discount.percentage;
 
-                  return (
-                      <DiscountBadge key={index} order={order} discount={discount} percentage={percentage} />
-                  );
-                })}
-              </motion.div>
-            )}
+                    return (
+                        <DiscountBadge key={index} order={order} discount={discount} percentage={percentage} />
+                    );
+                  })}
+                </motion.div>
+              )}
 
-            {/* Order Items */}
-            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                Order Items ({order.items?.length || 0})
-              </h2>
-              {order.items?.length > 0 ? (
-                <div className="space-y-4">
-                  {order.items.map((item, index) => (
-                    <OrderItemCard key={index} item={item} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <FaBox className="mx-auto text-gray-300 text-4xl" />
-                  <p className="text-gray-500 mt-2">No items found in this order</p>
+              {/* Order Items */}
+              <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                  Order Items ({order.items?.length || 0})
+                </h2>
+                {order.items?.length > 0 ? (
+                  <div className="space-y-4">
+                    {order.items.map((item, index) => (
+                      <OrderItemCard key={index} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FaBox className="mx-auto text-gray-300 text-4xl" />
+                    <p className="text-gray-500 mt-2">No items found in this order</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery & Pickup */}
+              {(order.delivery_address || order.pickup_address) && (
+                <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+                  <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                    Delivery & Pickup
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {order.delivery_address && (
+                      <AddressCard type="delivery" address={order.delivery_address} />
+                    )}
+                    {order.pickup_address && (
+                      <AddressCard type="pickup" address={order.pickup_address} />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Delivery & Pickup */}
-            {(order.delivery_address || order.pickup_address) && (
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Order Total */}
               <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                  Delivery & Pickup
+                  Order Total
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {order.delivery_address && (
-                    <AddressCard type="delivery" address={order.delivery_address} />
-                  )}
-                  {order.pickup_address && (
-                    <AddressCard type="pickup" address={order.pickup_address} />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
+                  </div>
+                  
+                  {order.discounts_applied?.map((discount, index) => {
+                        // Check if the current discount is the "redeemed_points" type
+                        const isRedeemedPoints = discount.discount_type === "redeemed_points";
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Order Total */}
-            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                Order Total
-              </h2>
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
-                </div>
-                
-                {order.discounts_applied?.map((discount, index) => {
-                      // Check if the current discount is the "redeemed_points" type
-                      const isRedeemedPoints = discount.discount_type === "redeemed_points";
+                        // Determine the percentage to display
+                        // Use the specific percentage from the order object if it's the redeemed points discount
+                        const percentageToDisplay = isRedeemedPoints
+                            ? (order.redeemed_discount_percentage || 0)
+                            : (discount.percentage || 0);
 
-                      // Determine the percentage to display
-                      // Use the specific percentage from the order object if it's the redeemed points discount
-                      const percentageToDisplay = isRedeemedPoints
-                          ? (order.redeemed_discount_percentage || 0)
-                          : (discount.percentage || 0);
+                        // Calculate the discounted amount
+                        const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
 
-                      // Calculate the discounted amount
-                      const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
+                        // Format the discount type for a clean display
+                        const formattedDiscountType = discount.discount_type.replace('_', ' ');
 
-                      // Format the discount type for a clean display
-                      const formattedDiscountType = discount.discount_type.replace('_', ' ');
+                        return (
+                            <div key={index} className="flex justify-between text-emerald-600">
+                                <span className='capitalize'>
+                                    {formattedDiscountType} Discount ({percentageToDisplay}%)
+                                </span>
+                                <span className="font-medium">-GHS {discountAmount}</span>
+                            </div>
+                        );
+                    })}
 
-                      return (
-                          <div key={index} className="flex justify-between text-emerald-600">
-                              <span className='capitalize'>
-                                  {formattedDiscountType} Discount ({percentageToDisplay}%)
-                              </span>
-                              <span className="font-medium">-GHS {discountAmount}</span>
-                          </div>
-                      );
-                  })}
-
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Delivery Fee</span>
-                  <span className="font-medium">
-                    {order.delivery_address?.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Pickup Fee</span>
-                  <span className="font-medium">
-                    {order.pickup_address?.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}
-                  </span>
-                </div>
-                
-                <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
-                  <span className="font-semibold text-lg">Total Amount</span>
-                  <div className="text-right">
-                    {order.discounts_applied?.length > 0 && (
-                      <div className="text-sm text-gray-400 line-through mb-1">
-                        GHS {(parseFloat(order.subtotal || order.total) + 
-                            parseFloat(order.delivery_address?.cost || 0) + 
-                            parseFloat(order.pickup_address?.cost || 0)).toFixed(2)}
-                      </div>
-                    )}
-                    <span className="font-bold text-xl text-emerald-600">
-                      GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Delivery Fee</span>
+                    <span className="font-medium">
+                      {order.delivery_address?.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Pickup Fee</span>
+                    <span className="font-medium">
+                      {order.pickup_address?.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}
+                    </span>
+                  </div>
+                  
+                  <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
+                    <span className="font-semibold text-lg">Total Amount</span>
+                    <div className="text-right">
+                      {order.discounts_applied?.length > 0 && (
+                        <div className="text-sm text-gray-400 line-through mb-1">
+                          GHS {(parseFloat(order.subtotal || order.total) + 
+                              parseFloat(order.delivery_address?.cost || 0) + 
+                              parseFloat(order.pickup_address?.cost || 0)).toFixed(2)}
+                        </div>
+                      )}
+                      <span className="font-bold text-xl text-emerald-600">
+                        GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Customer Support */}
-            <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                Need Help?
-              </h2>
-              <div className="space-y-4">
-                {/* <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <FaPhone className="text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Call us at</p>
-                    <a href="tel:+1234567890" className="font-medium text-gray-900 hover:text-blue-600">
-                      +1 (234) 567-890
-                    </a>
-                  </div>
-                </div> */}
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-full">
-                    <FaEnvelope className="text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Email us at</p>
-                    <a 
-                      href="mailto:kleankickx.sneakercare@gmail.com" 
-                      className="font-medium text-gray-900 hover:text-green-600"
-                    >
-                      kleankickx.sneakercare@gmail.com
-                    </a>
+              {/* Customer Support */}
+              <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                  Need Help?
+                </h2>
+                <div className="space-y-4">
+                  {/* <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-full">
+                      <FaPhone className="text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Call us at</p>
+                      <a href="tel:+1234567890" className="font-medium text-gray-900 hover:text-blue-600">
+                        +1 (234) 567-890
+                      </a>
+                    </div>
+                  </div> */}
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-full">
+                      <FaEnvelope className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Email us at</p>
+                      <a 
+                        href="mailto:kleankickx.sneakercare@gmail.com" 
+                        className="font-medium text-gray-900 hover:text-green-600"
+                      >
+                        kleankickx.sneakercare@gmail.com
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

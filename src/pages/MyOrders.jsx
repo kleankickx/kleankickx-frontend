@@ -292,7 +292,7 @@ const MyOrders = () => {
                 <span className="text-base font-semibold text-gray-900">Total</span>
                 <div className="flex items-center gap-3">
                   {hasDiscounts && (
-                    <div className="text-xs text-gray-500 line-through mb-1">
+                    <div className="text-xs text-gray-500 line-through">
                       ₵{totalBeforeDiscount.toFixed(2)}
                     </div>
                   )}
