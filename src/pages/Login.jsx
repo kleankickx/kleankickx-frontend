@@ -93,14 +93,14 @@ const Login = () => {
   };
 
   return (
-    <div className="bg-[#edf1f4] py-16 px-4 min-h-screen  ">
+    <div className="bg-[#edf1f4] px-4 min-h-screen flex justify-center items-center flex-col">
 
       {/* Login Card */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6"
+          className=" bg-white rounded-lg shadow-md p-6 lg:w-[30rem] w-full"
         >
           <h2 className="text-2xl font-bold text-black mb-6 inline-block">Login</h2>
 
@@ -215,13 +215,15 @@ const Login = () => {
             <hr className="flex-grow border-gray-300" />
           </div>
 
-          <div>
+          <div className="">
             <GoogleLogin
+            
               onSuccess={handleGoogleLoginSuccess}
               onError={() => {
                 setError('Google login failed.');
                 toast.error('Google login failed. Please try again.', { position: 'top-right' });
               }}
+              width="100%"
               text="signin_with"
               shape="rectangular"
               theme="filled_black"

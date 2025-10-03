@@ -121,11 +121,11 @@ const Register = () => {
   };
 
   return (
-    <div className="bg-[#edf1f4] py-16 px-4 min-h-screen">
+    <div className="bg-[#edf1f4] py-16 px-4 min-h-screen flex flex-col items-center justify-center">
       <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }} className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-[4rem]">
+                transition={{ duration: 0.6 }} className="lg:w-[30rem] w-full bg-white rounded-lg shadow-md p-6">
 
         {/* Referral Code Banner (only shows if code detected from URL) */}
         {usingReferral && (
