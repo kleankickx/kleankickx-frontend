@@ -75,7 +75,7 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/orders/:orderSlug"
+            path="/orders/:orderReferenceCode"
             element={
               <ProtectedRoute>
                 <GetOrder />

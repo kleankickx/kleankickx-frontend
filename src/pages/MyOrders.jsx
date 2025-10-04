@@ -236,7 +236,7 @@ const MyOrders = () => {
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-center gap-2 mb-2">
-                <h2 className="text-lg font-bold text-gray-900 truncate">#{order.slug}</h2>
+                <h2 className="text-lg font-bold text-gray-900 truncate">#{order.reference_code}</h2>
                 {getStatusDisplay(order.status)}
               </div>
               <div className="flex items-center gap-1.5 text-sm text-gray-500">
@@ -305,7 +305,7 @@ const MyOrders = () => {
           </div>
 
           <Link
-            to={`/orders/${order.slug}`}
+            to={`/orders/${order.reference_code}`}
             className="mt-4 inline-flex items-center justify-center w-full px-4 py-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/70 transition-colors"
           >
             view details
@@ -494,7 +494,7 @@ const MyOrders = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     <AnimatePresence>
                       {displayOrders.map((order) => (
-                        <OrderCard key={order.slug} order={order} />
+                        <OrderCard key={order.reference_code} order={order} />
                       ))}
                     </AnimatePresence>
                   </div>

@@ -202,7 +202,7 @@ export const usePlaceOrder = (
                             
                             window.removeEventListener('beforeunload', beforeUnloadHandler);
                             toast.success('Order placed successfully! Thank you for your purchase.');
-                            navigate(`/orders/${response.data.order_slug}`);
+                            navigate(`/orders/${response.data.order_reference_code}`);
                             
                         } catch (error) {
                             lastError = error;

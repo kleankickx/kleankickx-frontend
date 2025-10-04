@@ -33,7 +33,7 @@ const GetOrder = () => {
   const [error, setError] = useState(null);
   const { isAuthenticated, user, api } = useContext(AuthContext);
   const navigate = useNavigate();
-  const { orderSlug } = useParams();
+  const { orderReferenceCode } = useParams();
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -41,7 +41,7 @@ const GetOrder = () => {
       setError(null);
 
       try {
-        const response = await api.get(`/api/orders/${orderSlug}/`);
+        const response = await api.get(`/api/orders/${orderReferenceCode}/`);
         setOrder(response.data);
       } catch (err) {
         console.error('Error fetching order:', err);
@@ -55,23 +55,14 @@ const GetOrder = () => {
       }
     };
 
-    if (!orderSlug) {
+    if (!orderReferenceCode) {
       setError('Invalid order URL');
       navigate('/orders');
       return;
     }
-    if (!isAuthenticated) {
-      setError('Please log in to view order');
-      navigate('/login');
-      return;
-    }
-    if (user && !user.is_verified) {
-      setError('Please verify your email');
-      navigate('/verify-email');
-      return;
-    }
+    
     fetchOrder();
-  }, [orderSlug, isAuthenticated, user, navigate]);
+  }, [orderReferenceCode, navigate]);
 
   const getStatusDisplay = (status) => {
     const statusConfig = {
@@ -303,7 +294,7 @@ const DiscountBadge = ({ order, discount, percentage }) => {
               Back to orders
             </button>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Order #{orderSlug}
+              Order #{orderReferenceCode}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
               {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
@@ -366,7 +357,7 @@ const DiscountBadge = ({ order, discount, percentage }) => {
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Order ID</span>
-                        <span className="font-medium">{order.slug}</span>
+                        <span className="font-medium">{order.reference_code}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Order Date</span>
