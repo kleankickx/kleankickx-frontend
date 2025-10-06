@@ -524,10 +524,10 @@ const DiscountBadge = ({ order, discount, percentage }) => {
                     <div>
                       <p className="text-sm text-gray-500">Email us at</p>
                       <a 
-                        href="mailto:kleankickx.sneakercare@gmail.com" 
+                        href="mailto:support@kleankickx.comsupport" 
                         className="font-medium text-gray-900 hover:text-green-600"
                       >
-                        kleankickx.sneakercare@gmail.com
+                        support@kleankickx.com
                       </a>
                     </div>
                   </div>

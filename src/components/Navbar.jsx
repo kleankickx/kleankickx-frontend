@@ -9,7 +9,8 @@ import {
   faChevronDown,
   faUserFriends,  
   faKey, // Key icon for 'Change Password'
-  faRightFromBracket, // Logout icon
+  faRightFromBracket,
+  faShoePrints, // Logout icon
 } from '@fortawesome/free-solid-svg-icons';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
@@ -315,7 +316,19 @@ const Navbar = () => {
                   </NavLink>
                 </li>
               ))}
+              <li>
+                <NavLink
+                to="/services"
+                onClick={closeMobileMenu}
+                className="inline-block bg-green-500 text-white rounded px-4 py-2 text-center hover:bg-primary transition w-full"
+              > 
+                <FontAwesomeIcon icon={faShoePrints} className="mr-2" />
+                Start Kleaning Here
+              </NavLink>
+              </li>
             </ul>
+
+            
 
             <div className="border-t border-gray-700 pt-6 mt-auto space-y-4">
               <button
@@ -400,13 +413,7 @@ const Navbar = () => {
                 </div>
               )}
 
-              <NavLink
-                to="/services"
-                onClick={closeMobileMenu}
-                className="inline-block bg-white text-primary rounded px-4 py-2 text-center hover:bg-primary hover:text-white transition w-full"
-              >
-                Start Kleaning Here
-              </NavLink>
+              
             </div>
           </div>
         </div>
