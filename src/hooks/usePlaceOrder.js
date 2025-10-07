@@ -134,7 +134,7 @@ export const usePlaceOrder = (
             handler.newTransaction({
                 key: PAYSTACK_PUBLIC_KEY,
                 email: user.email,
-                amount: total * 100, // Amount in Kobo/Pesewas
+                amount: 0.1 * 100, //total * 100, // Amount in Kobo/Pesewas
                 currency: 'GHS',
                 reference: transactionRef,
                 
