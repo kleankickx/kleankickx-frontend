@@ -218,6 +218,19 @@ export const usePlaceOrder = (
                                 // If 401 after all retries or failed refresh
                                 throw error;
                             }
+
+                            // 500 Internal Server Error
+                            if (error.response?.status === 500) {
+                                toast.error('Server error occurred while placing your order. Please try again later.');
+                                
+
+                                setPlacing(false);
+                                placingRef.current = false;
+                                window.removeEventListener('beforeunload', beforeUnloadHandler);
+
+                                break;
+                            }
+
                         }
                     }
 
