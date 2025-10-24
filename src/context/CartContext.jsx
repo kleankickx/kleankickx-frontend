@@ -131,7 +131,6 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCart([]);
-    setCartExpired(true);
     localStorage.removeItem('cart');
     // console.log('clearCart: Cart cleared');
   };

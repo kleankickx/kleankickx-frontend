@@ -8,6 +8,7 @@ import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import PaymentCard from "../components/PaymentCard";
 import DeliveryInformationCard from "../components/DeliveryInformationCard";
+import { useCheckoutState } from "../hooks/useCheckoutState"; 
 import {
   FiTruck,
   FiInfo,
@@ -60,13 +61,25 @@ const Checkout = () => {
     }
   };
 
-  const [delivery, setDelivery] = useState(() => getLocationFromStorage('deliveryLocation'));
-  const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
-  const [useSame, setUseSame] = useState(true);
-  const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
-  const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
-  const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
-  const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
+  // const [delivery, setDelivery] = useState(() => getLocationFromStorage('deliveryLocation'));
+  // const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
+  // const [useSame, setUseSame] = useState(true);
+  // const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
+  // const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
+  // const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
+  // const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
+
+  const { 
+        delivery, setDelivery, 
+        pickup, setPickup, 
+        useSame, setUseSame,
+        deliveryInputValue, setDeliveryInputValue,
+        pickupInputValue, setPickupInputValue,
+        deliveryRegion, setDeliveryRegion,
+        pickupRegion, setPickupRegion
+    } = useCheckoutState(); 
+    
+
   const [showAlert, setShowAlert] = useState(true);
   const [paymentView, setPaymentView] = useState(false);
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false)
