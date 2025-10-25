@@ -216,11 +216,129 @@ const MyOrders = () => {
     });
   };
 
+  // --- BEAUTIFUL PAGINATION COMPONENT ---
+  const PaginationControls = () => {
+    const generatePageNumbers = () => {
+      const pages = [];
+      const maxVisiblePages = 7;
+      let startPage = Math.max(1, currentPage - 3);
+      let endPage = Math.min(totalPages, currentPage + 3);
+
+      if (endPage - startPage + 1 < maxVisiblePages) {
+        if (currentPage < totalPages / 2) {
+          endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        } else {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+      }
+
+      // Always show first page
+      if (startPage > 1) {
+        pages.push(1);
+        if (startPage > 2) {
+          pages.push('ellipsis-start');
+        }
+      }
+
+      // Middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+
+      // Always show last page
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          pages.push('ellipsis-end');
+        }
+        pages.push(totalPages);
+      }
+
+      return pages;
+    };
+
+    const pageNumbers = generatePageNumbers();
+
+    return (
+      <div className="flex flex-col lg:flex-row justify-between items-center gap-6 mt-8 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+        {/* Page Info */}
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of{' '}
+          <span className="font-semibold text-gray-900">{totalCount}</span> orders
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex items-center gap-2">
+          {/* Previous Button */}
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={!prevUrl || loading}
+            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer ${
+              prevUrl && !loading
+                ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transform hover:scale-105'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <FaChevronLeft className="w-3 h-3" />
+          </button>
+
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {pageNumbers.map((page, index) => {
+              if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                return (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="flex items-center justify-center w-10 h-10 text-gray-400"
+                  >
+                    <FaEllipsisH className="w-4 h-4" />
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`flex items-center justify-center w-10 h-10 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
+                    currentPage === page
+                      ? 'bg-primary text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={!nextUrl || loading}
+            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer ${
+              nextUrl && !loading
+                ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transform hover:scale-105'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <FaChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Page Info (Right side) */}
+        <div className="text-sm text-gray-600">
+          Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
+          <span className="font-semibold text-gray-900">{totalPages}</span>
+        </div>
+      </div>
+    );
+  };
+
   // --- REDESIGNED ORDER CARD COMPONENT ---
   const OrderCard = ({ order }) => {
     const firstItem = order.items?.[0];
     const additionalItemsCount = order.items?.length - 1;
-    const hasDiscounts = order.is_discounted; // Simple boolean
+    const hasDiscounts = order.is_discounted;
     const totalBeforeDiscount = order.total_before_discount; 
 
     return (
@@ -244,7 +362,6 @@ const MyOrders = () => {
                 {formatDateTime(order.created_at)}
               </div>
             </div>
-            
           </div>
 
           {/* Order Items - Simplified */}
@@ -285,15 +402,13 @@ const MyOrders = () => {
           {/* Order Summary - Simplified */}
           <div className="border-t border-gray-100 pt-4">
             <div className="space-y-2">
-             
-
               {/* Final Total */}
               <div className="flex justify-between items-center pt-2">
                 <span className="text-base font-semibold text-gray-900">Total</span>
                 <div className="flex items-center gap-3">
                   {hasDiscounts && (
                     <div className="text-xs text-gray-500 line-through">
-                      ₵{totalBeforeDiscount.toFixed(2)}
+                      ₵{totalBeforeDiscount?.toFixed(2) || '0.00'}
                     </div>
                   )}
                   <div className="text-lg font-bold text-green-700">
@@ -308,8 +423,7 @@ const MyOrders = () => {
             to={`/orders/${order.reference_code}`}
             className="mt-4 inline-flex items-center justify-center w-full px-4 py-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/70 transition-colors"
           >
-            view details
-            
+            View Details
           </Link>
         </div>
       </motion.div>
@@ -334,42 +448,6 @@ const MyOrders = () => {
     { value: 'total_high', label: 'Total: High to Low' },
     { value: 'total_low', label: 'Total: Low to High' }
   ];
-  
-  // --- PAGINATION COMPONENT ---
-  const PaginationControls = () => (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 bg-white p-4 rounded-xl shadow-xs border border-gray-100">
-      <p className="text-sm text-gray-600">
-        Page <span className="font-semibold text-gray-900">{currentPage}</span> of <span className="font-semibold text-gray-900">{totalPages}</span> • {totalCount} total orders
-      </p>
-      <div className="flex space-x-2">
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={!prevUrl || loading}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer ${
-            prevUrl && !loading
-              ? 'bg-primary text-white hover:bg-primary/70'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          <FaChevronLeft className="w-3 h-3" />
-          Previous
-        </button>
-
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={!nextUrl || loading}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer ${
-            nextUrl && !loading
-              ? 'bg-primary text-white hover:bg-primary/70'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          Next
-          <FaChevronRight className="w-3 h-3" />
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -417,7 +495,7 @@ const MyOrders = () => {
                     <FaFilter className="text-gray-400" />
                   </div>
                   <select
-                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-bg-primary appearance-none text-sm"
+                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary appearance-none text-sm"
                     value={statusFilter}
                     onChange={(e) => handleStatusChange(e.target.value)}
                   >
@@ -434,7 +512,7 @@ const MyOrders = () => {
                     <FaSort className="text-gray-400" />
                   </div>
                   <select
-                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-bg-primary focus:border-bg-primary appearance-none text-sm"
+                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary appearance-none text-sm"
                     value={sortBy}
                     onChange={(e) => handleSortChange(e.target.value)}
                   >
@@ -509,7 +587,7 @@ const MyOrders = () => {
                 )}
               </div>
               
-              {/* Pagination */}
+              {/* Beautiful Pagination */}
               {totalPages > 1 && <PaginationControls />}
             </>
           )}
