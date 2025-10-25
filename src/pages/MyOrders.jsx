@@ -220,9 +220,9 @@ const MyOrders = () => {
   const PaginationControls = () => {
     const generatePageNumbers = () => {
       const pages = [];
-      const maxVisiblePages = 7;
-      let startPage = Math.max(1, currentPage - 3);
-      let endPage = Math.min(totalPages, currentPage + 3);
+      const maxVisiblePages = 5; // Reduced for better mobile experience
+      let startPage = Math.max(1, currentPage - 2); // Adjusted for 5 pages
+      let endPage = Math.min(totalPages, currentPage + 2);
 
       if (endPage - startPage + 1 < maxVisiblePages) {
         if (currentPage < totalPages / 2) {
@@ -259,76 +259,153 @@ const MyOrders = () => {
     const pageNumbers = generatePageNumbers();
 
     return (
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-6 mt-8 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-        {/* Page Info */}
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of{' '}
-          <span className="font-semibold text-gray-900">{totalCount}</span> orders
-        </div>
-
-        {/* Pagination Controls */}
-        <div className="flex items-center gap-2">
-          {/* Previous Button */}
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={!prevUrl || loading}
-            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer ${
-              prevUrl && !loading
-                ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transform hover:scale-105'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <FaChevronLeft className="w-3 h-3" />
-          </button>
-
-          {/* Page Numbers */}
-          <div className="flex items-center gap-1">
-            {pageNumbers.map((page, index) => {
-              if (page === 'ellipsis-start' || page === 'ellipsis-end') {
-                return (
-                  <span
-                    key={`ellipsis-${index}`}
-                    className="flex items-center justify-center w-10 h-10 text-gray-400"
-                  >
-                    <FaEllipsisH className="w-4 h-4" />
-                  </span>
-                );
-              }
-
-              return (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`flex items-center justify-center w-10 h-10 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
-                    currentPage === page
-                      ? 'bg-primary text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-primary hover:text-primary'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
+      <div className="w-full mt-6 bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-100">
+        {/* Mobile Layout - Stacked */}
+        <div className="flex flex-col gap-4 sm:hidden">
+          {/* Page Info Top */}
+          <div className="text-center text-sm text-gray-600">
+            Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of{' '}
+            <span className="font-semibold text-gray-900">{totalCount}</span> orders
           </div>
 
-          {/* Next Button */}
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={!nextUrl || loading}
-            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer ${
-              nextUrl && !loading
-                ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transform hover:scale-105'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <FaChevronRight className="w-3 h-3" />
-          </button>
+          {/* Pagination Controls - Centered */}
+          <div className="flex items-center justify-center w-full gap-1">
+            {/* Previous Button */}
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!prevUrl || loading}
+              className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg transition-all duration-200 cursor-pointer text-xs sm:text-sm ${
+                prevUrl && !loading
+                  ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <FaChevronLeft className="w-2 h-2 sm:w-3 sm:h-3" />
+            </button>
+
+            {/* Page Numbers - Scrollable on mobile */}
+            <div className="flex items-center gap-1 scrollbar-hide">
+              {pageNumbers.map((page, index) => {
+                if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                  return (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="flex items-center justify-center w-6 h-8 text-gray-400 flex-shrink-0"
+                    >
+                      <FaEllipsisH className="w-3 h-3" />
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`flex items-center justify-center w-8 h-8 rounded-lg font-medium transition-all duration-200 cursor-pointer text-xs sm:text-sm flex-shrink-0 ${
+                      currentPage === page
+                        ? 'bg-primary text-white shadow-lg scale-105'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!nextUrl || loading}
+              className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg transition-all duration-200 cursor-pointer text-xs sm:text-sm ${
+                nextUrl && !loading
+                  ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <FaChevronRight className="w-2 h-2 sm:w-3 sm:h-3" />
+            </button>
+          </div>
+
+          {/* Page Info Bottom */}
+          <div className="text-center text-sm text-gray-600">
+            Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
+            <span className="font-semibold text-gray-900">{totalPages}</span>
+          </div>
         </div>
 
-        {/* Page Info (Right side) */}
-        <div className="text-sm text-gray-600">
-          Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
-          <span className="font-semibold text-gray-900">{totalPages}</span>
+        {/* Desktop Layout - Horizontal */}
+        <div className="hidden sm:flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-6">
+          {/* Page Info Left */}
+          <div className="text-sm text-gray-600 whitespace-nowrap">
+            Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of{' '}
+            <span className="font-semibold text-gray-900">{totalCount}</span> orders
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center gap-2">
+            {/* Previous Button */}
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!prevUrl || loading}
+              className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer ${
+                prevUrl && !loading
+                  ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transform hover:scale-105'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <FaChevronLeft className="w-3 h-3" />
+            </button>
+
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {pageNumbers.map((page, index) => {
+                if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                  return (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="flex items-center justify-center w-10 h-10 text-gray-400"
+                    >
+                      <FaEllipsisH className="w-4 h-4" />
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`flex items-center justify-center w-10 h-10 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
+                      currentPage === page
+                        ? 'bg-primary text-white shadow-lg scale-105'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!nextUrl || loading}
+              className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer ${
+                nextUrl && !loading
+                  ? 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transform hover:scale-105'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <FaChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Page Info Right */}
+          <div className="text-sm text-gray-600 whitespace-nowrap">
+            Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
+            <span className="font-semibold text-gray-900">{totalPages}</span>
+          </div>
         </div>
       </div>
     );
