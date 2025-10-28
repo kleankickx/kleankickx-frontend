@@ -33,13 +33,15 @@ const DeliveryInformationCard = (props) => {
             type="delivery"
             region={props.deliveryRegion}
             onFocus={() => props.setActiveInput('delivery')}
+            pickupTime={props.pickupTime}
+            setPickupTime={props.setPickupTime}
           />
         </div>
 
         {props.useSame && (
           // alert
           <div className="p-3 bg-green-50 border border-blue-200 text-blue-800 rounded">
-            <p className="text-sm">
+            <p className="text-xs lg:text-sm">
               <FaInfoCircle className="inline mr-2" />
               Pickup address will be the same as delivery address.
             </p>
@@ -90,6 +92,8 @@ const DeliveryInformationCard = (props) => {
               type="pickup"
               region={props.pickupRegion}
               onFocus={() => props.setActiveInput('pickup')}
+              pickupTime={props.pickupTime}
+              setPickupTime={props.setPickupTime}
             />
           </div>
         )}

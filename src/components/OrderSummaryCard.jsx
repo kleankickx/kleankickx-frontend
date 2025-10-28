@@ -136,7 +136,7 @@ const OrderSummaryCard = ({
           <div className="flex justify-between pt-2">
             <p className="text-gray-600">Delivery Fee</p>
             <p className="font-medium">
-              {deliveryFee ? `GHS ${deliveryFee}` : '--'}
+              {deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--'}
             </p>
           </div>
 
@@ -146,8 +146,8 @@ const OrderSummaryCard = ({
             <p className="font-medium">
               {/* Uses delivery cost if useSame is true, otherwise uses pickup cost */}
               {useSame 
-                ? (deliveryFee ? `GHS ${deliveryFee}` : '--') 
-                : (pickupFee ? `GHS ${pickupFee}` : '--')
+                ? (deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--') 
+                : (pickupFee ? `GHS ${parseFloat(pickupFee).toFixed(2)}` : '--')
               }
             </p>
           </div>

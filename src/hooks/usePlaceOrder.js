@@ -126,7 +126,7 @@ export const usePlaceOrder = (
     }, [baseURL, logout, navigate, setAccessToken, setRefreshToken]);
 
 
-    const handlePayment = useCallback(async (summary, cart, phoneNumber, delivery, pickup, useSame) => {
+    const handlePayment = useCallback(async (summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime) => {
         // Use ref for the immediate check
         if (placingRef.current) return;
 
@@ -156,7 +156,8 @@ export const usePlaceOrder = (
                 pickup_cost: useSame ? deliveryFee : pickupFee,
                 sub_total: subtotal,
                 phone_number: phoneNumber,
-                discounts_applied: appliedDiscounts
+                discounts_applied: appliedDiscounts,
+                pickup_time: pickupTime?.value
             });
 
             // 4. Validate Response and Perform Local Cleanup

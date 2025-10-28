@@ -76,7 +76,8 @@ const Checkout = () => {
         deliveryInputValue, setDeliveryInputValue,
         pickupInputValue, setPickupInputValue,
         deliveryRegion, setDeliveryRegion,
-        pickupRegion, setPickupRegion
+        pickupRegion, setPickupRegion,
+        pickupTime, setPickupTime
     } = useCheckoutState(); 
     
 
@@ -207,7 +208,8 @@ const Checkout = () => {
       user, navigate, logout, api, baseURL, PAYSTACK_PUBLIC_KEY,
       setAccessToken, setRefreshToken, clearCart,
       setDelivery, setPickup, setDeliveryInputValue, setPickupInputValue,
-      setDeliveryRegion, setPickupRegion, setUseSame, setAppliedPromotion
+      setDeliveryRegion, setPickupRegion, setUseSame, setAppliedPromotion,
+      setPickupTime
   });
 
   // Helper function to format the number for display (024 123 4567)
@@ -290,6 +292,8 @@ const Checkout = () => {
 
   // Handle place selection from map
   const handlePlaceSelect = useCallback((location, type) => {
+    setPickupTime(location ? location.pickupTime : null);
+    localStorage.setItem('pickupTime', location ? JSON.stringify(location.pickupTime) : null);
     if (type === 'delivery') {
       setDelivery(location);
       setDeliveryInputValue(location ? location.address : '');
@@ -305,12 +309,14 @@ const Checkout = () => {
         setPickupInputValue('');
         localStorage.removeItem('pickupLocation');
         localStorage.removeItem('pickupInputValue');
+        localStorage.removeItem('pickupTime');
       }
     } else {
       setPickup(location);
       setPickupInputValue(location ? location.address : '');
       localStorage.setItem('pickupLocation', JSON.stringify(location));
       localStorage.setItem('pickupInputValue', location ? location.address : '');
+    
     }
     setActiveInput(null);
     if (location) {
@@ -430,7 +436,7 @@ const Checkout = () => {
   // Handle payment with Paystack
   const onPayment = async() => {
     // The hook handles token checks, Paystack initialization, and order submission
-    await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame);
+    await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime);
   };
 
   // Load Paystack script
@@ -506,9 +512,9 @@ const Checkout = () => {
                           transition={{ duration: 0.6 }}
                         >
                           <div className="py-8">
-                            <div className="flex flex-col lg:flex-row gap-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
                               {/* Left Column - Customer Information */}
-                              <div className="lg:w-1/2 space-y-6">
+                              <div className="space-y-6 lg:col-span-7">
                               
                                 {/* Contact Information Card */}
                                 <PersonalInformationCard
@@ -535,11 +541,13 @@ const Checkout = () => {
                                   pickup={pickup}
                                   pickupInputValue={pickupInputValue}
                                   pickupRegion={pickupRegion}
+                                  pickupTime={pickupTime}
+                                  setPickupTime={setPickupTime}
                                 />
                               </div>
 
                               {/* Right Column - Order Summary */}
-                              <div className="lg:w-1/2 space-y-6">
+                              <div className="space-y-6 lg:col-span-5">
                                 {/* Promotions card section - Simplified */}
                                 {availablePromotions.length > 0 && (
                                   <PromotionCard

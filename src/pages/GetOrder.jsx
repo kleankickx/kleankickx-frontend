@@ -799,7 +799,7 @@ const GetOrder = () => {
     </motion.div>
   );
 
-  const AddressCard = ({ type, address }) => (
+  const AddressCard = ({ type, address, cost }) => (
     <div className="p-5 rounded-lg border border-gray-200 bg-white">
       <div className="flex items-center gap-3 mb-4">
         {type === 'delivery' ? (
@@ -834,7 +834,7 @@ const GetOrder = () => {
         <div className="flex items-center gap-2 pt-2 mt-2 border-t border-gray-100">
           <FaMoneyBillWave className="text-gray-400" />
           <span className="font-medium">
-            Cost: GHS {parseFloat(address.cost).toFixed(2)}
+            Cost: GHS {parseFloat(cost).toFixed(2)}
           </span>
         </div>
       </div>
@@ -926,7 +926,7 @@ const GetOrder = () => {
           <div>
             <button
               onClick={() => navigate('/orders')}
-              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors cursor-pointer"
             >
               <FaChevronLeft className="text-gray-500" />
               Back to orders
@@ -1078,10 +1078,10 @@ const GetOrder = () => {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {order.delivery_address && (
-                      <AddressCard type="delivery" address={order.delivery_address} />
+                      <AddressCard type="delivery" address={order.delivery_address} cost={order.delivery_cost} />
                     )}
                     {order.pickup_address && (
-                      <AddressCard type="pickup" address={order.pickup_address} />
+                      <AddressCard type="pickup" address={order.pickup_address} cost={order.pickup_cost}  />
                     )}
                   </div>
                 </div>
@@ -1129,13 +1129,13 @@ const GetOrder = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery Fee</span>
                     <span className="font-medium">
-                      {order.delivery_address?.cost ? `GHS ${parseFloat(order.delivery_address.cost).toFixed(2)}` : 'N/A'}
+                      {order.delivery_cost ? `GHS ${parseFloat(order.delivery_cost).toFixed(2)}` : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Pickup Fee</span>
                     <span className="font-medium">
-                      {order.pickup_address?.cost ? `GHS ${parseFloat(order.pickup_address.cost).toFixed(2)}` : 'N/A'}
+                      {order.pickup_cost ? `GHS ${parseFloat(order.pickup_cost).toFixed(2)}` : 'N/A'}
                     </span>
                   </div>
 
@@ -1157,6 +1157,7 @@ const GetOrder = () => {
                   </div>
                 </div>
               </div>
+
 
               {/* Customer Support */}
               <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">

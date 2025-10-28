@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // Helper function to safely get JSON from storage
-const getLocationFromStorage = (key) => {
+const getItemFromStorage = (key) => {
     const item = localStorage.getItem(key);
     try {
         return item ? JSON.parse(item) : null;
@@ -13,25 +13,28 @@ const getLocationFromStorage = (key) => {
 
 export const useCheckoutState = () => {
     // 1. STATE DEFINITIONS (Moved from CheckoutPage)
-    const [delivery, setDelivery] = useState(() => getLocationFromStorage('deliveryLocation'));
-    const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
+    const [delivery, setDelivery] = useState(() => getItemFromStorage('deliveryLocation'));
+    const [pickup, setPickup] = useState(() => getItemFromStorage('pickupLocation'));
     const [useSame, setUseSame] = useState(true);
-    const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
-    const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
-    const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
-    const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
+    const [deliveryInputValue, setDeliveryInputValue] = useState(() => getItemFromStorage('deliveryInputValue') || '');
+    const [pickupInputValue, setPickupInputValue] = useState(() => getItemFromStorage('pickupInputValue') || '');
+    const [deliveryRegion, setDeliveryRegion] = useState(() => getItemFromStorage('deliveryRegion') || 'Greater Accra');
+    const [pickupRegion, setPickupRegion] = useState(() => getItemFromStorage('pickupRegion') || 'Greater Accra');
+    const [pickupTime, setPickupTime] = useState(() => getItemFromStorage('pickupTime'));
 
     // 2. Local Storage Sync (Keep this logic wherever it is, often in the same hook/context)
     useEffect(() => {
         // Example sync logic (you probably have more of this)
         if (delivery) {
             localStorage.setItem('deliveryLocation', JSON.stringify(delivery));
+            localStorage.setItem('pickupTime', JSON.stringify(pickupTime));
         } else {
             localStorage.removeItem('deliveryLocation');
+            localStorage.removeItem('pickupTime');
         }
         localStorage.setItem('deliveryInputValue', deliveryInputValue);
         // ... and so on for all variables ...
-    }, [delivery, deliveryInputValue, pickup, pickupInputValue, deliveryRegion, pickupRegion]);
+    }, [delivery, deliveryInputValue, pickup, pickupInputValue, deliveryRegion, pickupRegion, pickupTime]);
 
 
     // 3. THE CRUCIAL CLEANUP FUNCTION
@@ -44,10 +47,11 @@ export const useCheckoutState = () => {
         setPickupInputValue('');
         setDeliveryRegion(null);
         setPickupRegion(null);
+        setPickupTime(null);
      
 
         // Clear Local Storage (MUST be done explicitly)
-        ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 'pickupInputValue', 'deliveryRegion', 'pickupRegion', 'failedOrder'].forEach(key => {
+        ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 'pickupInputValue', 'deliveryRegion', 'pickupRegion', 'failedOrder', 'pickupTime'].forEach(key => {
             localStorage.removeItem(key);
         });
     }, []);
@@ -57,6 +61,7 @@ export const useCheckoutState = () => {
         delivery, setDelivery,
         pickup, setPickup,
         useSame, setUseSame,
+        pickupTime, setPickupTime,
         deliveryInputValue, setDeliveryInputValue,
         pickupInputValue, setPickupInputValue,
         deliveryRegion, setDeliveryRegion,
