@@ -288,7 +288,22 @@ const PlaceAutocompleteElementWrapper = ({
     return `${formatTime(startTime)} - ${formatTime(endTime)}`;
   };
   const renderPickupTimeInfo = () => {
-      if (!pickupTime) return null;
+      if (!pickupTime){
+        return (
+          // warning to reselect a location to get pickup time
+          <motion.div
+              key="pickuptime-warning"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mt-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm"
+          >
+              <p className="font-semibold mb-1 flex items-center">
+                  ⚠️ Please reselect a location to get the pickup time.
+              </p>
+          </motion.div>
+        )
+      }
 
       // Use the 'value' to get the date part for contextual display: "2025-10-28, 09:00 - 10:00"
       const [datePart] = pickupTime?.value.split(', ');

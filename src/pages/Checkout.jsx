@@ -293,7 +293,6 @@ const Checkout = () => {
   // Handle place selection from map
   const handlePlaceSelect = useCallback((location, type) => {
     setPickupTime(location ? location.pickupTime : null);
-    localStorage.setItem('pickupTime', location ? JSON.stringify(location.pickupTime) : null);
     if (type === 'delivery') {
       setDelivery(location);
       setDeliveryInputValue(location ? location.address : '');
@@ -309,7 +308,6 @@ const Checkout = () => {
         setPickupInputValue('');
         localStorage.removeItem('pickupLocation');
         localStorage.removeItem('pickupInputValue');
-        localStorage.removeItem('pickupTime');
       }
     } else {
       setPickup(location);
@@ -505,7 +503,7 @@ const Checkout = () => {
                   </div>
                   {!loading && cart.length > 0 ? (
                     <div>
-                      {!paymentView ? (
+                      
                         <motion.div
                           initial={{ opacity: 0, y: 30 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -514,7 +512,7 @@ const Checkout = () => {
                           <div className="py-8">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
                               {/* Left Column - Customer Information */}
-                              <div className="space-y-6 lg:col-span-7">
+                              <div className="space-y-6 lg:col-span-6">
                               
                                 {/* Contact Information Card */}
                                 <PersonalInformationCard
@@ -547,7 +545,7 @@ const Checkout = () => {
                               </div>
 
                               {/* Right Column - Order Summary */}
-                              <div className="space-y-6 lg:col-span-5">
+                              <div className="space-y-6 lg:col-span-6">
                                 {/* Promotions card section - Simplified */}
                                 {availablePromotions.length > 0 && (
                                   <PromotionCard
@@ -564,60 +562,33 @@ const Checkout = () => {
                                   useSame={useSame}
                                   {...summary} 
                                 />
-                              
 
-                                {/* Checkout Button */}
-                                <button
-                                  onClick={handleSubmit}
-                                  disabled={placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid}
-                                  className={`w-full py-3.5 px-6 rounded-lg font-medium text-white transition-all cursor-pointer ${
-                                    placing || cart.length === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid
-                                      ? 'bg-gray-400 cursor-not-allowed'
-                                      : 'bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg'
-                                  }`}
-                                >
-                                  {placing ? (
-                                    <span className="flex items-center justify-center">
-                                      <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-                                      Processing...
-                                    </span>
-                                  ) : (
-                                    'Proceed to Payment'
-                                  )}
-                                </button>
+                                 <motion.div
+                                    initial={{ opacity: 0, y: 30 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.6 }} 
+                                      className="">
+                                    {/* Payment view content remains */}
+                                    <PaymentCard
+                                      total={summary.total}
+                                      handlePayment={onPayment}
+                                      placing={placing}
+                                      cartLength={cart.length}
+                                      delivery={delivery}
+                                      useSame={useSame}
+                                      pickup={pickup}
+                                      isPhoneValid={isPhoneValid}
+                                      pickupTime={pickupTime}
+                                      
+                                      
+                                    />
 
-                                
+                                  </motion.div>
                               </div>
                             </div>
                           </div>
                         </motion.div>
-                      ) : (
-                        // Payment view remains the same as before
-                        <motion.div
-                          initial={{ opacity: 0, y: 30 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.6 }} 
-                            className="">
-                          {/* Payment view content remains */}
-                          <PaymentCard
-                            // 1. Spread all the calculated totals, discounts, and flags from the summary object
-                            {...summary} 
-                            
-                            // 2. Explicitly pass objects that are needed but weren't created inside the utility
-                            
-                            appliedPromotion={appliedPromotion}
-
-                            // 3. Pass all handler functions and local state needed for interaction
-                            useSame={useSame}
-                            handlePayment={onPayment}
-                            placing={placing}
-                            setPaymentView={setPaymentView}
-                            setShowAlert={setShowAlert}
-                            
-                          />
-
-                        </motion.div>
-                      )}
+                      
                     
                     </div>
                   ) : (

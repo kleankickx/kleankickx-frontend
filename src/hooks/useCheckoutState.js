@@ -20,21 +20,21 @@ export const useCheckoutState = () => {
     const [pickupInputValue, setPickupInputValue] = useState(() => getItemFromStorage('pickupInputValue') || '');
     const [deliveryRegion, setDeliveryRegion] = useState(() => getItemFromStorage('deliveryRegion') || 'Greater Accra');
     const [pickupRegion, setPickupRegion] = useState(() => getItemFromStorage('pickupRegion') || 'Greater Accra');
-    const [pickupTime, setPickupTime] = useState(() => getItemFromStorage('pickupTime'));
+    const [pickupTime, setPickupTime] = useState();
 
     // 2. Local Storage Sync (Keep this logic wherever it is, often in the same hook/context)
     useEffect(() => {
         // Example sync logic (you probably have more of this)
         if (delivery) {
             localStorage.setItem('deliveryLocation', JSON.stringify(delivery));
-            localStorage.setItem('pickupTime', JSON.stringify(pickupTime));
+            
         } else {
             localStorage.removeItem('deliveryLocation');
-            localStorage.removeItem('pickupTime');
+            
         }
         localStorage.setItem('deliveryInputValue', deliveryInputValue);
         // ... and so on for all variables ...
-    }, [delivery, deliveryInputValue, pickup, pickupInputValue, deliveryRegion, pickupRegion, pickupTime]);
+    }, [delivery, deliveryInputValue, pickup, pickupInputValue, deliveryRegion, pickupRegion]);
 
 
     // 3. THE CRUCIAL CLEANUP FUNCTION
@@ -51,7 +51,7 @@ export const useCheckoutState = () => {
      
 
         // Clear Local Storage (MUST be done explicitly)
-        ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 'pickupInputValue', 'deliveryRegion', 'pickupRegion', 'failedOrder', 'pickupTime'].forEach(key => {
+        ['deliveryLocation', 'pickupLocation', 'deliveryInputValue', 'pickupInputValue', 'deliveryRegion', 'pickupRegion', 'failedOrder',].forEach(key => {
             localStorage.removeItem(key);
         });
     }, []);

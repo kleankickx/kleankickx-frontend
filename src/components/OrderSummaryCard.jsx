@@ -23,8 +23,8 @@ const OrderSummaryCard = ({
 }) => {
   return (
     // Order Summary Card
-    <div id="order-summary" className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div id="order-summary" className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
 
         <h2 className="text-xl font-semibold flex items-center">
           {/* Icon for Order Summary */}
