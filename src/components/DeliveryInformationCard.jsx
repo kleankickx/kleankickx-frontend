@@ -7,8 +7,8 @@ import { FaInfo, FaInfoCircle } from 'react-icons/fa';
 const DeliveryInformationCard = (props) => {
   return (
     // Delivery Information Card
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+    <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-gray-50 px-6 py-4 rounded-tl-xl rounded-tr-xl  border-b border-gray-200">
         <h2 className="text-xl font-semibold flex items-center">
           <FiTruck className="mr-3 text-primary" />
           Delivery Information
