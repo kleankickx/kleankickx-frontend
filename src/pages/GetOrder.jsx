@@ -901,20 +901,44 @@ const GetOrder = () => {
   };
 
   const getPaymentStatusDisplay = (status) => {
+    const statusConfig = {
+      SUCCESS: {
+        text: 'Successful',
+        colorClasses: 'bg-emerald-100 text-emerald-800',
+      },
+      PENDING: {
+        text: 'Pending',
+        colorClasses: 'bg-amber-100 text-amber-800',
+      },
+      FAILED: {
+        text: 'Failed',
+        colorClasses: 'bg-red-100 text-red-800',
+      },
+      REFUNDED: {
+        text: 'Refunded',
+        colorClasses: 'bg-blue-100 text-blue-800',
+      },
+      PARTIAL_REFUND: {
+        text: 'Partial Refund',
+        colorClasses: 'bg-blue-100 text-blue-800',
+      },
+      DEFAULT: {
+        text: 'N/A',
+        colorClasses: 'bg-gray-100 text-gray-800',
+      },
+    };
+
     const s = status?.toUpperCase();
-    switch(s) {
-        case 'SUCCESS':
-            return <span className='font-semibold text-emerald-600'>Successful</span>;
-        case 'PENDING':
-            return <span className='font-semibold text-amber-600'>Pending</span>;
-        case 'FAILED':
-            return <span className='font-semibold text-red-600'>Failed</span>;
-        case 'REFUNDED':
-        case 'PARTIAL_REFUND':
-            return <span className='font-semibold text-blue-600'>{s.replace('_', ' ')}</span>;
-        default:
-            return <span className='font-semibold text-gray-600'>N/A</span>;
-    }
+    // Get configuration, default to DEFAULT if status not found
+    const config = statusConfig[s] || statusConfig.DEFAULT;
+    
+    return (
+      <span
+        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.colorClasses}`}
+      >
+        {config.text}
+      </span>
+    );
   };
 
 
@@ -995,13 +1019,13 @@ const GetOrder = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-3">CUSTOMER DETAILS</h3>
-                    <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-start gap-3 mb-4">
                       <FaUserCircle className="text-gray-400 w-6 h-6" />
                       <div>
                         <p className="font-medium">
                           {order.first_name || 'N/A'} {order.last_name || 'N/A'}
                         </p>
-                        <p className="text-sm text-gray-500">{order.email}</p>
+                        <p className="text-sm text-gray-500">{order.email || ''}</p>
                       </div>
                     </div>
                   </div>
@@ -1009,7 +1033,7 @@ const GetOrder = () => {
                     <h3 className="text-sm font-medium text-gray-500 mb-3">ORDER SUMMARY</h3>
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Order ID</span>
+                        <span className="text-gray-600">Order Ref</span>
                         <span className="font-medium">{order.reference_code}</span>
                       </div>
                       <div className="flex justify-between">
@@ -1018,7 +1042,10 @@ const GetOrder = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Payment Method</span>
-                        <span className="font-medium capitalize">{order.payment_method || 'N/A'}</span>
+                        <span className="font-medium capitalize">
+
+                          {order.payment_method || 'N/A'}
+                          </span>
                       </div>
                       {/* Payment Status Detail */}
                       <div className="flex justify-between">
