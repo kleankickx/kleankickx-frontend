@@ -99,7 +99,7 @@ const Home = () => {
               Getting your footwear cleaned has never been so easy. We pick up your dirty kicks, Klean them by hand, and then deliver your Kleankickx to you.
             </p>
             <motion.div variants={zoomIn} initial="hidden" animate="visible" className="mt-8">
-              <Link to="/services" className="bg-[#011627] text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium">
+              <Link to="/services" className="bg-[#011627] rounded text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium">
                 Schedule a Klean
               </Link>
             </motion.div>
@@ -262,7 +262,7 @@ const Home = () => {
         >
           <h2 className="text-3xl md:text-5xl font-bold text-[#9CDD9D] header mb-6">KleanKickx Sneaker Care</h2>
           <p className="text-white max-w-2xl text-center text-lg">
-             We’re your one-stop shop for reviving your beloved sneakers. Whether athlete, collector, or casual wearer—we bring them back to life.
+             We’re your one-stop shop for reviving your beloved sneakers. Whether athlete, collector, or casual wearer, we bring them back to life.
           </p>
         </motion.div>
       </section>
@@ -280,7 +280,7 @@ const Home = () => {
           <p className="text-[#011627] mb-6 text-lg">
             At Kleankickx Sneaker Care, we combine a love for sneakers with the power of technology to create a platform that drives sustainability and community impact. As a tech-driven company, we're building innovative solutions to extend the life of footwear, reduce waste, and empower communities. Through initiatives, like KleanFam,KleanKids, and Kickx CTRL, we promote proper sneaker care, support underprivileged children with school essentials, and recycle worn-out sneakers into valuable products, making a lasting impact, one sneaker at a time.
           </p>
-          <Link to="/about-us" className="bg-[#1C7C76] text-white px-6 py-3 inline-block hover:bg-[#1C7C76]/90 transition font-medium">
+          <Link to="/about-us" className="bg-[#1C7C76] text-white px-6 py-3 inline-block hover:bg-[#1C7C76]/90 rounded transition font-medium">
             Learn More
           </Link>
         </motion.div>

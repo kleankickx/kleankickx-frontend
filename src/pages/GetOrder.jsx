@@ -1216,7 +1216,7 @@ const GetOrder = () => {
                         href="tel:+233240000000"
                         className="font-medium text-gray-900 hover:text-green-600 transition-colors"
                       >
-                        +233 24 000 0000
+                        +233 53 627 8834
                       </a>
                     </div>
                   </div>

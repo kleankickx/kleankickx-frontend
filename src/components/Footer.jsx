@@ -1,6 +1,6 @@
 import footerBg from '../assets/footer_bg.png';
-import { FaXTwitter } from "react-icons/fa6";
-import { FaInstagram } from "react-icons/fa";
+import { FaMessage, FaXTwitter } from "react-icons/fa6";
+import { FaInstagram, FaMailchimp, FaPhone, FaMapMarkerAlt, FaMailBulk } from "react-icons/fa";
 import { motion } from "framer-motion";
 
 const fadeInUp = {
@@ -46,9 +46,16 @@ const Footer = () => {
 
         <div>
           <h3 className="text-4xl font-bold header text-primary">Address</h3>
-          <p className="mt-4 text-lg">+233 53 627 8834</p>
-          <p className="mt-2 text-lg">info@kleankickx.com</p>
-          <p className="mt-2 text-lg">Golf Hills St. Accra, Ghana</p>
+          <p className="mt-4 lg:text-lg">
+            <FaPhone className="inline mr-2" />
+            +233 53 627 8834
+          </p>
+          <a href="mailto:info@kleankickx.com" className="mt-2 lg:text-lg">
+            <FaMailBulk className="inline mr-2" />
+            info@kleankickx.com</a>
+          <p className="mt-2 lg:text-lg">
+            <FaMapMarkerAlt className="inline mr-2" />
+            Golf Hills St. Accra, Ghana</p>
 
           {/* Social Media Links */}
           <div className="mt-6 flex space-x-4">
@@ -71,7 +78,7 @@ const Footer = () => {
           </div>
 
           {/* copyright */}
-          <div className="mt-8 text-lg">
+          <div className="mt-8 text-sm text-gray-300">
             <p>&copy; {new Date().getFullYear()} KleanKickx. All rights reserved.</p>
           </div>
         </div>
