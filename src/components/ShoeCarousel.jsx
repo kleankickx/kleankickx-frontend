@@ -32,7 +32,7 @@ const Arrow = ({ onClick, direction }) => (
   <button
     type="button"
     onClick={onClick}
-    className="!flex !items-center !justify-center absolute top-1/2 -translate-y-1/2 z-20 cursor-pointer"
+    className="!flex !items-center !justify-center absolute top-1/2 -translate-y-1/2 z-20 cursor-pointer p-2 hover:bg-black/30 bg-black/20 rounded-full"
     aria-label={direction === 'left' ? 'Previous slide' : 'Next slide'}
     style={{
       left: direction === 'left' ? '0' : 'auto',
@@ -40,9 +40,9 @@ const Arrow = ({ onClick, direction }) => (
     }}
   >
     {direction === 'left' ? (
-      <ChevronLeftIcon className="h-10 w-10 lg:text-white text-[#000]" />
+      <ChevronLeftIcon className="h-12 w-12 text-white" />
     ) : (
-      <ChevronRightIcon className="h-10 w-10 lg:text-white text-[#000]" />
+      <ChevronRightIcon className="h-12 w-12 text-white" />
     )}
   </button>
 );
