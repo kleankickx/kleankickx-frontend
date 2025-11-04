@@ -1,7 +1,8 @@
 import footerBg from '../assets/footer_bg.png';
-import { FaMessage, FaXTwitter } from "react-icons/fa6";
-import { FaInstagram, FaMailchimp, FaPhone, FaMapMarkerAlt, FaMailBulk } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
+import { FaInstagram, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
 import { motion } from "framer-motion";
+import { IoMdMail } from "react-icons/io";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -51,7 +52,7 @@ const Footer = () => {
             +233 53 627 8834
           </p>
           <a href="mailto:info@kleankickx.com" className="mt-2 lg:text-lg">
-            <FaMailBulk className="inline mr-2" />
+            <IoMdMail className="inline mr-2" />
             info@kleankickx.com</a>
           <p className="mt-2 lg:text-lg">
             <FaMapMarkerAlt className="inline mr-2" />

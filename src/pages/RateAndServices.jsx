@@ -64,10 +64,10 @@ const RateAndServices = () => (
 
     {/* CLEAN ALL TYPES */}
     <section className="bg-[#1E1E1E]">
-      <div className="grid grid-cols-1 md:grid-cols-2  items-center py-16">
+      <div className="grid grid-cols-1 md:grid-cols-2  items-center py-6">
         {/* Text comes first on mobile, second on desktop */}
         <motion.div
-          className="order-1 lg:order-2 pb-[4rem] lg:pr-24 px-4 lg:px-0 mt-[2rem] lg:mt-0"
+          className="order-1 lg:order-2 pb-[2rem] lg:pr-24 px-4 lg:px-0 mt-[2rem] lg:mt-0"
           variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
@@ -102,7 +102,8 @@ const RateAndServices = () => (
 
     {/*SERVICE PRICING */}
     <section className="bg-white py-16 px-4 md:px-8 lg:px-24" id="pricing">
-      <h2 className="text-primary header text-4xl md:text-6xl font-bold text-center mb-16">Service Pricing</h2>
+      <h2 className="text-primary header text-4xl md:text-6xl font-bold text-center ">Service Pricing</h2>
+      <p className="text-gray-600 text-center mb-10 mb-16 mt-1">Transparent Rates for Quality Care</p>
       <motion.div
         className="grid grid-cols-1 md:grid-cols-3 gap-8"
         variants={stagger}
