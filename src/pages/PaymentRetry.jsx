@@ -4,9 +4,7 @@ import {
     FaSpinner,
     FaExclamationCircle,
     FaCreditCard,
-    FaMoneyBillWave,
     FaShieldAlt,
-    FaLock,
     FaCheckCircle,
     FaClock,
     FaTimesCircle
@@ -31,8 +29,8 @@ const PaymentRetry = () => {
         'SUCCESS': { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: FaCheckCircle },
         'PENDING': { color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', icon: FaClock },
         'FAILED': { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', icon: FaTimesCircle },
-        'REFUNDED': { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: FaMoneyBillWave },
-        'PARTIAL_REFUND': { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: FaMoneyBillWave },
+        'REFUNDED': { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: FaCreditCard },
+        'PARTIAL_REFUND': { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: FaCreditCard },
         'UNPAID': { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', icon: FaTimesCircle },
     };
 
@@ -42,7 +40,7 @@ const PaymentRetry = () => {
         const IconComponent = config.icon;
         
         return (
-            <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${config.bg} ${config.color} ${config.border} border`}>
+            <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${config.bg} ${config.color} ${config.border} border`}>
                 <IconComponent className="w-4 h-4" />
                 {s?.replace('_', ' ') || 'Unpaid'}
             </span>
@@ -120,7 +118,7 @@ const PaymentRetry = () => {
 
     if (loading) {
         return (
-            <div className="h-[calc(100vh-5rem)] bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
+            <div className="h-[calc(100vh-6rem)] bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
                 <div className="text-center">
                     <div className="relative inline-block">
                         <FaSpinner className="animate-spin text-primary w-12 h-12 mb-4" />
@@ -135,7 +133,7 @@ const PaymentRetry = () => {
 
     if (error || !order) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+            <div className="h-[calc(100vh-6rem)] bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
                 <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FaExclamationCircle className="text-red-600 w-8 h-8" />
@@ -145,14 +143,14 @@ const PaymentRetry = () => {
                     <div className="flex flex-col gap-3">
                         <button
                             onClick={() => navigate('/orders')}
-                            className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                            className="flex items-center cursor-pointer justify-center gap-2 px-6 py-3 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
                         >
                             <FaChevronLeft className="w-4 h-4" />
                             Back to Orders
                         </button>
                         <button
                             onClick={() => navigate('/services')}
-                            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg cursor-pointer font-medium hover:bg-gray-50 transition-colors"
                         >
                             Browse Services
                         </button>
@@ -197,7 +195,7 @@ const PaymentRetry = () => {
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8 flex-row-reverse">
+                <div className="flex items-start justify-between mb-8 flex-row-reverse">
                     <button
                         onClick={() => navigate(`/orders/${orderReferenceCode}`)}
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors group"
@@ -206,7 +204,7 @@ const PaymentRetry = () => {
                         Back to Order
                     </button>
                     <div className="">
-                        <h1 className="text-2xl font-bold text-gray-900">Complete Payment</h1>
+                        <h1 className="text-xl font-bold text-gray-900">Complete Payment</h1>
                         <p className="text-gray-600">Secure payment for your order</p>
                     </div>
                 </div>
@@ -219,9 +217,9 @@ const PaymentRetry = () => {
                             animate={{ opacity: 1, y: 0 }}
                             className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
                         >
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-start justify-between mb-6">
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900">Order #{order.reference_code}</h2>
+                                    <h2 className="text-lg font-bold text-gray-900">Order #{order.reference_code}</h2>
                                     <p className="text-gray-600 mt-1">
                                         Created on {new Date(order.created_at).toLocaleDateString()}
                                     </p>
@@ -285,7 +283,7 @@ const PaymentRetry = () => {
                         >
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    <FaMoneyBillWave className="text-green-600" />
+                                    <FaCreditCard className="text-green-600" />
                                     Payment Summary
                                 </h2>
                             </div>
@@ -303,7 +301,7 @@ const PaymentRetry = () => {
                                     <div className="border-t border-gray-200 pt-3">
                                         <div className="flex justify-between text-lg font-bold text-gray-900">
                                             <span>Total Amount</span>
-                                            <span className="text-red-600">₵{totalAmount}</span>
+                                            <span className="">₵{totalAmount}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -333,7 +331,7 @@ const PaymentRetry = () => {
                                                 exit={{ opacity: 0 }}
                                                 className="flex items-center gap-3"
                                             >
-                                                <FaLock className="w-5 h-5" />
+                                                
                                                 Pay ₵{totalAmount} Now
                                             </motion.div>
                                         )}

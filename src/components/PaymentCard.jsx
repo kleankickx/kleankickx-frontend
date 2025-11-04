@@ -1,4 +1,4 @@
-import { FaSpinner,FaMoneyBillWave, FaLock } from 'react-icons/fa';
+import { FaSpinner,FaMoneyBillWave, FaLock, FaCreditCard } from 'react-icons/fa';
 import  MTNMomoLogo  from '../assets/mtn.png'
 import TelecelLogo from '../assets/telecel.png'
 import AirtelTigoLogo from '../assets/airtel.png'
@@ -36,7 +36,7 @@ const PaymentCard = ({
       <div className="bg-gray-50 rounded-tl-xl rounded-tr-xl px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold flex items-center">
                 {/* Icon for Personal Details */}
-                <FaMoneyBillWave className="mr-2 text-primary" />
+                <FaCreditCard className="mr-3 text-primary" />
                 Payment Options (via Paystack)
               </h2>
       </div>

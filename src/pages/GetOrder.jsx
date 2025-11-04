@@ -608,7 +608,7 @@ const PaymentStatusBanner = ({ order, onRetryPayment }) => {
             className={`p-5 mb-8 rounded-xl shadow-lg border-b-4 ${config.borderColor} ${config.bgColor} text-white`}
         >
             <div className="flex items-start md:items-center justify-between flex-wrap gap-4">
-                <div className="flex items-start md:items-center gap-4 flex-1 min-w-[200px]">
+                <div className="flex items-start gap-4 flex-1 min-w-[200px]">
                     {config.icon}
                     <div>
                         <h2 className="text-xl font-bold">{config.title}</h2>
@@ -617,7 +617,7 @@ const PaymentStatusBanner = ({ order, onRetryPayment }) => {
                 </div>
                 <button
                     onClick={onRetryPayment}
-                    className="flex-shrink-0 ml-0 md:ml-4 px-6 py-3 bg-white text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition-colors text-sm"
+                    className="flex-shrink-0 ml-0 md:ml-4 px-6 py-3 bg-white text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition-colors text-sm cursor-pointer"
                 >
                     {config.retryText}
                 </button>

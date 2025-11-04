@@ -289,7 +289,7 @@ useEffect(() => {
       ) : (
         <section className="flex items-center justify-center h-[20rem] flex-col space-y-2">
           <FaSpinner className="animate-spin h-8 w-8 text-primary" />
-          <p className="text-gray-600 mt-4">Loading your cart...</p>
+          <p className="text-gray-600 mt-1">Loading your cart...</p>
         </section>
       )}
 

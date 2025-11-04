@@ -33,7 +33,7 @@ const PersonalInformationCard = ({
               id="first_name"
               value={user?.first_name || ''}
               disabled
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg  focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
             />
           </div>
 
@@ -47,7 +47,7 @@ const PersonalInformationCard = ({
               id="last_name"
               value={user?.last_name || ''}
               disabled
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg  focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
             />
           </div>
         </div>
@@ -62,7 +62,7 @@ const PersonalInformationCard = ({
             id="email"
             value={user?.email || ''}
             disabled
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
           />
         </div>
         
@@ -88,7 +88,7 @@ const PersonalInformationCard = ({
               value={phoneNumber} 
               onChange={handlePhoneChange}
               placeholder="24 123 4567"
-              className="pl-24 w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-0"
+              className="pl-24 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-0"
               maxLength={14}
             />
 
