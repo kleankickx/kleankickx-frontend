@@ -254,7 +254,7 @@ const Checkout = () => {
   const handlePhoneChange = (e) => {
     let input = e.target.value;
    
-    if (input.length <= 14) {
+    if (input.length <= 10) {
       setPhoneNumber(input);
       setIsPhoneValid(validateGhanaPhone(input));
     }
@@ -466,8 +466,8 @@ const Checkout = () => {
       libraries={['places', 'geocoding']}
       onLoad={() => console.log('Google Maps API loaded successfully!')}
     >
-      <div className="bg-gradient-to-br from-green-50 to-white">
-        <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="bg-gray-50 min-h-screen">
+        <div className="lg:px-18 px-4 py-8">
           
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[60vh]">
@@ -479,128 +479,145 @@ const Checkout = () => {
                 Go to kleaning services
               </Link>
             </div>
-            ) : (
-              <div>
-                
-                <div className={`mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg flex items-center ${!showAlert ? 'hidden': ''}`}>
-                  <FiInfo className="mr-2 text-yellow-700" />
-                  <p className="text-sm text-yellow-700">
-                    Current options for delivery and pickup are Accra, Tema, Kasoa.
-                    <button
-                      onClick={() => setShowAlert(false)}
-                      className="ml-4 text-yellow-700 hover:text-yellow-900 underline"
-                    >
-                      Dismiss
-                    </button>
-                  </p>
+          ) : (
+            <div> 
+
+              <div className="">
+                <div className={`mb-6 ${paymentView ? 'hidden' : ''}`}>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Complete Your Order</h1>
+                  <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
                 </div>
-                
+                {!loading && cart.length > 0 ? (
+                  <div>
+                    
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                      >
+                        <div className="py-6">
+                          {/* Main Grid Layout */}
+                          <div className="flex flex-col xl:flex-row gap-6 w-full">
+                            
+                            {/* Left Column - Forms (2/3 width on large screens) */}
+                            <div className="flex-1 space-y-6 order-2 xl:order-1">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Personal Information - Top Left */}
+                                <div className="lg:col-span-1">
+                                  <PersonalInformationCard
+                                    phoneNumber={phoneNumber}
+                                    isPhoneValid={isPhoneValid}
+                                    handlePhoneChange={handlePhoneChange}
+                                    user={user}
+                                  />
+                                </div>
 
-                <div className="">
-                  <div className={`mb-4 ${paymentView ? 'hidden' : ''}`}>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Complete Your Order</h1>
-                    <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
-                  </div>
-                  {!loading && cart.length > 0 ? (
-                    <div>
-                      
-                        <motion.div
-                          initial={{ opacity: 0, y: 30 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.6 }}
-                        >
-                          <div className="py-8">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
-                              {/* Left Column - Customer Information */}
-                              <div className="space-y-6 lg:col-span-6">
-                              
-                                {/* Contact Information Card */}
-                                <PersonalInformationCard
-                                  phoneNumber={phoneNumber}
-                                  isPhoneValid={isPhoneValid}
-                                  handlePhoneChange={handlePhoneChange}
-                                  user={user}
-                                />
+                                {/* Delivery Information - Top Right */}
+                                <div className="lg:col-span-1">
+                                  <div className="">
+                                    <DeliveryInformationCard
+                                      // Logic Props
+                                      useSame={useSame}
+                                      setUseSame={setUseSame}
+                                      handlePlaceSelect={handlePlaceSelect}
+                                      setActiveInput={setActiveInput}
+                                      paymentView={paymentView}
 
-                                <DeliveryInformationCard
-                                  // Logic Props
-                                  useSame={useSame}
-                                  setUseSame={setUseSame}
-                                  handlePlaceSelect={handlePlaceSelect}
-                                  setActiveInput={setActiveInput}
-                                  paymentView={paymentView}
+                                      // Data Props for Delivery
+                                      delivery={delivery}
+                                      deliveryInputValue={deliveryInputValue}
+                                      deliveryRegion={deliveryRegion}
 
-                                  // Data Props for Delivery
-                                  delivery={delivery}
-                                  deliveryInputValue={deliveryInputValue}
-                                  deliveryRegion={deliveryRegion}
-
-                                  // Data Props for Pickup
-                                  pickup={pickup}
-                                  pickupInputValue={pickupInputValue}
-                                  pickupRegion={pickupRegion}
-                                  pickupTime={pickupTime}
-                                  setPickupTime={setPickupTime}
-                                />
+                                      // Data Props for Pickup
+                                      pickup={pickup}
+                                      pickupInputValue={pickupInputValue}
+                                      pickupRegion={pickupRegion}
+                                      pickupTime={pickupTime}
+                                      setPickupTime={setPickupTime}
+                                    />
+                                  </div>
+                                </div>
                               </div>
 
-                              {/* Right Column - Order Summary */}
-                              <div className="space-y-6 lg:col-span-6">
-                                {/* Promotions card section - Simplified */}
+                              {/* Promotions Card - Above Payment on mobile */}
+                              <div className="block xl:hidden">
                                 {availablePromotions.length > 0 && (
-                                  <PromotionCard
-                                    appliedPromotion={appliedPromotion}
-                                  />
-                                  
+                                  <div className="mb-6">
+                                    <PromotionCard
+                                      appliedPromotion={appliedPromotion}
+                                    />
+                                  </div>
                                 )}
+                              </div>
 
-                                {/* Order Summary Card */}
+                              <div className="block lg:hidden">
                                 <OrderSummaryCard 
-                                  // Spread all the calculated values directly to the UI component
                                   cart={cart}
                                   appliedPromotion={appliedPromotion}
                                   useSame={useSame}
                                   {...summary} 
                                 />
+                              </div>
 
-                                 <motion.div
-                                    initial={{ opacity: 0, y: 30 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.6 }} 
-                                      className="">
-                                    {/* Payment view content remains */}
-                                    <PaymentCard
-                                      total={summary.total}
-                                      handlePayment={onPayment}
-                                      placing={placing}
-                                      cartLength={cart.length}
-                                      delivery={delivery}
-                                      useSame={useSame}
-                                      pickup={pickup}
-                                      isPhoneValid={isPhoneValid}
-                                      pickupTime={pickupTime}
-                                      
-                                      
-                                    />
-
-                                  </motion.div>
+                              {/* Payment Card - Full width below */}
+                              <div className="lg:col-span-2">
+                                <motion.div
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.6, delay: 0.2 }}
+                                >
+                                  <PaymentCard
+                                    total={summary.total}
+                                    handlePayment={onPayment}
+                                    placing={placing}
+                                    cartLength={cart.length}
+                                    delivery={delivery}
+                                    useSame={useSame}
+                                    pickup={pickup}
+                                    isPhoneValid={isPhoneValid}
+                                    pickupTime={pickupTime}
+                                  />
+                                </motion.div>
                               </div>
                             </div>
+
+                            {/* Right Column - Order Summary & Promotions (1/3 width) */}
+                            <div className="xl:w-1/3 space-y-6 order-3 xl:order-1">
+                                {/* Promotions Card - Desktop only */}
+                              {availablePromotions.length > 0 && (
+                                <div className="hidden xl:block">
+                                    <PromotionCard
+                                      appliedPromotion={appliedPromotion}
+                                    />
+                                  
+                                </div>
+                              )}
+                              {/* Order Summary Card - First on mobile */}
+                              <div className="hidden lg:block">
+                                <OrderSummaryCard 
+                                  cart={cart}
+                                  appliedPromotion={appliedPromotion}
+                                  useSame={useSame}
+                                  {...summary} 
+                                />
+                              </div>
+
+                              
+                            </div>
                           </div>
-                        </motion.div>
-                      
+                        </div>
+                      </motion.div>
                     
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-[40vh]">
-                      <FaSpinner className="animate-spin text-4xl text-primary" />
-                      <p className="ml-4 text-gray-700 mt-2">Loading checkout...</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[40vh]">
+                    <FaSpinner className="animate-spin text-4xl text-primary" />
+                    <p className="ml-4 text-gray-700 mt-2">Loading checkout...</p>
+                  </div>
+                )}
               </div>
-            )
-          }
+            </div>
+          )}
         </div>
       </div>
     </APIProvider>

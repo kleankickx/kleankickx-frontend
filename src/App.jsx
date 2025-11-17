@@ -9,7 +9,6 @@ import VerifyEmail from './pages/VerifyEmail';
 import Services from './pages/Services';
 import Cart from './pages/Cart';
 import Login from './pages/Login';
-import TempVerifyEmail from './pages/TempVerifyEmail';
 import Checkout from './pages/Checkout';
 import RateAndServices from './pages/RateAndServices';
 import Home from './pages/Home';
@@ -29,10 +28,12 @@ import FailedOrders from './pages/FailedOrders';
 import { useContext, useEffect, useState, useCallback } from 'react';
 import { AuthContext } from './context/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
+import UserVerifyEmail from './pages/UserVerifyEmail';
+import NotFound from './pages/NotFound';
 
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbarOn = ['/login', '/register', '/temp-verify-email'];
+  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email', '/auth/verify-email'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
 
 
@@ -42,20 +43,20 @@ const AppContent = () => {
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/auth/login" element={<Login />} />
+          <Route path="/auth/register" element={<Register />} />
           <Route path="/services" element={<Services />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/temp-verify-email" element={<TempVerifyEmail />} />
+          <Route path="/auth/verify-email" element={<VerifyEmail />} />
+          <Route path="/auth/confirm-email" element={<UserVerifyEmail />} />
           <Route path="/rate-and-services" element={<RateAndServices />} />
           <Route path="/about-us" element={<About />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
           <Route
             path="/checkout"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireVerification={true}>
                 <Checkout />
               </ProtectedRoute>
             }
@@ -124,6 +125,8 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+
+          <Route path="*" element={<NotFound />} />
           
         </Routes>
       </main>

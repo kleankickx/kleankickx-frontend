@@ -11,7 +11,7 @@ const PersonalInformationCard = ({
   
   return (
     // Contact Information Card
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
         <h2 className="text-xl font-semibold flex items-center">
           {/* Icon for Personal Details */}

@@ -96,7 +96,7 @@ const Register = () => {
       toast.success('Registration successful! Please check your email to verify.', {
         position: 'top-right',
       });
-      navigate('/temp-verify-email/?email=' + encodeURIComponent(email) );
+      navigate('/auth/confirm-email/?email=' + encodeURIComponent(email) );
     } catch (err) {
       console.error('Registration error:', err.response?.data.email);
       setError(err.response?.data.email || 'Registration failed. Please try again.');
@@ -333,11 +333,13 @@ const Register = () => {
             text="signup_with"
             shape="rectangular"
             theme="filled_black"
+            width={"100%"}
+            
           />
         </div>
         <p className="mt-4 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary hover:underline">
+          <Link to="/auth/login" className="text-primary hover:underline">
             Login
           </Link>
         </p>

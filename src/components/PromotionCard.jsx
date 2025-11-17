@@ -20,10 +20,10 @@ const PromotionCard = ({ appliedPromotion }) => {
   };
 
   return (
-    <div className="rounded-xl bg-white shadow-md border border-gray-100 overflow-hidden">
+    <div className="rounded-xl shadow-xl bg-white border border-gray-200 overflow-hidden">
       
       {/* Card Header */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50">
+      <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50">
         <div className="flex items-center">
           {/* Icon for Promotion */}
           <FaGift className="mr-2 text-primary" />

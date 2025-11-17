@@ -4,7 +4,7 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { TrashIcon, MinusIcon, PlusIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { FaSpinner } from 'react-icons/fa6';
+import { FaSpinner, FaTags } from 'react-icons/fa6';
 import axios from 'axios';
 import Tooltip from '../components/Tooltip';
 
@@ -19,6 +19,8 @@ const Cart = () => {
 
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false);
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
+  const [availablePromotions, setAvailablePromotions] = useState([]);
+  const [appliedPromotion, setAppliedPromotion] = useState(null);
 
   const fetchServices = async () => {
     try {
@@ -54,6 +56,30 @@ const fetchUserReferralDiscountStatus = async () => {
   }
 };
 
+// Fetch available promotions for today and auto-apply the first valid one
+  const fetchAvailablePromotions = async () => {
+    try {
+      const response = await api.get('/api/promotions/today');
+      const promotions = response.data;
+      setAvailablePromotions(promotions);
+      
+      // Auto-apply the first valid promotion
+      if (promotions.length > 0) {
+        const validPromotion = promotions.find(promo => 
+          new Date(promo.end_date) > new Date() && 
+          promo.is_active === true
+        );
+        
+        if (validPromotion) {
+          setAppliedPromotion(validPromotion);
+          toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+        }
+      }
+    } catch (error) {
+      console.log("Error fetching promotions:", error);
+    }
+  }
+
 useEffect(() => {
   const initializeData = async () => {
     setLoading(true);
@@ -62,6 +88,7 @@ useEffect(() => {
         fetchServices(),
         fetchUserSignupDiscountStatus(),
         fetchUserReferralDiscountStatus(),
+        fetchAvailablePromotions()
       ]);
     } catch (err) {
       console.error("Initialization error:", err);
@@ -96,9 +123,16 @@ useEffect(() => {
   const referralDiscountAmount = canUseReferral
     ? ((parseFloat(subtotal) * parseFloat(referralDiscount.percentage)) / 100)
     : 0;
+  
+
+  const promoDiscountAmount = appliedPromotion
+    ? (parseFloat(subtotal) * parseFloat(appliedPromotion.discount_percentage)) / 100
+    : 0;
+
+  
 
   // Final total
-  const total = (parseFloat(subtotal) - signupDiscountAmount - referralDiscountAmount).toFixed(2);
+  const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount)).toFixed(2);
 
   const handleRemove = (id) => {
     removeFromCart(id);
@@ -217,7 +251,7 @@ useEffect(() => {
                   {canUseSignup && (
                     <div className="flex flex-col bg-green-50 rounded-lg p-3 -mx-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-green-700 font-medium">{signupDiscount.discount_type}</span>
+                        <span className="text-green-700 font-medium">{signupDiscount.discount_type.toString().charAt(0).toUpperCase() + signupDiscount.discount_type.toString().slice(1)}</span>
                         <span className="text-green-700 font-medium">-₵{signupDiscountAmount.toFixed(2)}</span>
                       </div>
                       <div className="text-xs text-green-600 mt-1">
@@ -229,11 +263,28 @@ useEffect(() => {
                   {canUseReferral && (
                     <div className="flex flex-col bg-blue-50 rounded-lg p-3 -mx-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-blue-700 font-medium">{referralDiscount.discount_type}</span>
+                        <span className="text-blue-700 font-medium">
+                          {referralDiscount.discount_type.toString().charAt(0).toUpperCase() + referralDiscount.discount_type.toString().slice(1)}
+                        </span>
                         <span className="text-blue-700 font-medium">-₵{referralDiscountAmount.toFixed(2)}</span>
                       </div>
                       <div className="text-xs text-blue-600 mt-1">
                         {referralDiscount.percentage}% off your order
+                      </div>
+                    </div>
+                  )}
+
+                  {appliedPromotion && (
+                    <div className="bg-purple-50 rounded-lg p-3 -mx-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-purple-700 font-medium flex items-center">
+                          {/* <FaTags className="mr-2" /> */}
+                          Special Promotion
+                        </span>
+                        <span className="text-purple-700 font-medium">-GHS {promoDiscountAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="text-xs text-purple-600 mt-1">
+                        {appliedPromotion.discount_percentage}% off your order
                       </div>
                     </div>
                   )}

@@ -73,7 +73,7 @@ const Navbar = () => {
       toast.success('Logged out successfully!');
       closeMobileMenu();
       setIsDropdownOpen(false);
-      navigate('/login');
+      navigate('/auth/login');
     } catch (err) {
       toast.error('Logout failed. Please try again.');
       console.error('Logout error:', err);
@@ -246,13 +246,13 @@ const Navbar = () => {
             ) : (
               <>
                 <li>
-                  <NavLink to="/register" className="hover:text-gray-300">
+                  <NavLink to="/auth/register" className="hover:text-gray-300">
 
                     Register
                   </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/login" className="hover:text-gray-300">
+                  <NavLink to="/auth/login" className="hover:text-gray-300">
                     Login
                   </NavLink>
                 </li>

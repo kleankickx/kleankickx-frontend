@@ -166,7 +166,7 @@ export const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
-  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
   const [accessToken, setAccessToken] = useState(localStorage.getItem('access_token'));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token'));
@@ -244,6 +244,18 @@ const AuthProvider = ({ children }) => {
     persistToken('refresh_token', null);
   };
 
+  // 🚀 NEW METHOD: Directly set tokens from the verification success call
+  const updateTokens = (access, refresh) => {
+      authMethods.setAccessToken(access);
+      authMethods.setRefreshToken(refresh);
+
+      const decoded = decodeToken(access);
+      if (!decoded) throw new Error('Invalid access token');
+
+      setUser(decoded);
+      setIsAuthenticated(true);
+  };
+
   const authMethods = {
     accessToken,
     refreshToken,
@@ -257,7 +269,7 @@ const AuthProvider = ({ children }) => {
     },
     logout: () => {
       clearAuth();
-      navigate('/login');
+      navigate('/auth/login');
     },
   };
 
@@ -265,7 +277,7 @@ const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${baseURL}/api/users/login/`, { email, password });
+      const response = await api.post('/api/users/login/', { email, password });
       const { access, refresh } = response.data;
 
       authMethods.setAccessToken(access);
@@ -318,6 +330,7 @@ const AuthProvider = ({ children }) => {
         setAccessToken: authMethods.setAccessToken,
         setRefreshToken: authMethods.setRefreshToken,
         api,
+        updateTokens,
         discounts,
         
       }}

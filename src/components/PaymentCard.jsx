@@ -32,7 +32,7 @@ const PaymentCard = ({
   ];
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white">
+    <div className="rounded-xl border shadow-xl border-gray-200 bg-white">
       <div className="bg-gray-50 rounded-tl-xl rounded-tr-xl px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold flex items-center">
                 {/* Icon for Personal Details */}

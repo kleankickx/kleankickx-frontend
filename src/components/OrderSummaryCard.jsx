@@ -23,7 +23,7 @@ const OrderSummaryCard = ({
 }) => {
   return (
     // Order Summary Card
-    <div id="order-summary" className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div id="order-summary" className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xl">
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
 
         <h2 className="text-xl font-semibold flex items-center">

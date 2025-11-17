@@ -7,20 +7,20 @@ import { FaInfo, FaInfoCircle } from 'react-icons/fa';
 const DeliveryInformationCard = (props) => {
   return (
     // Delivery Information Card
-    <div className="bg-white rounded-xl border border-gray-200">
+    <div className="bg-white shadow-xl rounded-xl border border-gray-200">
       <div className="bg-gray-50 px-6 py-4 rounded-tl-xl rounded-tr-xl  border-b border-gray-200">
         <h2 className="text-xl font-semibold flex items-center">
           <FiTruck className="mr-3 text-primary" />
-          Delivery Information
+          Delivery Information 
         </h2>
       </div>
       
-      <div className="p-6 space-y-5">
+      <div className="p-6 space-y-5 h-full max-h-[350px] overflow-y-auto">
         {/* Delivery Address Input */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium text-gray-700">
-              Delivery Address
+              Delivery Address <span className="text-red-500">*</span>
             </label>
             {/* The "Use Current Location" button is commented out, so we'll leave it out here for cleanliness. */}
           </div>
@@ -81,7 +81,7 @@ const DeliveryInformationCard = (props) => {
         {!props.useSame && (
           <div className="pt-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pickup Address
+              Pickup Address <span className="text-red-500">*</span>
             </label>
             <PlaceAutoCompleteElementWrapper
               key={`pickup-${props.paymentView}`}

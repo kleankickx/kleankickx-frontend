@@ -59,105 +59,60 @@ const PlaceAutocompleteElementWrapper = ({
         }
 
         let detectedRegion = region;
-        let detectedAreaKey = null;
-        let tempRegion = null;
 
-        if (geocodingLibrary) {
-          const geocoder = new geocodingLibrary.Geocoder();
-          const latLng = { lat: place.location.lat(), lng: place.location.lng() };
-          try {
-            const geocodeResponse = await geocoder.geocode({ location: latLng });
-            const geocodeResults = geocodeResponse.results;
+        const geocoder = new geocodingLibrary.Geocoder();
+        const latLng = { lat: place.location.lat(), lng: place.location.lng() };
+        try {
+          const geocodeResponse = await geocoder.geocode({ location: latLng });
+          const geocodeResults = geocodeResponse.results;
+          
+          if (geocodeResults && geocodeResults.length > 0) {
             for (const result of geocodeResults) {
+              // Look for administrative_area_level_1 (region/state)
               const adminAreaLevel1 = result.address_components.find((comp) =>
                 comp.types.includes('administrative_area_level_1')
               );
-              if (adminAreaLevel1) {
-                const matchedRegion = AVAILABLE_REGIONS.find((r) =>
-                  adminAreaLevel1.long_name.includes(r)
-                );
-                tempRegion = adminAreaLevel1.long_name;
-                if (matchedRegion) {
-                  detectedRegion = matchedRegion;
-                  break;
-                }
-              }
-            }
-            const regionData = REGION_CONFIG[detectedRegion];
-            if (!regionData) {
-              toast.error(`${tempRegion} is not set up for delivery yet`);
-              setSelectedLocation(null);
-              onPlaceSelect(null, type);
-              setLoading(false);
-              return;
-            }
-            for (const result of geocodeResults) {
-              const locality =
-                result.address_components.find(
-                  (comp) =>
-                    comp.types.includes('locality') ||
-                    comp.types.includes('sublocality')
-                )?.long_name.toLowerCase() || '';
-              const sortedAreaKeys = Object.keys(regionData.availableAreas).sort(
-                (a, b) => b.length - a.length
+              
+              // Also look for locality or administrative_area_level_2 as fallback
+              const locality = result.address_components.find((comp) =>
+                comp.types.includes('locality')
               );
-              for (const areaKey of sortedAreaKeys) {
-                if (locality.includes(areaKey.toLowerCase())) {
-                  detectedAreaKey = areaKey;
-                  break;
-                }
-              }
-              if (detectedAreaKey) break;
-            }
-          } catch (geocodeError) {
-            console.error('Geocoding error:', geocodeError);
-            toast.warn('Could not precisely determine area. Using fallback.');
-          }
-        }
+              
+              const adminAreaLevel2 = result.address_components.find((comp) =>
+                comp.types.includes('administrative_area_level_2')
+              );
 
-        if (!detectedAreaKey) {
-          const searchString =
-            (place.formattedAddress || place.displayName || '').toLowerCase();
-          const regionData = REGION_CONFIG[detectedRegion];
-          if (searchString && regionData) {
-            const sortedAreaKeys = Object.keys(regionData.availableAreas).sort(
-              (a, b) => b.length - a.length
-            );
-            for (const areaKey of sortedAreaKeys) {
-              if (searchString.includes(areaKey.toLowerCase())) {
-                detectedAreaKey = areaKey;
+              if (adminAreaLevel1) {
+                detectedRegion = adminAreaLevel1.long_name;
+                break; // Found region, break out of loop
+              } else if (locality) {
+                detectedRegion = locality.long_name;
+                break;
+              } else if (adminAreaLevel2) {
+                detectedRegion = adminAreaLevel2.long_name;
                 break;
               }
             }
           }
+
+              // If still no region found, try to extract from formatted address
+          if (!detectedRegion && place.formattedAddress) {
+            const addressParts = place.formattedAddress.split(',');
+            if (addressParts.length > 1) {
+              // Typically region is the second-to-last part in formatted addresses
+              detectedRegion = addressParts[addressParts.length - 2]?.trim();
+            }
+          }
+        } 
+        catch (geocodeError) {
+          console.error('Geocoding error:', geocodeError);
+          toast.warn('Could not precisely determine region. Using fallback.');
         }
-
-        const regionData = REGION_CONFIG[detectedRegion];
-        if (!regionData) {
-          toast.error('Region configuration not found.');
-          setSelectedLocation(null);
-          onPlaceSelect(null, type);
-          setLoading(false);
-          return;
-        }
-
-        const area = detectedAreaKey
-          ? regionData.availableAreas[detectedAreaKey]
-          : regionData.availableAreas[regionData.defaultArea];
-
-        if (!area) {
-          toast.error('Could not determine delivery area.');
-          setSelectedLocation(null);
-          onPlaceSelect(null, type);
-          setLoading(false);
-          return;
-        }
-
+  
         const location = {
           address: place.formattedAddress,
           name: place.displayName || place.formattedAddress,
           region: detectedRegion,
-          areaName: area.name,
           cost: area.fee,
           pickupTime: null,
           lat: place.location.lat(),

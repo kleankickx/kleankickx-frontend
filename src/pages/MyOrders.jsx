@@ -91,20 +91,6 @@ const MyOrders = () => {
 
   // --- EFFECT ---
   useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      setError('Please log in to view your orders.');
-      navigate('/login');
-      return;
-    }
-    if (user && !user.is_verified) {
-      setLoading(false);
-      setError('Please verify your email to view orders.');
-      navigate(`/temp-verify-email/?email=${user.email}`);
-      toast.warn('Please verify your email before viewing orders.');
-      return;
-    }
-
     fetchOrders(currentPage, statusFilter, sortBy);
   }, [isAuthenticated, user, navigate, currentPage, statusFilter, sortBy, searchTerm]);
 
