@@ -19,7 +19,7 @@ const ProtectedRoute = ({ children, requireVerification = false }) => {
     `/auth/login?continue=${encodeURIComponent(fullPath)}`
     );
     } 
-    else if (requireVerification && requireVerification && user && user.email && user.is_verified === false) {
+    else if (requireVerification && requireVerification && user && user.email && user?.is_verified === false) {
       console.log(requireVerification, user.is_verified)
       toast.warn("Please verify your email before proceeding.");
       

@@ -1,4 +1,4 @@
-import { FiTruck } from 'react-icons/fi';
+import { FaTruck  } from 'react-icons/fa';
 import PlaceAutoCompleteElementWrapper from './PlaceAutoCompleteElementWrapper';
 import { FaInfo, FaInfoCircle } from 'react-icons/fa';
 
@@ -10,7 +10,7 @@ const DeliveryInformationCard = (props) => {
     <div className="bg-white shadow-xl rounded-xl border border-gray-200">
       <div className="bg-gray-50 px-6 py-4 rounded-tl-xl rounded-tr-xl  border-b border-gray-200">
         <h2 className="text-xl font-semibold flex items-center">
-          <FiTruck className="mr-3 text-primary" />
+          <FaTruck  className="mr-3 text-primary" />
           Delivery Information 
         </h2>
       </div>

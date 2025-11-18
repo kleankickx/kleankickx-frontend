@@ -4,19 +4,20 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { EnvelopeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 
 const UserVerifyEmail = () => {
     const location = useLocation();
-    const { api } = useContext(AuthContext);
+    const { api, refreshToken, updateTokens, } = useContext(AuthContext);
    
 
     // Get parameters from URL
     const urlParams = new URLSearchParams(location.search);
     const userEmail = urlParams.get('email');
     const nextPath = urlParams.get('next');
+    const navigate = useNavigate()
 
      // Define a unique key for storage
     const INITIAL_SENT_KEY = `verify_email_sent_${userEmail}`; // Use email for uniqueness
@@ -45,20 +46,57 @@ const UserVerifyEmail = () => {
     const sendVerificationEmail = async () => {
         setLoading(true);
         try {
-            await api.post('/api/users/resend-verification-email/', {
+            const response = await api.post('/api/users/resend-verification-email/', {
                 email: userEmail,
                 next: nextPath || '/',
             });
+            const backendStatus = response.data?.status_flag;
             
             // Success (Backend returned 200 OK)
-            toast.success('Verification email sent – please check your inbox.');
-            // The backend's 200 OK means the cooldown check passed, so we can start the frontend cooldown.
-            setCooldown(30); 
+           
 
-            localStorage.setItem(INITIAL_SENT_KEY, 'true');
-            setInitialSent(true);
+            if (backendStatus === 'SENT') {
+                // Scenario 1: Email was successfully queued for sending
+                setCooldown(30); // Start frontend cooldown timer
+                localStorage.setItem(INITIAL_SENT_KEY, 'true');
+                setInitialSent(true); 
+                // Stay on the verification page to show the countdown
+                
+            } else if (backendStatus === 'VERIFIED') {
+                // Scenario 2: Email was already verified
+                if (refreshToken && updateTokens) {
+                    try {
+                        const refreshResponse = await api.post(
+                            '/api/users/token/refresh/', 
+                            { refresh: refreshToken }
+                        );
+                        
+                        console.log("Tokens updated after verification.");
+                        // Update context with the new token (containing is_verified: true)
+                        updateTokens(refreshResponse.data.access, refreshResponse.data.refresh);
+
+                    } catch (refreshErr) {
+                        console.error("Failed to refresh token after verification:", refreshErr);
+                        toast.error("An error occured, try logging out and logging in again")
+                        
+                    }
+                }
+                
+                // After attempting refresh (or if no token existed), navigate away.
+                navigate(nextPath);
+                
+            } else {
+                // Default success for unexpected 200 responses
+                setCooldown(30); 
+                localStorage.setItem(INITIAL_SENT_KEY, 'true');
+                setInitialSent(true); 
+            }
+
+            toast.success(response.data?.message || 'Action complete.');
+            
         } catch (err) {
             // --- Error Handling ---
+            console.log(err)
             
             // 1. Extract the error message from the response data
             const errorMessage = 

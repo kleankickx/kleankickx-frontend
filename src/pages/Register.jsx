@@ -9,6 +9,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import 'react-toastify/dist/ReactToastify.css'; // Ensure toast styles are imported
 import { motion } from 'framer-motion';
+import logo from "../assets/logo2.png"
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -121,7 +122,19 @@ const Register = () => {
   };
 
   return (
-    <div className="bg-[#edf1f4] py-16 px-4 min-h-screen flex flex-col items-center justify-center">
+    <div className="bg-[#edf1f4] gap-2 py-16 px-4 min-h-screen flex flex-col items-center justify-center">
+      <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className=""
+              >
+                 <Link to="/">
+                    <img src={logo} className="w-[10rem]" />
+                 </Link> 
+                  
+                        
+      </motion.div>
       <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}

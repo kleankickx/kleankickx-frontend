@@ -8,6 +8,7 @@ import { AuthContext } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'; // Ensure you have heroicons installed
 import 'react-toastify/dist/ReactToastify.css'; // Ensure toast styles are imported
 import { motion } from 'framer-motion';
+import logo from "../assets/logo2.png"
 
 
 const Login = () => {
@@ -93,8 +94,18 @@ const Login = () => {
   };
 
   return (
-    <div className="bg-[#edf1f4] px-4 min-h-screen flex justify-center items-center flex-col">
-
+    <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex justify-center items-center flex-col">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className=""
+        >
+            <Link to="/">
+                <img src={logo} className="w-[10rem]" />
+            </Link> 
+                  
+        </motion.div>
       {/* Login Card */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -228,6 +239,7 @@ const Login = () => {
               shape="rectangular"
               theme="filled_black"
               disabled={loading}
+              auto_select={false}
             />
           </div>
 

@@ -70,6 +70,7 @@ const VerifyEmail = () => {
 							
 							// Ensure updateTokens exists before calling
 							if (updateTokens) {
+                console.log("updating tokens")
 								updateTokens(refreshResponse.data.access, refreshResponse.data.refresh);
 							}
 							

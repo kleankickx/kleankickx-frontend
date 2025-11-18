@@ -177,6 +177,7 @@ const AuthProvider = ({ children }) => {
   const decodeToken = (token) => {
     try {
       const decoded = jwtDecode(token);
+      console.log(decoded)
       return {
         email: decoded.email || '',
         first_name: decoded.first_name || '',
@@ -185,6 +186,7 @@ const AuthProvider = ({ children }) => {
         signup_discount_used: decoded.signup_discount_used || false,
         phone_number: decoded.phone_number || '',
       };
+      
     } catch (err) {
       console.error('Failed to decode token:', err);
       return null;
