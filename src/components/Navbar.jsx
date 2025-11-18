@@ -403,7 +403,7 @@ const Navbar = () => {
               ) : (
                 <div className="flex flex-col space-y-2">
                   <NavLink
-                    to="/login"
+                    to="/auth/login"
                     onClick={closeMobileMenu}
                     className="hover:bg-gray-700 px-3 py-2 rounded"
                   >
