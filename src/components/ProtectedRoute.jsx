@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children, requireVerification = false }) => {
       // 🚀 CRITICAL FIX: Redirect unverified user to temp-verify-email,
       // and pass the intended destination path as the 'next' parameter.
       setRedirectPath(
-              `/auth/confirm-email/?email=${user?.email}&next=${encodeURIComponent(fullPath)}`
+              `/auth/confirm-email/?email=${user?.email}&isVerified=false&next=${encodeURIComponent(fullPath)}`
             );
     }
   }, [isAuthenticated, user, location, requireVerification, fullPath]); // fullPath dependency added for completeness

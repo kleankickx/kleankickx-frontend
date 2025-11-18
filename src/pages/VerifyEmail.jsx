@@ -220,7 +220,7 @@ const VerifyEmail = () => {
                       Your verification link may have expired or is invalid.
                     </p>
                     <button
-                      onClick={() => navigate(`/temp-verify-email/?email=${encodeURIComponent(userEmail)}&expired=true`)}
+                      onClick={() => navigate(`/auth/confirm-email/?email=${encodeURIComponent(userEmail)}&expired=true`)}
                       className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
                     >
                       Request New Verification Link
@@ -230,7 +230,7 @@ const VerifyEmail = () => {
 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <button
-                    onClick={() => navigate('/login')}
+                    onClick={() => navigate('/auth/login')}
                     className="text-primary hover:text-primary-dark font-medium transition duration-200"
                   >
                     ← Return to Login Page

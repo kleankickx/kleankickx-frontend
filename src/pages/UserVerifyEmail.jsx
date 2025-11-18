@@ -11,20 +11,29 @@ import { AuthContext } from '../context/AuthContext';
 const UserVerifyEmail = () => {
     const location = useLocation();
     const { api } = useContext(AuthContext);
+   
 
     // Get parameters from URL
     const urlParams = new URLSearchParams(location.search);
     const userEmail = urlParams.get('email');
     const nextPath = urlParams.get('next');
 
+     // Define a unique key for storage
+    const INITIAL_SENT_KEY = `verify_email_sent_${userEmail}`; // Use email for uniqueness
+
     // Check if the user is coming from a registration/login where they need verification
-    const needsVerification = urlParams.get('is-verified') === 'false'; 
+    const needsVerification = urlParams.get('isVerified') === 'false'; 
     const isExpired = urlParams.get('expired') === 'true';
 
     // State for managing UI logic
     const [cooldown, setCooldown] = useState(0);        // seconds remaining for resend
     const [loading, setLoading] = useState(false);      // API request state
-    const [initialSent, setInitialSent] = useState(false); // Tracks if the auto-send happened
+    const [initialSent, setInitialSent] = useState(() => {
+        // Check if a success flag exists in localStorage for this specific email
+        const storedValue = localStorage.getItem(INITIAL_SENT_KEY);
+        // Return true if the flag exists, otherwise false
+        return storedValue === 'true'; 
+    });
     
     // Check for email validity early
     if (!userEmail) {
@@ -34,58 +43,68 @@ const UserVerifyEmail = () => {
     
     // Helper function to send the verification email (used by both auto-send and resend)
     const sendVerificationEmail = async () => {
-    setLoading(true);
-    try {
-        await api.post('/api/users/resend-verification-email/', {
-            email: userEmail,
-            next: nextPath || '/',
-        });
-        
-        // Success (Backend returned 200 OK)
-        toast.success('Verification email sent – please check your inbox.');
-        // The backend's 200 OK means the cooldown check passed, so we can start the frontend cooldown.
-        setCooldown(30); 
-    } catch (err) {
-        // --- Error Handling ---
-        
-        // 1. Extract the error message from the response data
-        const errorMessage = 
-            err.response?.data?.message || 
-            err.response?.data?.error || 
-            'Failed to send verification email. Try again later.';
-        
-        const status = err.response?.status;
-
-        // 2. Handle specific HTTP 429 (Too Many Requests / Cooldown)
-        if (status === 429) {
-            // The backend sends a message like: "Verification email was already sent recently. Please wait X seconds."
-            toast.warn(errorMessage);
+        setLoading(true);
+        try {
+            await api.post('/api/users/resend-verification-email/', {
+                email: userEmail,
+                next: nextPath || '/',
+            });
             
-            // 🎯 Action: If the backend explicitly told us to wait, update the frontend cooldown.
-            // We need to parse the wait time from the message, which is error-prone.
-            // A safer, alternative approach (recommended): If 429, start a default cooldown 
-            // to prevent the user from clicking for a short period.
-            // For now, let's use the default 30s.
+            // Success (Backend returned 200 OK)
+            toast.success('Verification email sent – please check your inbox.');
+            // The backend's 200 OK means the cooldown check passed, so we can start the frontend cooldown.
             setCooldown(30); 
 
-        // 3. Handle other errors (404 User not found, 400 Bad Request, etc.)
-        } else {
-            toast.error(errorMessage);
+            localStorage.setItem(INITIAL_SENT_KEY, 'true');
+            setInitialSent(true);
+        } catch (err) {
+            // --- Error Handling ---
+            
+            // 1. Extract the error message from the response data
+            const errorMessage = 
+                err.response?.data?.message || 
+                err.response?.data?.error || 
+                'Failed to send verification email. Try again later.';
+            
+            const status = err.response?.status;
+
+            // 2. Handle specific HTTP 429 (Too Many Requests / Cooldown)
+            if (status === 429) {
+                // The backend sends a message like: "Verification email was already sent recently. Please wait X seconds."
+                toast.warn(errorMessage);
+                
+                // 🎯 Action: If the backend explicitly told us to wait, update the frontend cooldown.
+                // We need to parse the wait time from the message, which is error-prone.
+                // A safer, alternative approach (recommended): If 429, start a default cooldown 
+                // to prevent the user from clicking for a short period.
+                // For now, let's use the default 30s.
+                setCooldown(30); 
+
+            // 3. Handle other errors (404 User not found, 400 Bad Request, etc.)
+            } else {
+                toast.error(errorMessage);
+            }
+        } finally {
+            setLoading(false);
         }
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     // 1. 🚀 INITIAL SEND EFFECT: Send email automatically on component mount
     useEffect(() => {
-        // Only run if the user needs verification or has an expired link 
-        // AND the initial send hasn't happened yet.
-        if (!initialSent && (needsVerification || isExpired)) {
-            sendVerificationEmail();
-            setInitialSent(true); // Mark as sent so it doesn't run again
-        }
-    }, [initialSent, needsVerification, isExpired]); // Dependencies ensure logic is sound
+        // Define an async function internally
+        const initiateSend = async () => {
+            if (!initialSent && (needsVerification || isExpired)) {
+                // ✅ Now 'await' is valid because it's inside an async function
+                await sendVerificationEmail(); 
+            }
+
+        };
+
+        
+    
+        // Call the async function immediately
+        initiateSend();
+    }, [initialSent, needsVerification, isExpired]) // Dependencies ensure logic is sound
 
     // 2. COOLDOWN EFFECT: Countdown timer
     useEffect(() => {
@@ -126,7 +145,7 @@ const UserVerifyEmail = () => {
         mainMessage = (
             <p className="text-gray-700">
                 It seems that <span className="font-medium text-gray-900">{userEmail}</span> is registered but not verified.
-                We have **automatically resent** the verification link to your inbox.
+                We have automatically resent the verification link to your inbox.
             </p>
         );
     }
@@ -155,10 +174,17 @@ const UserVerifyEmail = () => {
                 >
                     {loading ? (
                         <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                    ) : (
-                        <ArrowPathIcon className="w-5 h-5" />
-                    )}
-                    {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email'}
+                        ) : 
+                        (
+                            <ArrowPathIcon className="w-5 h-5" />
+                        )
+                    }
+
+                    
+                        {loading 
+                            ? 'Sending...' 
+                            : (cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email')}
+
                 </button>
 
                 {/* Footnote */}
