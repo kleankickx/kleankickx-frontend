@@ -962,11 +962,7 @@ const GetOrder = () => {
               {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
             </p>
           </div>
-          {order && (
-            <div className="w-full sm:w-auto">
-              {getStatusDisplay(order.status)}
-            </div>
-          )}
+          
         </div>
 
         {/* PAYMENT STATUS BANNER */}
@@ -1013,10 +1009,17 @@ const GetOrder = () => {
             <div className="lg:col-span-2 space-y-6">
               {/* Customer & Order Info */}
               <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                  Order Information
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex justify-between items-center border-gray-200 border-b">
+                  <h2 className="text-xl font-semibold mb-6 text-gray-900 ">
+                    Order Information
+                  </h2>
+                      {order && (
+                        <div className="w-full sm:w-auto">
+                          {getStatusDisplay(order.status)}
+                        </div>
+                      )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-3">CUSTOMER DETAILS</h3>
                     <div className="flex items-start gap-3 mb-4">
@@ -1040,6 +1043,7 @@ const GetOrder = () => {
                         <span className="text-gray-600">Order Date</span>
                         <span className="font-medium">{formatDate(order.created_at)}</span>
                       </div>
+                      
                       <div className="flex justify-between">
                         <span className="text-gray-600">Payment Method</span>
                         <span className="font-medium capitalize">

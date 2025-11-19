@@ -519,7 +519,7 @@ const Checkout = () => {
                 {/* Additional Help */}
                 <div className="mt-12 pt-6 border-t border-gray-200">
                   <p className="text-gray-500 text-sm">
-                    Need help? <a href="mailto:info@kleankickx.com" className="text-primary hover:underline font-medium">Contact our support team</a>
+                    Need help? <a href="mailto:support@kleankickx.com" className="text-primary hover:underline font-medium">Contact our support team</a>
                   </p>
                 </div>
               </div>
