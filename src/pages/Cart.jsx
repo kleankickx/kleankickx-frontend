@@ -72,7 +72,9 @@ const fetchUserReferralDiscountStatus = async () => {
         
         if (validPromotion) {
           setAppliedPromotion(validPromotion);
-          toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+          if (cart.length > 0){
+            toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+          }
         }
       }
     } catch (error) {

@@ -50,7 +50,7 @@ const About = () => (
         <h1 className="text-white text-4xl md:text-6xl font-bold header">
           <span className="text-secondary">About </span>Us
         </h1>
-        <p className="text-white text-lg mt-[2rem] max-w-2xl">
+        <p className="text-white lg:text-lg mt-[2rem] max-w-2xl">
             At Kleankickx Sneaker Care, we believe that every step matters, not just for style and comfort, but for the planet. We harness the power of technology to drive sustainability in the footwear industry, tackling the environmental impact of footwear waste in Ghana and across Africa.
         </p>
       </motion.div>

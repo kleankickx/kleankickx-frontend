@@ -81,10 +81,10 @@ const Services = () => {
 
   return ( 
     <>
-      <section className="bg-cover bg-center h-[15rem] lg:h-[20rem] relative" style={{ backgroundImage: `url(${bgImage})` }}>
-        <div className="absolute inset-0 bg-black/30" />
+      <section className="bg-cover bg-center h-[15rem]  relative" style={{ backgroundImage: `url(${bgImage})` }}>
+        <div className="absolute inset-0 bg-black/50" />
         <motion.div
-          className="relative h-full px-4 pt-[8rem] md:px-8 lg:px-24 flex flex-col lg:items-start text-center lg:text-left items-center"
+          className="relative h-full px-4  md:px-8 lg:px-24 flex flex-col  text-left justify-center"
           variants={fadeInUp}
           initial="hidden"
           animate="visible"
@@ -92,6 +92,11 @@ const Services = () => {
           <h1 className="text-white text-3xl md:text-5xl font-bold header">
             <span className="text-primary">Schedule </span> a Klean
           </h1>
+          <p className="text-white lg:text-lg mt-[2rem] max-w-2xl">
+            At Kleankickx, we're passionate about bringing your favorite footwear back to life. Explore our range of premium cleaning and restoration services designed to keep your sneakers looking fresh and new.
+          </p>
+          
+          
           
           
           {/* button to scroll to services */}
@@ -156,52 +161,60 @@ const Services = () => {
             >
               {services.map((service, index) => (
                 <motion.div
-                key={service.id}
-                className="bg-white rounded shadow-md overflow-hidden border border-gray-200 hover:shadow-2xl transition duration-300 relative group"
-                variants={fadeInUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-              >
-                <div className="w-full flex items-center justify-center overflow-hidden">
-                  <img
-                    src={service.image}
-                    alt={service.name}
-                    className="h-full w-full object-cover transition-transform duration-300 transform group-hover:scale-105"
-                  />
-                </div>
-
-                <div className="p-4">
-                  <h3 className="text-xl font-handwritten text-primary mb-2">{service.name}</h3>
-                  <p className="text-gray-700 text-sm h-16 overflow-hidden">
-                    {service.description}
-                  </p>
-
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-gray-500 line-through">₵{
-                        service.price === '50.00' ? '70' :
-                        service.price === '100.00' ? '120' :
-                        '150'
-                    }</div>
-                    <div className="text-lg font-bold text-primary">₵{service.price}</div>
+                    key={service.id}
+                  className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-2xl transition-all duration-300 relative group"
+                  variants={fadeInUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.2 }}
+                >
+                  <div className="w-full flex items-center justify-center overflow-hidden">
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      className="h-full w-full object-cover transition-transform duration-300 transform group-hover:scale-105"
+                    />
                   </div>
 
-                  <button
-                    onClick={() => handleAddToCart(service.id, service.name, service.price)}
-                    className="mt-4 w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium cursor-pointer transition duration-200 focus:outline-none"
-                    aria-label={`Add ${service.name} to cart`}
-                  >
-                    ADD TO CART
-                  </button>
-                </div>
-                
-                {signupDiscount && (
-                  <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl">
-                    {parseInt(signupDiscount.percentage)}% OFF
-                  </div>
-                )}
-                
+                  <div className="p-5">
+                    {/* Service Name and Delivery Time Row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xl font-meduim text-primary">{service.name}</h3>
+                      <div className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium border border-green-200">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className='text-xs'>delivered back in 48h</span>
+                      </div>
+                    </div>
 
+                    <p className="text-gray-700 text-sm h-16 overflow-hidden mb-4">
+                      {service.description}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-gray-500 line-through">₵{
+                          service.price === '50.00' ? '70' :
+                          service.price === '100.00' ? '120' :
+                          '150'
+                      }</div>
+                      <div className="text-lg font-bold text-primary">₵{service.price}</div>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddToCart(service.id, service.name, service.price)}
+                      className="mt-4 w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-lg font-medium cursor-pointer transition-all duration-200 focus:outline-none transform hover:scale-[1.02]"
+                      aria-label={`Add ${service.name} to cart`}
+                    >
+                      ADD TO CART
+                    </button>
+                  </div>
+                  
+                  {signupDiscount && (
+                    <div className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl-lg">
+                      {parseInt(signupDiscount.percentage)}% OFF
+                    </div>
+                  )}
                 </motion.div>
 
               ))}

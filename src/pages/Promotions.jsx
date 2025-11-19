@@ -8,6 +8,7 @@ import {
   FaArrowRight ,
     FaSpinner,
 } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 const Promotion = () => {
     const [promotions, setPromotions] = useState([]);
@@ -151,8 +152,10 @@ const Promotion = () => {
                                                     <motion.button
                                                         whileHover={{ x: 5 }}
                                                         className="flex items-center gap-1 text-sm font-medium hover:underline"
-                                                    >
-                                                        Use Code
+                                                    >   
+                                                        <Link to="/checkout">
+                                                            Apply promo
+                                                        </Link>
                                                         <FaArrowRight className="text-xs" />
                                                     </motion.button>
                                                 )}

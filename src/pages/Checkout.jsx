@@ -167,7 +167,9 @@ const Checkout = () => {
         
         if (validPromotion) {
           setAppliedPromotion(validPromotion);
-          toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+          if (cart.length > 0){
+            toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+          }
         }
       }
     } catch (error) {
@@ -470,16 +472,59 @@ const Checkout = () => {
         <div className="lg:px-18 px-4 py-8">
           
           {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[60vh]">
-              <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-sm flex items-center ">
-                <FaExclamationTriangle className="mr-2" />
-                Your cart is empty. Add items to proceed with checkout.
+            <div className="min-h-[70vh] flex items-center justify-center px-4 py-8">
+              <div className="text-center max-w-md mx-auto">
+                {/* Animated Icon */}
+                <div className="relative mb-8">
+                  <div className="w-32 h-32 mx-auto bg-yellow-100 rounded-full flex items-center justify-center animate-bounce">
+                    <FaExclamationTriangle className="text-4xl text-yellow-600" />
+                  </div>
+                </div>
+
+                {/* Main Message */}
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">Oops!</h1>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-6">Your Cart is Empty</h2>
+                
+                {/* Description */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-8">
+                  <p className="text-yellow-800 leading-relaxed">
+                    Looks like you haven't added any items to your cart yet. 
+                    Let's find some amazing cleaning services for you!
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-4">
+                  <Link 
+                    to="/services" 
+                    className="inline-flex items-center justify-center w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                  >
+                    <span>Explore Cleaning Services</span>
+                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </Link>
+                  
+                  <Link 
+                    to="/" 
+                    className="inline-flex items-center justify-center w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-300"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Return to Homepage
+                  </Link>
+                </div>
+
+                {/* Additional Help */}
+                <div className="mt-12 pt-6 border-t border-gray-200">
+                  <p className="text-gray-500 text-sm">
+                    Need help? <a href="mailto:info@kleankickx.com" className="text-primary hover:underline font-medium">Contact our support team</a>
+                  </p>
+                </div>
               </div>
-              <Link to="/services" className="text-primary hover:underline mt-2">
-                Go to kleaning services
-              </Link>
             </div>
-          ) : (
+          ): (
             <div> 
 
               <div className="">
