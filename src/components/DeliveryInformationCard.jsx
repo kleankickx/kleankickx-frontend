@@ -15,7 +15,7 @@ const DeliveryInformationCard = (props) => {
         </h2>
       </div>
       
-      <div className="p-6 space-y-5 h-full max-h-[350px] overflow-y-auto">
+      <div className="p-6 space-y-5 h-full max-h-[290px] overflow-y-auto">
         {/* Delivery Address Input */}
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -97,6 +97,9 @@ const DeliveryInformationCard = (props) => {
             />
           </div>
         )}
+      </div>
+      <div className="h-5 bg-white z-50 rounded-bl-xl rounded-br-xl">
+
       </div>
     </div>
   );
