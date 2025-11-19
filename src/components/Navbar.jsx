@@ -11,6 +11,10 @@ import {
   faKey, // Key icon for 'Change Password'
   faRightFromBracket,
   faShoePrints, // Logout icon
+  faHeadset,
+  faPhone,
+  faEnvelope
+  
 } from '@fortawesome/free-solid-svg-icons';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
@@ -320,7 +324,7 @@ const Navbar = () => {
                 <NavLink
                 to="/services"
                 onClick={closeMobileMenu}
-                className="inline-block bg-green-500 text-white rounded px-4 py-2 text-center hover:bg-primary transition w-full"
+                className="inline-block bg-gradient-to-br from-green-900 to-green-800 text-white rounded px-4 py-2 text-center hover:bg-primary transition w-full"
               > 
                 <FontAwesomeIcon icon={faShoePrints} className="mr-2" />
                 Start Kleaning Here
@@ -328,7 +332,38 @@ const Navbar = () => {
               </li>
             </ul>
 
-            
+            {/* need help card */}
+             <div className="bg-gradient-to-br from-green-900 to-green-800 rounded-xl p-4 border border-green-600">
+              <div className="flex items-start gap-3">
+                <div className="bg-green-500/20 p-2 rounded-lg">
+                  <FontAwesomeIcon icon={faHeadset} className="text-green-300 text-lg" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-semibold text-sm mb-1">Need Help?</h3>
+                  <p className="text-green-200 text-xs mb-3">
+                    Our support team is here to assist you
+                  </p>
+                  <div className="space-y-2">
+                    <a 
+                      href="tel:+233123456789"
+                      className="flex items-center gap-2 text-white text-xs hover:text-green-300 transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faPhone} className="w-3 h-3" />
+                      <span>+233 123 456 789</span>
+                    </a>
+                    <a 
+                      href="mailto:support@kleankickx.com"
+                      className="flex items-center gap-2 text-white text-xs hover:text-green-300 transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3" />
+                      <span>support@kleankickx.com</span>
+                    </a>
+                   
+                  </div>
+                </div>
+              </div>
+            </div>
+                    
 
             <div className="border-t border-gray-700 pt-6 mt-auto space-y-4">
               <button
