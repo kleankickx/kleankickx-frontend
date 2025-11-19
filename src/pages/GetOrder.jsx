@@ -748,7 +748,8 @@ const GetOrder = () => {
 
     return (
       <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${config.color} ${config.bg}`}>
-        {config.icon} <span className="ml-2">{config.displayText}</span>
+        {config.icon} 
+        <span className="ml-2 text-xs">{config.displayText}</span>
       </span>
     );
   };
