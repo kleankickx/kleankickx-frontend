@@ -1009,12 +1009,12 @@ const GetOrder = () => {
             <div className="lg:col-span-2 space-y-6">
               {/* Customer & Order Info */}
               <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                <div className="flex justify-between items-center border-gray-200 border-b">
-                  <h2 className="text-xl font-semibold mb-6 text-gray-900 ">
+                <div className="w-full flex justify-between items-center border-gray-200 border-b pb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 ">
                     Order Information
                   </h2>
                       {order && (
-                        <div className="w-full sm:w-auto">
+                        <div className="">
                           {getStatusDisplay(order.status)}
                         </div>
                       )}
