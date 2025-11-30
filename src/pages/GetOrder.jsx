@@ -1177,9 +1177,9 @@ const GetOrder = () => {
                       {order.discounts_applied?.length > 0 && (
                         <div className="text-sm text-gray-400 line-through mb-1">
                           {/* Calculate Gross Total (Subtotal + Fees) */}
-                          GHS {(parseFloat(order.subtotal || order.total) +
-                              parseFloat(order.delivery_address?.cost || 0) +
-                              parseFloat(order.pickup_address?.cost || 0)).toFixed(2)}
+                          GHS {(parseFloat(order.subtotal) +
+                              parseFloat(order.delivery_cost || 0) +
+                              parseFloat(order.pickup_cost || 0)).toFixed(2)}
                         </div>
                       )}
                       <span className="font-bold text-xl text-emerald-600">

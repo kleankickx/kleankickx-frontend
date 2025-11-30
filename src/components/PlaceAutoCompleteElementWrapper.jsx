@@ -18,7 +18,7 @@ const PlaceAutocompleteElementWrapper = ({
   currentInputValue,
   initialLocation,
   pickupTime,
-  setPickupTime
+  setPickupTime, useSame
 }) => {
   const inputContainerRef = useRef(null);
   const autocompleteElementRef = useRef(null);
@@ -113,7 +113,7 @@ const PlaceAutocompleteElementWrapper = ({
           address: place.formattedAddress,
           name: place.displayName || place.formattedAddress,
           region: detectedRegion,
-          cost: area.fee,
+          cost: 0,
           pickupTime: null,
           lat: place.location.lat(),
           lng: place.location.lng(),
@@ -242,6 +242,18 @@ const PlaceAutocompleteElementWrapper = ({
 
     return `${formatTime(startTime)} - ${formatTime(endTime)}`;
   };
+
+  // Fix the conditional rendering logic
+  const shouldShowPickupTimeInfo = () => {
+    if (useSame) {
+      // When useSame is true, only show on delivery type
+      return type === 'delivery';
+    } else {
+      // When useSame is false, only show on pickup type
+      return type === 'pickup';
+    }
+  };
+
   const renderPickupTimeInfo = () => {
       if (!pickupTime){
         return (
@@ -311,7 +323,7 @@ const PlaceAutocompleteElementWrapper = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="mt-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-sm"
+              className={`mt-2 p-3 rounded-lg  border ${ useSame ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-green-50 border-green-200 text-green-800'}  text-sm`}
           >
               <p className="font-semibold mb-1 flex items-center">
                   🚛 Earliest Available Pickup:
@@ -319,10 +331,10 @@ const PlaceAutocompleteElementWrapper = ({
               <p className="pl-1">
                   <span className="font-bold">{dateDisplay} ({dayOfWeek})</span>, between {' '}
                   {/* 💡 Use the new AM/PM formatted time 💡 */}
-                  <span className="font-bold text-base text-blue-900">{timeAmPmDisplay}</span>
+                  <span className={`font-bold text-base ${ useSame ? 'text-blue-900' : 'text-green-900'}`}>{timeAmPmDisplay}</span>
               </p>
               {/* Removed the raw pickupTime.value for a cleaner look */}
-              <p className="text-xs text-blue-600 mt-1">
+              <p className={`text-xs ${ useSame ? 'text-blue-600' : 'text-green-600'} mt-1`}>
                   This is the earliest hour-long window we can schedule your pickup.
               </p>
           </motion.div>
@@ -358,7 +370,7 @@ const PlaceAutocompleteElementWrapper = ({
               type={type}
               onClear={clearSelection}
             />
-            {type === 'delivery' && renderPickupTimeInfo()}
+            {shouldShowPickupTimeInfo() && renderPickupTimeInfo()}
           </>
         ) : (
           <motion.div

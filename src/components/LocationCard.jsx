@@ -23,9 +23,7 @@ const LocationCard = ({ location, type, onClear }) => {
                             <span className="px-2 py-1 bg-white rounded-md text-xs font-medium shadow-xs">
                                 {location.region}
                             </span>
-                            <span className="px-2 py-1 bg-white rounded-md text-xs font-medium shadow-xs">
-                                {location.areaName}
-                            </span>
+                            
                         </div>
                     </div>
                 </div>
@@ -39,7 +37,7 @@ const LocationCard = ({ location, type, onClear }) => {
             </div>
             <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
                 <span className="font-medium">{type === 'delivery' ? 'Delivery Fee:' : 'Pickup Fee:'}</span>
-                <span className="font-bold">GHS {location.cost.toFixed(2)}</span>
+                <span className="font-bold">GHS {parseFloat(location.cost).toFixed(2)}</span>
             </div>
         </motion.div>
     );

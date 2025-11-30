@@ -11,7 +11,7 @@ const DeliveryInformationCard = (props) => {
       <div className="bg-gray-50 px-6 py-4 rounded-tl-xl rounded-tr-xl  border-b border-gray-200">
         <h2 className="text-xl font-semibold flex items-center">
           <FaTruck  className="mr-3 text-primary" />
-          Delivery Information 
+          Delivery and Pickup Information 
         </h2>
       </div>
       
@@ -35,13 +35,14 @@ const DeliveryInformationCard = (props) => {
             onFocus={() => props.setActiveInput('delivery')}
             pickupTime={props.pickupTime}
             setPickupTime={props.setPickupTime}
+            useSame={props.useSame}
           />
         </div>
 
         {props.useSame && (
           // alert
           <div className="p-3 bg-green-50 border border-blue-200 text-blue-800 rounded">
-            <p className="text-xs lg:text-sm">
+            <p className="text-xs flex items-center">
               <FaInfoCircle className="inline mr-2" />
               Pickup address will be the same as delivery address.
             </p>
@@ -94,6 +95,7 @@ const DeliveryInformationCard = (props) => {
               onFocus={() => props.setActiveInput('pickup')}
               pickupTime={props.pickupTime}
               setPickupTime={props.setPickupTime}
+              useSame={props.useSame}
             />
           </div>
         )}
