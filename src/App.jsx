@@ -25,12 +25,12 @@ import MyOrders from './pages/MyOrders';
 import PaymentStatus from './pages/PaymentStatus';
 import PaymentRetry from './pages/PaymentRetry';
 import FailedOrders from './pages/FailedOrders';
-import OrderCreationForm from './admin/OrderCreationForm';
 import { useContext, useEffect, useState, useCallback } from 'react';
 import { AuthContext } from './context/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
+import GoogleMapsLoader from './components/GoogleMapsLoader';
 
 const AppContent = () => {
   const location = useLocation();
@@ -54,7 +54,6 @@ const AppContent = () => {
           <Route path="/about-us" element={<About />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
-          <Route path="/admin/order/create" element={<OrderCreationForm />} />
           <Route
             path="/checkout"
             element={
@@ -205,7 +204,10 @@ function App() {
              {appLoading ? (
               <LoadingSplash />
             ) : (
+              <>
+              <GoogleMapsLoader />
               <AppContent />
+              </>
             )}
           </CartProvider>
         </AuthProvider>
