@@ -24,7 +24,7 @@ const Cart = () => {
     addImageToCartItem, 
     removeImageFromCartItem,
     hasImage,
-    getImageBase64  // Get base64 directly from context
+    getImageBase64
   } = useContext(CartContext);
   const { discounts, user, api } = useContext(AuthContext);
   const [services, setServices] = useState([]);
@@ -32,7 +32,7 @@ const Cart = () => {
   const [error, setError] = useState(null);
   const [uploadingImages, setUploadingImages] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
-  const [imagePreviews, setImagePreviews] = useState({}); // Store blob URLs in component state
+  const [imagePreviews, setImagePreviews] = useState({});
   const fileInputRefs = useRef({});
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
@@ -82,6 +82,60 @@ const Cart = () => {
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
       reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // Improved mobile camera capture handler
+  const processCameraImage = (file) => {
+    return new Promise((resolve, reject) => {
+      // Create an image element to load and process the camera image
+      const img = new Image();
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        img.src = e.target.result;
+        
+        img.onload = () => {
+          // Create a canvas to process the image
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Set canvas dimensions (max 800px width for mobile optimization)
+          const maxWidth = 800;
+          const scaleSize = maxWidth / img.width;
+          canvas.width = maxWidth;
+          canvas.height = img.height * scaleSize;
+          
+          // Draw and process image
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Convert canvas to blob with proper orientation
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('Failed to process image'));
+              return;
+            }
+            
+            // Create a new File from the processed blob
+            const processedFile = new File([blob], file.name || `camera-${Date.now()}.jpg`, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            
+            resolve(processedFile);
+          }, 'image/jpeg', 0.85); // 85% quality for mobile optimization
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      
+      reader.readAsDataURL(file);
     });
   };
 
@@ -234,7 +288,6 @@ const Cart = () => {
   const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount)).toFixed(2);
 
   const handleRemove = (id) => {
-    // Clean up preview if it exists
     if (imagePreviews[id]) {
       URL.revokeObjectURL(imagePreviews[id]);
       setImagePreviews(prev => {
@@ -264,14 +317,22 @@ const Cart = () => {
     setUploadingImages(prev => ({ ...prev, [serviceId]: true }));
     
     try {
+      let processedFile = file;
+      
+      // Check if this is likely a camera capture (large size, needs processing)
+      if (file.size > 2 * 1024 * 1024) { // If larger than 2MB
+        toast.info('Optimizing image for upload...');
+        processedFile = await processCameraImage(file);
+      }
+      
       // Convert to base64 for storage
-      const base64String = await fileToBase64(file);
+      const base64String = await fileToBase64(processedFile);
       
       // Create blob URL for preview
-      const blobUrl = URL.createObjectURL(file);
+      const blobUrl = URL.createObjectURL(processedFile);
       
-      // Store in cart context (base64 only)
-      addImageToCartItem(serviceId, file, blobUrl, base64String);
+      // Store in cart context
+      addImageToCartItem(serviceId, processedFile, blobUrl, base64String);
       
       // Store blob URL in component state for preview
       setImagePreviews(prev => ({
@@ -291,7 +352,6 @@ const Cart = () => {
 
   const handleImageRemove = async (serviceId) => {
     try {
-      // Clean up blob URL
       if (imagePreviews[serviceId]) {
         URL.revokeObjectURL(imagePreviews[serviceId]);
         setImagePreviews(prev => {
@@ -309,13 +369,24 @@ const Cart = () => {
     }
   };
 
-  // const isShoeCleaningService = (serviceName) => {
-  //   if (!serviceName) return false;
-  //   const shoeKeywords = ['standard', 'deep klean', 'unyellowing'];
-  //   return shoeKeywords.some(keyword => 
-  //     serviceName.toLowerCase().includes(keyword)
-  //   );
-  // };
+  // Mobile-friendly file input handler
+  const handleFileInputClick = (serviceId) => {
+    // For mobile, we need to create a new input each time to reset it
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Use camera on mobile
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageUpload(serviceId, file);
+      }
+    };
+    
+    // Trigger click on the new input
+    input.click();
+  };
 
   const ImagePreviewModal = () => {
     if (!previewImage) return null;
@@ -384,7 +455,7 @@ const Cart = () => {
                 {cart.map((item) => {
                   const service = getService(item.service_id);
                   const itemHasImage = hasImage(item.service_id);
-                  const previewUrl = imagePreviews[item.service_id]; // Get from component state
+                  const previewUrl = imagePreviews[item.service_id];
                   
                   return (
                     <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -452,8 +523,7 @@ const Cart = () => {
                                   </div>
                                 </div>
 
-                                {/* Image Upload Section for Shoe Services */}
-                              
+                                {/* Image Upload Section */}
                                 <div className="mt-6 pt-6 border-t border-gray-100">
                                   <div className="flex items-center justify-between">
                                     <div>
@@ -505,44 +575,27 @@ const Cart = () => {
                                           </div>
                                         </>
                                       ) : (
-                                        <>
-                                          <input
-                                            type="file"
-                                            ref={el => fileInputRefs.current[item.service_id] = el}
-                                            onChange={(e) => {
-                                              const file = e.target.files[0];
-                                              if (file) {
-                                                handleImageUpload(item.service_id, file);
-                                                e.target.value = '';
-                                              }
-                                            }}
-                                            accept="image/*"
-                                            capture="environment"
-                                            className="hidden"
-                                          />
-                                          <button
-                                            onClick={() => fileInputRefs.current[item.service_id]?.click()}
-                                            disabled={uploadingImages[item.service_id]}
-                                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
-                                          >
-                                            {uploadingImages[item.service_id] ? (
-                                              <>
-                                                <FaSpinner className="animate-spin h-4 w-4" />
-                                                Uploading...
-                                              </>
-                                            ) : (
-                                              <>
-                                                <CameraIcon className="w-5 h-5" />
-                                                Add Photo
-                                              </>
-                                            )}
-                                          </button>
-                                        </>
+                                        <button
+                                          onClick={() => handleFileInputClick(item.service_id)}
+                                          disabled={uploadingImages[item.service_id]}
+                                          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
+                                        >
+                                          {uploadingImages[item.service_id] ? (
+                                            <>
+                                              <FaSpinner className="animate-spin h-4 w-4" />
+                                              Uploading...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <CameraIcon className="w-5 h-5" />
+                                              Add Photo
+                                            </>
+                                          )}
+                                        </button>
                                       )}
                                     </div>
                                   </div>
                                 </div>
-                                
                               </div>
                             </div>
                           </div>
