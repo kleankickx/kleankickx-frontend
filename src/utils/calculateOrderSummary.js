@@ -14,7 +14,7 @@ export const calculateOrderSummary = ({
   const toFloat = (value) => parseFloat(value || 0);
 
   // --- 1. Base Totals & Fees ---
-  const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
   
   const deliveryFee = toFloat(delivery?.cost);
   const pickupFee = useSame ? deliveryFee : toFloat(pickup?.cost);

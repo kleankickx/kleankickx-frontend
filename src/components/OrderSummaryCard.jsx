@@ -52,7 +52,7 @@ const OrderSummaryCard = ({
                   <p className="text-sm text-gray-500 mt-1">Quantity: {item.quantity}</p>
                 </div>
                 <p className="font-medium text-gray-900">
-                  GHS {(item.quantity * item.price).toFixed(2)}
+                  GHS {(item.quantity * item.unit_price).toFixed(2)}
                 </p>
               </div>
             </div>
