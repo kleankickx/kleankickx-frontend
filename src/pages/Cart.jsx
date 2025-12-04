@@ -8,13 +8,11 @@ import {
   MinusIcon, 
   PlusIcon, 
   ArrowPathIcon,
-  CameraIcon,
-  XMarkIcon,
   PhotoIcon,
-  FolderIcon,
-  EllipsisVerticalIcon
+  XMarkIcon,
+  FolderIcon
 } from '@heroicons/react/24/outline';
-import { FaSpinner, FaTags } from 'react-icons/fa6';
+import { FaSpinner } from 'react-icons/fa6';
 import axios from 'axios';
 import Tooltip from '../components/Tooltip';
 
@@ -35,9 +33,7 @@ const Cart = () => {
   const [uploadingImages, setUploadingImages] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [imagePreviews, setImagePreviews] = useState({});
-  const [showImageOptions, setShowImageOptions] = useState({}); // Track which item shows options
   const fileInputRefs = useRef({});
-  const galleryInputRefs = useRef({});
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
@@ -198,27 +194,6 @@ const Cart = () => {
     };
   }, [cart]);
 
-  // Close image options when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const optionsElements = document.querySelectorAll('.image-options-menu');
-      let clickedInside = false;
-      
-      optionsElements.forEach(element => {
-        if (element && element.contains(event.target)) {
-          clickedInside = true;
-        }
-      });
-      
-      if (!clickedInside) {
-        setShowImageOptions({});
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const fetchServices = async () => {
     try {
       const servicePromises = cart
@@ -353,7 +328,6 @@ const Cart = () => {
     }
     
     setUploadingImages(prev => ({ ...prev, [serviceId]: true }));
-    setShowImageOptions(prev => ({ ...prev, [serviceId]: false })); // Close options menu
     
     try {
       // Process and optimize the image
@@ -403,54 +377,30 @@ const Cart = () => {
     }
   };
 
-  // Open camera for photo capture
-  const openCamera = (serviceId) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment'; // Opens camera directly on mobile
-    
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        handleImageUpload(serviceId, file);
-      }
-    };
-    
-    input.click();
-  };
-
-  // Open gallery/file manager
+  // Open gallery/file picker
   const openGallery = (serviceId) => {
     // Use existing ref or create new input
-    let input = galleryInputRefs.current[serviceId];
+    let input = fileInputRefs.current[serviceId];
     if (!input) {
       input = document.createElement('input');
-      galleryInputRefs.current[serviceId] = input;
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      fileInputRefs.current[serviceId] = input;
+      
+      // Clean up event listener
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleImageUpload(serviceId, file);
+        }
+        // Reset input for next use
+        input.value = '';
+      };
     }
     
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = undefined; // No camera, just file picker
-    
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        handleImageUpload(serviceId, file);
-      }
-      // Reset input for next use
-      input.value = '';
-    };
-    
     input.click();
-  };
-
-  // Toggle image options menu
-  const toggleImageOptions = (serviceId) => {
-    setShowImageOptions(prev => ({
-      ...prev,
-      [serviceId]: !prev[serviceId]
-    }));
   };
 
   const ImagePreviewModal = () => {
@@ -521,7 +471,6 @@ const Cart = () => {
                   const service = getService(item.service_id);
                   const itemHasImage = hasImage(item.service_id);
                   const previewUrl = imagePreviews[item.service_id];
-                  const showOptions = showImageOptions[item.service_id];
                   
                   return (
                     <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -641,80 +590,26 @@ const Cart = () => {
                                           </div>
                                         </>
                                       ) : (
-                                        <div className="relative">
-                                          {/* Upload Options Button */}
-                                          <button
-                                            onClick={() => toggleImageOptions(item.service_id)}
-                                            disabled={uploadingImages[item.service_id]}
-                                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
-                                          >
-                                            {uploadingImages[item.service_id] ? (
-                                              <>
-                                                <FaSpinner className="animate-spin h-4 w-4" />
-                                                Uploading...
-                                              </>
-                                            ) : (
-                                              <>
-                                                <CameraIcon className="w-5 h-5" />
-                                                Add Photo
-                                              </>
-                                            )}
-                                          </button>
-
-                                          {/* Image Options Dropdown Menu */}
-                                          {showOptions && (
-                                            <div className="image-options-menu absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                                              <div className="py-1">
-                                                <button
-                                                  onClick={() => openCamera(item.service_id)}
-                                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 cursor-pointer"
-                                                >
-                                                  <CameraIcon className="w-5 h-5 text-blue-600" />
-                                                  <div>
-                                                    <div className="font-medium">Take Photo</div>
-                                                    <div className="text-xs text-gray-500">Use camera</div>
-                                                  </div>
-                                                </button>
-                                                
-                                                <button
-                                                  onClick={() => openGallery(item.service_id)}
-                                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 cursor-pointer border-t border-gray-100"
-                                                >
-                                                  <FolderIcon className="w-5 h-5 text-green-600" />
-                                                  <div>
-                                                    <div className="font-medium">Choose from Gallery</div>
-                                                    <div className="text-xs text-gray-500">Browse files</div>
-                                                  </div>
-                                                </button>
-                                              </div>
-                                            </div>
+                                        <button
+                                          onClick={() => openGallery(item.service_id)}
+                                          disabled={uploadingImages[item.service_id]}
+                                          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
+                                        >
+                                          {uploadingImages[item.service_id] ? (
+                                            <>
+                                              <FaSpinner className="animate-spin h-4 w-4" />
+                                              Uploading...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <FolderIcon className="w-5 h-5" />
+                                              Add Photo from Gallery
+                                            </>
                                           )}
-                                        </div>
+                                        </button>
                                       )}
                                     </div>
                                   </div>
-
-                                  {/* Mobile-only quick options (if no photo) */}
-                                  {!itemHasImage && !showOptions && (
-                                    <div className="flex gap-2 mt-3 sm:hidden">
-                                      <button
-                                        onClick={() => openCamera(item.service_id)}
-                                        disabled={uploadingImages[item.service_id]}
-                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors text-sm"
-                                      >
-                                        <CameraIcon className="w-4 h-4" />
-                                        Camera
-                                      </button>
-                                      <button
-                                        onClick={() => openGallery(item.service_id)}
-                                        disabled={uploadingImages[item.service_id]}
-                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors text-sm"
-                                      >
-                                        <FolderIcon className="w-4 h-4" />
-                                        Gallery
-                                      </button>
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -780,7 +675,7 @@ const Cart = () => {
                         <li>• Improves service quality</li>
                       </ul>
                       <div className="mt-3 text-xs text-blue-700">
-                        <strong>Tip:</strong> You can take a new photo or choose from your gallery.
+                        <strong>Tip:</strong> Upload clear photos from your device gallery for best results.
                       </div>
                     </div>
                   </div>
