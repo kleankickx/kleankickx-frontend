@@ -10,7 +10,9 @@ import {
   ArrowPathIcon,
   CameraIcon,
   XMarkIcon,
-  PhotoIcon
+  PhotoIcon,
+  FolderIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import { FaSpinner, FaTags } from 'react-icons/fa6';
 import axios from 'axios';
@@ -33,7 +35,9 @@ const Cart = () => {
   const [uploadingImages, setUploadingImages] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [imagePreviews, setImagePreviews] = useState({});
+  const [showImageOptions, setShowImageOptions] = useState({}); // Track which item shows options
   const fileInputRefs = useRef({});
+  const galleryInputRefs = useRef({});
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
@@ -85,10 +89,15 @@ const Cart = () => {
     });
   };
 
-  // Improved mobile camera capture handler
-  const processCameraImage = (file) => {
+  // Process and optimize image
+  const processImage = (file) => {
     return new Promise((resolve, reject) => {
-      // Create an image element to load and process the camera image
+      // Skip processing for small files (under 1MB)
+      if (file.size < 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+
       const img = new Image();
       const reader = new FileReader();
       
@@ -96,34 +105,42 @@ const Cart = () => {
         img.src = e.target.result;
         
         img.onload = () => {
-          // Create a canvas to process the image
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          // Set canvas dimensions (max 800px width for mobile optimization)
-          const maxWidth = 800;
-          const scaleSize = maxWidth / img.width;
-          canvas.width = maxWidth;
-          canvas.height = img.height * scaleSize;
+          // Calculate new dimensions (max 1200px)
+          let width = img.width;
+          let height = img.height;
+          const maxSize = 1200;
+          
+          if (width > height && width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          } else if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
           
           // Draw and process image
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, width, height);
           
-          // Convert canvas to blob with proper orientation
+          // Convert canvas to blob
           canvas.toBlob((blob) => {
             if (!blob) {
               reject(new Error('Failed to process image'));
               return;
             }
             
-            // Create a new File from the processed blob
-            const processedFile = new File([blob], file.name || `camera-${Date.now()}.jpg`, {
+            const processedFile = new File([blob], file.name || `image-${Date.now()}.jpg`, {
               type: 'image/jpeg',
               lastModified: Date.now()
             });
             
             resolve(processedFile);
-          }, 'image/jpeg', 0.85); // 85% quality for mobile optimization
+          }, 'image/jpeg', 0.85);
         };
         
         img.onerror = () => {
@@ -142,14 +159,14 @@ const Cart = () => {
   // Helper function to validate image file
   const validateImageFile = (file) => {
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 10 * 1024 * 1024; // 10MB
     
     if (!validTypes.includes(file.type)) {
       return { valid: false, message: 'Please upload a valid image (JPEG, PNG, or WebP)' };
     }
     
     if (file.size > maxSize) {
-      return { valid: false, message: 'Image size should be less than 5MB' };
+      return { valid: false, message: 'Image size should be less than 10MB' };
     }
     
     return { valid: true };
@@ -180,6 +197,27 @@ const Cart = () => {
       });
     };
   }, [cart]);
+
+  // Close image options when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const optionsElements = document.querySelectorAll('.image-options-menu');
+      let clickedInside = false;
+      
+      optionsElements.forEach(element => {
+        if (element && element.contains(event.target)) {
+          clickedInside = true;
+        }
+      });
+      
+      if (!clickedInside) {
+        setShowImageOptions({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchServices = async () => {
     try {
@@ -315,15 +353,11 @@ const Cart = () => {
     }
     
     setUploadingImages(prev => ({ ...prev, [serviceId]: true }));
+    setShowImageOptions(prev => ({ ...prev, [serviceId]: false })); // Close options menu
     
     try {
-      let processedFile = file;
-      
-      // Check if this is likely a camera capture (large size, needs processing)
-      if (file.size > 2 * 1024 * 1024) { // If larger than 2MB
-        toast.info('Optimizing image for upload...');
-        processedFile = await processCameraImage(file);
-      }
+      // Process and optimize the image
+      const processedFile = await processImage(file);
       
       // Convert to base64 for storage
       const base64String = await fileToBase64(processedFile);
@@ -369,13 +403,12 @@ const Cart = () => {
     }
   };
 
-  // Mobile-friendly file input handler
-  const handleFileInputClick = (serviceId) => {
-    // For mobile, we need to create a new input each time to reset it
+  // Open camera for photo capture
+  const openCamera = (serviceId) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment'; // Use camera on mobile
+    input.capture = 'environment'; // Opens camera directly on mobile
     
     input.onchange = (e) => {
       const file = e.target.files[0];
@@ -384,8 +417,40 @@ const Cart = () => {
       }
     };
     
-    // Trigger click on the new input
     input.click();
+  };
+
+  // Open gallery/file manager
+  const openGallery = (serviceId) => {
+    // Use existing ref or create new input
+    let input = galleryInputRefs.current[serviceId];
+    if (!input) {
+      input = document.createElement('input');
+      galleryInputRefs.current[serviceId] = input;
+    }
+    
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = undefined; // No camera, just file picker
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageUpload(serviceId, file);
+      }
+      // Reset input for next use
+      input.value = '';
+    };
+    
+    input.click();
+  };
+
+  // Toggle image options menu
+  const toggleImageOptions = (serviceId) => {
+    setShowImageOptions(prev => ({
+      ...prev,
+      [serviceId]: !prev[serviceId]
+    }));
   };
 
   const ImagePreviewModal = () => {
@@ -456,6 +521,7 @@ const Cart = () => {
                   const service = getService(item.service_id);
                   const itemHasImage = hasImage(item.service_id);
                   const previewUrl = imagePreviews[item.service_id];
+                  const showOptions = showImageOptions[item.service_id];
                   
                   return (
                     <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -525,7 +591,7 @@ const Cart = () => {
 
                                 {/* Image Upload Section */}
                                 <div className="mt-6 pt-6 border-t border-gray-100">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
                                       <h4 className="font-medium text-gray-900 mb-1">Shoe Photo</h4>
                                       <p className="text-sm text-gray-600">
@@ -575,26 +641,80 @@ const Cart = () => {
                                           </div>
                                         </>
                                       ) : (
-                                        <button
-                                          onClick={() => handleFileInputClick(item.service_id)}
-                                          disabled={uploadingImages[item.service_id]}
-                                          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
-                                        >
-                                          {uploadingImages[item.service_id] ? (
-                                            <>
-                                              <FaSpinner className="animate-spin h-4 w-4" />
-                                              Uploading...
-                                            </>
-                                          ) : (
-                                            <>
-                                              <CameraIcon className="w-5 h-5" />
-                                              Add Photo
-                                            </>
+                                        <div className="relative">
+                                          {/* Upload Options Button */}
+                                          <button
+                                            onClick={() => toggleImageOptions(item.service_id)}
+                                            disabled={uploadingImages[item.service_id]}
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
+                                          >
+                                            {uploadingImages[item.service_id] ? (
+                                              <>
+                                                <FaSpinner className="animate-spin h-4 w-4" />
+                                                Uploading...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <CameraIcon className="w-5 h-5" />
+                                                Add Photo
+                                              </>
+                                            )}
+                                          </button>
+
+                                          {/* Image Options Dropdown Menu */}
+                                          {showOptions && (
+                                            <div className="image-options-menu absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                              <div className="py-1">
+                                                <button
+                                                  onClick={() => openCamera(item.service_id)}
+                                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 cursor-pointer"
+                                                >
+                                                  <CameraIcon className="w-5 h-5 text-blue-600" />
+                                                  <div>
+                                                    <div className="font-medium">Take Photo</div>
+                                                    <div className="text-xs text-gray-500">Use camera</div>
+                                                  </div>
+                                                </button>
+                                                
+                                                <button
+                                                  onClick={() => openGallery(item.service_id)}
+                                                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 cursor-pointer border-t border-gray-100"
+                                                >
+                                                  <FolderIcon className="w-5 h-5 text-green-600" />
+                                                  <div>
+                                                    <div className="font-medium">Choose from Gallery</div>
+                                                    <div className="text-xs text-gray-500">Browse files</div>
+                                                  </div>
+                                                </button>
+                                              </div>
+                                            </div>
                                           )}
-                                        </button>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
+
+                                  {/* Mobile-only quick options (if no photo) */}
+                                  {!itemHasImage && !showOptions && (
+                                    <div className="flex gap-2 mt-3 sm:hidden">
+                                      <button
+                                        onClick={() => openCamera(item.service_id)}
+                                        disabled={uploadingImages[item.service_id]}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors text-sm"
+                                      >
+                                        <CameraIcon className="w-4 h-4" />
+                                        Camera
+                                      </button>
+                                      <button
+                                        onClick={() => openGallery(item.service_id)}
+                                        disabled={uploadingImages[item.service_id]}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors text-sm"
+                                      >
+                                        <FolderIcon className="w-4 h-4" />
+                                        Gallery
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -659,6 +779,9 @@ const Cart = () => {
                         <li>• Documents any pre-existing conditions</li>
                         <li>• Improves service quality</li>
                       </ul>
+                      <div className="mt-3 text-xs text-blue-700">
+                        <strong>Tip:</strong> You can take a new photo or choose from your gallery.
+                      </div>
                     </div>
                   </div>
                 </div>
