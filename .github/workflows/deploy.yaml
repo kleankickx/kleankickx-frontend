@@ -22,6 +22,8 @@ jobs:
           echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env
           echo "VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}" >> .env
           echo "VITE_PAYSTACK_PUBLIC_KEY=${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}" >> .env
+          echo "VITE_ZIPPY_PASSWORD=${{ secrets.VITE_ZIPPY_PASSWORD }}" >> .env
+          echo "VITE_ZIPPY_USERNAME=${{ secrets.VITE_ZIPPY_USERNAME }}" >> .env
       - name: Build
         run: npm run build
       - name: Push Build to Build Branch
