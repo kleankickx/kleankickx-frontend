@@ -126,7 +126,7 @@ export const usePlaceOrder = (
     }, [baseURL, logout, navigate, setAccessToken, setRefreshToken]);
 
 
-    const handlePayment = useCallback(async (summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime) => {
+   const handlePayment = useCallback(async (summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime) => {
         // Use ref for the immediate check
         if (placingRef.current) return;
 
@@ -162,25 +162,41 @@ export const usePlaceOrder = (
 
             // 4. Validate Response and Perform Local Cleanup
             const authUrl = response.data.paystack_auth_url;
+            const orderReferenceCode = response.data.order_reference_code;
+            const paystackReference = response.data.paystack_reference;
             
-            if (response.status === 201 && authUrl) {
+            if (response.status === 201 && authUrl && orderReferenceCode) {
                 
+                // *** CRITICAL: Store order reference before redirect ***
+                localStorage.setItem('pending_order_ref', orderReferenceCode);
+                localStorage.setItem('paystack_ref', paystackReference);
+                // Store order data for fallback (optional)
+                localStorage.setItem('last_order_data', JSON.stringify({
+                    orderReferenceCode,
+                    total,
+                    subtotal,
+                    createdAt: new Date().toISOString()
+                }));
                 
-
                 // 4b. Discount Redemption (If applicable)
                 if (canUseRedeemedPoints) {
                     try {
-                        // Use api.patch directly since tokens are managed
                         await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
                     } catch (error) {
                         console.error("Error marking discount as applied:", error);
                     }
                 }
                 
+                // 4c. Clear cart locally
+                clearCart();
+                
                 toast.info("Redirecting to Paystack for secure payment...");
 
                 // 5. REDIRECT THE USER
-                window.location.href = authUrl;
+                // Use setTimeout to ensure localStorage is set before redirect
+                setTimeout(() => {
+                    window.location.href = authUrl;
+                }, 100);
                 
             } else {
                 toast.error('Order placed, but failed to get payment link. Please check your order status.');
@@ -191,16 +207,13 @@ export const usePlaceOrder = (
             console.error("Payment Initiation Failed:", error);
 
             // --- Error Handling ---
-
-            // Token/Auth errors (handled by checkAndRefreshTokens throw)
             if (error.response?.status === 401 || error.message === 'No refresh token') {
-                // Handled in checkAndRefreshTokens, usually leads to logout/redirect
+                // Already handled in checkAndRefreshTokens
             } else {
-                // General API errors (e.g., Validation, 500)
                 const errorMessage = error.response?.data?.detail || 
-                                   error.response?.data?.error || 
-                                   'An unexpected error occurred. Please try again.';
-                                   
+                                error.response?.data?.error || 
+                                'An unexpected error occurred. Please try again.';
+                                
                 toast.error(errorMessage);
             }
 

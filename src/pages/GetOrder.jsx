@@ -28,7 +28,7 @@ import {
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 // Helper Components
 const PaymentStatusBanner = ({ order, onRetryPayment }) => {
@@ -299,6 +299,7 @@ const GetOrder = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchParams] = useSearchParams();
     const { api } = useContext(AuthContext);
     const navigate = useNavigate();
     const { orderReferenceCode } = useParams();
@@ -311,6 +312,24 @@ const GetOrder = () => {
             toast.error("Cannot process payment. Order reference code or total amount is missing.", { autoClose: 3000 });
         }
     };
+
+    useEffect(() => {
+        const paymentStatus = searchParams.get('payment');
+        
+        if (paymentStatus === 'success') {
+        toast.success('Payment completed successfully!');
+        // Clear any pending references
+        localStorage.removeItem('pending_order_ref');
+        localStorage.removeItem('paystack_ref');
+        } else if (paymentStatus === 'failed') {
+        toast.error('Payment was not completed');
+        }
+        
+        // Clean up URL parameters
+        if (paymentStatus) {
+        window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         const fetchOrder = async () => {
