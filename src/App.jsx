@@ -31,7 +31,7 @@ import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
 import GoogleMapsLoader from './components/GoogleMapsLoader';
-import PaymentCallbackHandler from './components/PaymentCallbackHandler';
+
 
 const AppContent = () => {
   const location = useLocation();
@@ -55,7 +55,7 @@ const AppContent = () => {
           <Route path="/about-us" element={<About />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
-          <Route path="/payment/callback" element={<PaymentCallbackHandler />} />
+          
           <Route
             path="/checkout"
             element={
