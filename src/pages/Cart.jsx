@@ -10,7 +10,12 @@ import {
   ArrowPathIcon,
   PhotoIcon,
   XMarkIcon,
-  FolderIcon
+  FolderIcon,
+  LockClosedIcon,
+  UserGroupIcon,
+  ShoppingBagIcon,
+  SparklesIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { FaSpinner } from 'react-icons/fa6';
 import axios from 'axios';
@@ -273,6 +278,64 @@ const Cart = () => {
 
   const getService = (id) => services.find((s) => s.id === id) || {};
   
+  // Check if service is a package
+  const isPackageService = (service) => {
+    return service && (service.service_type === 'PACKAGE_3' || service.service_type === 'PACKAGE_5');
+  };
+
+  // Get package info
+  const getPackageInfo = (service) => {
+    if (!service) return null;
+    
+    if (service.service_type === 'PACKAGE_3') {
+      return {
+        sneakers: 3,
+        color: 'bg-blue-50 border-blue-200',
+        textColor: 'text-blue-700',
+        borderColor: 'border-blue-300',
+        iconColor: 'text-blue-600',
+        tagText: '3-SNEAKER PACKAGE',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+        gradientColor: 'from-blue-500 to-blue-600'
+      };
+    } else if (service.service_type === 'PACKAGE_5') {
+      return {
+        sneakers: 5,
+        color: 'bg-purple-50 border-purple-200',
+        textColor: 'text-purple-700',
+        borderColor: 'border-purple-300',
+        iconColor: 'text-purple-600',
+        tagText: '5-SNEAKER PACKAGE',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        gradientColor: 'from-purple-500 to-purple-600'
+      };
+    }
+    return null;
+  };
+
+  // Calculate savings for package
+  const calculatePackageSavings = (service) => {
+    if (!isPackageService(service)) return null;
+    
+    // Find the standard clean individual service
+    const standardService = services.find(s => 
+      s.name.toLowerCase().includes('standard') && 
+      !isPackageService(s)
+    );
+    
+    if (!standardService) return null;
+    
+    const regularPrice = standardService.price * (service.included_quantity || 1);
+    const savings = regularPrice - service.price;
+    const savingsPercentage = Math.round((savings / regularPrice) * 100);
+    
+    return {
+      regularPrice: regularPrice.toFixed(2),
+      savings: savings.toFixed(2),
+      savingsPercentage
+    };
+  };
+
   const subtotal = cart
     .reduce((t, item) => {
       const service = getService(item.service_id);
@@ -300,7 +363,29 @@ const Cart = () => {
 
   const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount)).toFixed(2);
 
+  // Update quantity with package restrictions
+  const handleUpdateQuantity = (serviceId, change) => {
+    const service = getService(serviceId);
+    const isPackage = isPackageService(service);
+    
+    if (isPackage) {
+      const packageInfo = getPackageInfo(service);
+      toast.info(`${service.name} is a fixed package of ${packageInfo?.sneakers || 'multiple'} sneakers. Quantity cannot be modified.`);
+      return;
+    }
+    
+    updateQuantity(serviceId, change);
+  };
+
   const handleRemove = (id) => {
+    const service = getService(id);
+    const isPackage = isPackageService(service);
+    
+    if (isPackage) {
+      const packageInfo = getPackageInfo(service);
+      toast.info(`Removing ${packageInfo?.sneakers || 'multi'}-sneaker package from cart.`);
+    }
+    
     if (imagePreviews[id]) {
       URL.revokeObjectURL(imagePreviews[id]);
       setImagePreviews(prev => {
@@ -315,6 +400,18 @@ const Cart = () => {
 
   const handleCheckout = async () => {
     if (!cart.length) return toast.error('Your cart is empty');
+    
+    // Check if all package items have images
+    const packagesWithoutImages = cart.filter(item => {
+      const service = getService(item.service_id);
+      const isPackage = isPackageService(service);
+      return isPackage && !hasImage(item.service_id);
+    });
+    
+    if (packagesWithoutImages.length > 0) {
+      toast.warning('Please add photos for your package items before checkout');
+      return;
+    }
     
     navigate('/checkout');
   };
@@ -460,6 +557,24 @@ const Cart = () => {
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Your Cart</h1>
           <p className="text-gray-600 mt-2">{cart.length} item{cart.length !== 1 ? 's' : ''} in cart</p>
+          
+          {/* Package warning banner */}
+          {cart.some(item => {
+            const service = getService(item.service_id);
+            return isPackageService(service);
+          }) && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <ShoppingBagIcon className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-800">Package Items Detected</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Package items have fixed quantities and require photos for all sneakers included in the package.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {!loading ? (
@@ -471,22 +586,52 @@ const Cart = () => {
                   const service = getService(item.service_id);
                   const itemHasImage = hasImage(item.service_id);
                   const previewUrl = imagePreviews[item.service_id];
+                  const isPackage = isPackageService(service);
+                  const packageInfo = isPackage ? getPackageInfo(service) : null;
+                  const packageSavings = isPackage ? calculatePackageSavings(service) : null;
                   
                   return (
-                    <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                      {/* Package Header */}
+                      {isPackage && packageInfo && (
+                        <div className={`${packageInfo.color} ${packageInfo.borderColor} border-b px-6 py-3`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ShoppingBagIcon className={`w-5 h-5 ${packageInfo.iconColor}`} />
+                              <span className={`font-bold ${packageInfo.textColor}`}>
+                                {packageInfo.tagText}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <LockClosedIcon className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm text-gray-600">Fixed quantity</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="p-6">
                         <div className="flex flex-col sm:flex-row gap-6">
-                          {/* Service Image */}
+                          {/* Service Image with Package Badge */}
                           <div className="flex-shrink-0">
                             <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
                               <img 
-                                src={service.image || '/placeholder-shoe.jpg'} 
-                                alt={service.name}
+                                src={service?.image || '/placeholder-shoe.jpg'} 
+                                alt={service?.name}
                                 className="w-full h-full object-cover"
                               />
                               {itemHasImage && (
                                 <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1.5 shadow-lg">
                                   <PhotoIcon className="w-4 h-4" />
+                                </div>
+                              )}
+                              {isPackage && (
+                                <div className="absolute -bottom-2 -left-2 bg-white border border-gray-300 rounded-full p-1.5 shadow-lg">
+                                  <div className={`w-6 h-6 rounded-full ${packageInfo.badgeColor} border flex items-center justify-center`}>
+                                    <span className={`text-xs font-bold ${packageInfo.textColor}`}>
+                                      {packageInfo?.sneakers || 1}
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -499,38 +644,98 @@ const Cart = () => {
                                 <div className="flex items-start justify-between">
                                   <div>
                                     <h3 className="font-semibold text-gray-900 text-lg">
-                                      {item.service_name || service.name}
+                                      {item.service_name || service?.name}
                                     </h3>
+                                    {isPackage && (
+                                      <div className="mt-1 flex items-center gap-2">
+                                        <span className="text-sm text-gray-600">
+                                          Includes {packageInfo?.sneakers || 3} Standard Cleans
+                                        </span>
+                                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                          Package deal
+                                        </span>
+                                      </div>
+                                    )}
                                     <p className="text-primary font-bold text-xl mt-1">
-                                      ₵{parseFloat(item.unit_price || service.price || 0).toFixed(2)}
+                                      ₵{parseFloat(item.unit_price || service?.price || 0).toFixed(2)}
+                                      {isPackage && (
+                                        <span className="text-sm text-gray-600 ml-2">
+                                          (₵{(parseFloat(item.unit_price || service?.price || 0) / (packageInfo?.sneakers || 1)).toFixed(2)} per sneaker)
+                                        </span>
+                                      )}
                                     </p>
+                                    
+                                    {/* Package Savings */}
+                                    {isPackage && packageSavings && (
+                                      <div className="mt-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                            <SparklesIcon className="w-4 h-4 text-green-600" />
+                                            <span className="text-sm font-medium text-green-800">Package Savings</span>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-sm text-gray-500 line-through">₵{packageSavings.regularPrice}</div>
+                                            <div className="text-sm font-bold text-green-700">Save ₵{packageSavings.savings} ({packageSavings.savingsPercentage}%)</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                   
-                                  {/* Desktop Quantity Controls */}
+                                  {/* Desktop Quantity Controls with Package Restrictions */}
                                   <div className="hidden sm:flex items-center gap-4">
-                                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+                                    <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
+                                      isPackage ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-100'
+                                    }`}>
                                       <button 
-                                        onClick={() => updateQuantity(item.service_id, -1)}
-                                        className="w-8 h-8 rounded flex items-center justify-center hover:bg-white disabled:opacity-40 cursor-pointer transition-colors"
-                                        disabled={item.quantity <= 1}
+                                        onClick={() => isPackage ? null : handleUpdateQuantity(item.service_id, -1)}
+                                        className={`w-8 h-8 rounded flex items-center justify-center ${
+                                          isPackage 
+                                            ? 'cursor-not-allowed opacity-40' 
+                                            : 'hover:bg-white cursor-pointer disabled:opacity-40'
+                                        } transition-colors`}
+                                        disabled={item.quantity <= 1 || isPackage}
                                       >
                                         <MinusIcon className="w-4 h-4" />
                                       </button>
-                                      <span className="w-8 text-center font-semibold text-gray-900">
+                                      <span className={`w-8 text-center font-semibold ${
+                                        isPackage ? 'text-gray-900' : 'text-gray-900'
+                                      }`}>
                                         {item.quantity}
+                                        {isPackage && (
+                                          <div className="text-[10px] text-gray-500 mt-0.5">
+                                            fixed
+                                          </div>
+                                        )}
                                       </span>
                                       <button 
-                                        onClick={() => updateQuantity(item.service_id, 1)}
-                                        className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer transition-colors"
+                                        onClick={() => isPackage ? null : updateQuantity(item.service_id, 1)}
+                                        className={`w-8 h-8 rounded flex items-center justify-center ${
+                                          isPackage 
+                                            ? 'cursor-not-allowed opacity-40' 
+                                            : 'hover:bg-white cursor-pointer'
+                                        } transition-colors`}
+                                        disabled={isPackage}
                                       >
                                         <PlusIcon className="w-4 h-4" />
                                       </button>
                                     </div>
                                     
-                                    <Tooltip message="Remove item">
+                                    <Tooltip message={isPackage ? "Cannot remove individual items from package" : "Remove item"}>
                                       <button 
-                                        onClick={() => handleRemove(item.service_id)}
-                                        className="text-gray-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                        onClick={() => {
+                                          if (isPackage) {
+                                            toast.info("Please remove the entire package");
+                                            return;
+                                          }
+                                          handleRemove(item.service_id);
+                                        }}
+                                        className={`p-2 rounded-lg transition-colors ${
+                                          isPackage 
+                                            ? 'text-gray-300 cursor-not-allowed' 
+                                            : 'text-gray-400 hover:text-red-500 hover:bg-red-50 cursor-pointer'
+                                        }`}
+                                        disabled={isPackage}
                                       >
                                         <TrashIcon className="w-5 h-5" />
                                       </button>
@@ -538,14 +743,24 @@ const Cart = () => {
                                   </div>
                                 </div>
 
-                                {/* Image Upload Section */}
+                                {/* Image Upload Section - Multiple uploads for packages */}
                                 <div className="mt-6 pt-6 border-t border-gray-100">
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                      <h4 className="font-medium text-gray-900 mb-1">Shoe Photo</h4>
+                                      <h4 className="font-medium text-gray-900 mb-1">
+                                        Shoe Photo{isPackage ? 's' : ''}
+                                      </h4>
                                       <p className="text-sm text-gray-600">
-                                        Add a photo for better service
+                                        {isPackage 
+                                          ? `Add photos for each of the ${packageInfo?.sneakers} sneakers in this package`
+                                          : 'Add a photo for better service'
+                                        }
                                       </p>
+                                      {isPackage && !itemHasImage && (
+                                        <p className="text-xs text-blue-600 mt-1">
+                                          Required: Upload {packageInfo?.sneakers} photos before checkout
+                                        </p>
+                                      )}
                                     </div>
                                     
                                     <div className="flex items-center gap-3">
@@ -603,7 +818,7 @@ const Cart = () => {
                                           ) : (
                                             <>
                                               <FolderIcon className="w-5 h-5" />
-                                              Add Photo from Gallery
+                                              {isPackage ? `Add Package Photos (${packageInfo?.sneakers})` : 'Add Photo from Gallery'}
                                             </>
                                           )}
                                         </button>
@@ -620,28 +835,55 @@ const Cart = () => {
                         <div className="mt-6 pt-6 border-t border-gray-100 sm:hidden">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+                              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
+                                isPackage ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-100'
+                              }`}>
                                 <button 
-                                  onClick={() => updateQuantity(item.service_id, -1)}
-                                  className="w-8 h-8 rounded flex items-center justify-center hover:bg-white disabled:opacity-40 cursor-pointer"
-                                  disabled={item.quantity <= 1}
+                                  onClick={() => isPackage ? null : handleUpdateQuantity(item.service_id, -1)}
+                                  className={`w-8 h-8 rounded flex items-center justify-center ${
+                                    isPackage 
+                                      ? 'cursor-not-allowed opacity-40' 
+                                      : 'hover:bg-white cursor-pointer disabled:opacity-40'
+                                  }`}
+                                  disabled={item.quantity <= 1 || isPackage}
                                 >
                                   <MinusIcon className="w-4 h-4" />
                                 </button>
-                                <span className="w-8 text-center font-semibold text-gray-900">
+                                <span className={`w-8 text-center font-semibold ${
+                                  isPackage ? 'text-gray-900' : 'text-gray-900'
+                                }`}>
                                   {item.quantity}
+                                  {isPackage && (
+                                    <div className="text-[8px] text-gray-500">fixed</div>
+                                  )}
                                 </span>
                                 <button 
-                                  onClick={() => updateQuantity(item.service_id, 1)}
-                                  className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer"
+                                  onClick={() => isPackage ? null : updateQuantity(item.service_id, 1)}
+                                  className={`w-8 h-8 rounded flex items-center justify-center ${
+                                    isPackage 
+                                      ? 'cursor-not-allowed opacity-40' 
+                                      : 'hover:bg-white cursor-pointer'
+                                  }`}
+                                  disabled={isPackage}
                                 >
                                   <PlusIcon className="w-4 h-4" />
                                 </button>
                               </div>
                               
                               <button 
-                                onClick={() => handleRemove(item.service_id)}
-                                className="text-gray-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                onClick={() => {
+                                  if (isPackage) {
+                                    toast.info("Please remove the entire package");
+                                    return;
+                                  }
+                                  handleRemove(item.service_id);
+                                }}
+                                className={`p-2 rounded-lg transition-colors ${
+                                  isPackage 
+                                    ? 'text-gray-300 cursor-not-allowed' 
+                                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                                }`}
+                                disabled={isPackage}
                               >
                                 <TrashIcon className="w-5 h-5" />
                               </button>
@@ -652,6 +894,11 @@ const Cart = () => {
                               <p className="text-lg font-bold text-gray-900">
                                 ₵{((service?.price || item.unit_price || 0) * item.quantity).toFixed(2)}
                               </p>
+                              {isPackage && (
+                                <p className="text-xs text-gray-500">
+                                  ({packageInfo?.sneakers} sneakers)
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -675,7 +922,7 @@ const Cart = () => {
                         <li>• Improves service quality</li>
                       </ul>
                       <div className="mt-3 text-xs text-blue-700">
-                        <strong>Tip:</strong> Upload clear photos from your device gallery for best results.
+                        <strong>Tip:</strong> For packages, upload photos of all sneakers included in the package.
                       </div>
                     </div>
                   </div>
@@ -692,17 +939,23 @@ const Cart = () => {
                     {cart.map((item) => {
                       const service = getService(item.service_id);
                       const itemHasImage = hasImage(item.service_id);
+                      const isPackage = isPackageService(service);
                       
                       return (
                         <div key={item.service_id} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <span className="text-gray-700">
-                              {item.service_name || service.name}
+                              {item.service_name || service?.name}
                             </span>
                             <span className="text-gray-500">×{item.quantity}</span>
                             {itemHasImage && (
                               <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
                                 Photo
+                              </span>
+                            )}
+                            {isPackage && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                Package
                               </span>
                             )}
                           </div>
