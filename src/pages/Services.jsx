@@ -179,12 +179,16 @@ const Services = () => {
                   <div className="p-5">
                     {/* Service Name and Delivery Time Row */}
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-meduim text-primary">{service.name}</h3>
+                      <h3 className="text-xl font-medium text-primary">{service.name}</h3>
                       <div className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium border border-green-200">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className='text-xs'>delivered back in 48h</span>
+                        <span className='text-xs'>
+                          {service.name.toLowerCase().includes('priority') 
+                            ? 'delivered next day' 
+                            : 'delivered back in 48h'}
+                        </span>
                       </div>
                     </div>
 
