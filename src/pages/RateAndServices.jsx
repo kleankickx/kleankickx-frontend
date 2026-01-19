@@ -78,8 +78,8 @@ const RateAndServices = () => {
     
     return {
       isPriority,
-      bannerText: isPriority ? 'NEXT DAY' : '48 HOURS',
-      badgeText: isPriority ? 'delivered next day' : 'delivered in 48h'
+      bannerText: isPriority ? 'NEXT DAY' : '72 HOURS',
+      badgeText: isPriority ? 'delivered next day' : 'delivered in 72h'
     };
   };
 
