@@ -240,19 +240,6 @@ const Services = () => {
                         {service.name}
                       </h3>
 
-                      {/* Minimal Savings Display for Bundles - Shows only savings */}
-                      {isBundle && bundleSavings && (
-                        <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-100">
-                          <div className="text-center">
-                            <span className="text-sm text-gray-600">You save </span>
-                            <span className="text-base font-bold text-green-700">₵{bundleSavings.savingsAmount}</span>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Bundle of {service.included_quantity || 1} sneakers
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Delivery Time Badge */}
                       <div className={`inline-flex items-center gap-1 w-fit px-2 py-1 rounded-full text-[10px] font-medium mb-3 
                         ${status.isPriority ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
@@ -288,19 +275,7 @@ const Services = () => {
                       <div className="mt-auto border-t border-gray-100 pt-4">
                         <div className="flex items-center justify-between mb-3">
                           <div>
-                            {isBundle && bundleSavings ? (
-                              <div>
-                                <p className="text-xl font-bold text-green-700">₵{service.price}</p>
-                                <p className="text-xs text-gray-500">
-                                  <span className="line-through">₵{bundleSavings.individualTotal}</span> value
-                                </p>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  ₵{(service.price / (service.included_quantity || 1)).toFixed(2)} per sneaker
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-xl font-bold text-primary">₵{service.price}</p>
-                            )}
+                            <p className="text-xl font-bold text-primary">₵{service.price}</p>
                           </div>
                         </div>
 
