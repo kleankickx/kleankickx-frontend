@@ -651,11 +651,6 @@ const Cart = () => {
                                     )}
                                     <p className="text-primary font-bold text-xl mt-1">
                                       ₵{parseFloat(item.unit_price || service?.price || 0).toFixed(2)}
-                                      {isPackage && (
-                                        <span className="text-sm text-gray-600 ml-2">
-                                          (₵{(parseFloat(item.unit_price || service?.price || 0) / (packageInfo?.sneakers || 1)).toFixed(2)} per sneaker)
-                                        </span>
-                                      )}
                                     </p>
                                     
                                     {/* Bundle Savings */}
@@ -823,11 +818,6 @@ const Cart = () => {
                               <p className="text-lg font-bold text-gray-900">
                                 ₵{((service?.price || item.unit_price || 0) * item.quantity).toFixed(2)}
                               </p>
-                              {isPackage && (
-                                <p className="text-xs text-gray-500">
-                                  ({packageInfo?.sneakers} sneakers per bundle)
-                                </p>
-                              )}
                             </div>
                           </div>
                         </div>
