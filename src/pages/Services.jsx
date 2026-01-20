@@ -105,18 +105,15 @@ const Services = () => {
     };
   };
 
-  const handleAddToCart = (serviceId, serviceName, servicePrice, includedQuantity = 1) => {
+  const handleAddToCart = (serviceId, serviceName, servicePrice) => {
     const isInCart = cart.some(item => item.service_id === serviceId);
     
     if (isInCart) {
       toast.info(`${serviceName} is already in your cart!`);
     } else {
-      // For bundles, use the included quantity, otherwise default to 1
-      const service = services.find(s => s.id === serviceId);
-      const isBundle = isBundleService(service);
-      const quantity = isBundle ? (service.included_quantity || 1) : 1;
-      
-      addToCart(serviceId, serviceName, servicePrice, quantity);
+      // Always add with quantity 1 for all services
+      // Users can increase quantity as needed from the cart
+      addToCart(serviceId, serviceName, servicePrice, 1);
       toast.success(`${serviceName} added to cart!`);
     }
     navigate('/cart');
@@ -249,6 +246,9 @@ const Services = () => {
                           <div className="text-center">
                             <span className="text-sm text-gray-600">You save </span>
                             <span className="text-base font-bold text-green-700">₵{bundleSavings.savingsAmount}</span>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Bundle of {service.included_quantity || 1} sneakers
+                            </p>
                           </div>
                         </div>
                       )}
@@ -294,6 +294,9 @@ const Services = () => {
                                 <p className="text-xs text-gray-500">
                                   <span className="line-through">₵{bundleSavings.individualTotal}</span> value
                                 </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  ₵{(service.price / (service.included_quantity || 1)).toFixed(2)} per sneaker
+                                </p>
                               </div>
                             ) : (
                               <p className="text-xl font-bold text-primary">₵{service.price}</p>
@@ -305,8 +308,7 @@ const Services = () => {
                           onClick={() => handleAddToCart(
                             service.id, 
                             service.name, 
-                            service.price,
-                            service.included_quantity
+                            service.price
                           )}
                           className={`w-full py-2.5 rounded-lg font-medium text-sm transition-colors duration-200 ${
                             isBundle 
