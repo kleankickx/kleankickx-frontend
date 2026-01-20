@@ -1,5 +1,5 @@
 // src/components/Services.jsx
-import React, { useState, useEffect, useContext, useRef } from 'react'; // Added useRef
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
@@ -9,6 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '../components/Footer';
 import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import { AuthContext } from '../context/AuthContext';
+import { 
+  CheckIcon,
+  ShoppingBagIcon
+} from '@heroicons/react/24/outline';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -41,6 +45,7 @@ const Services = () => {
       setLoading(true);
       try {
         const response = await axios.get(`${backendUrl}/api/services/`);
+        console.log(response.data)
         setServices(response.data);
       } catch (err) {
         setError('Failed to load services.');
@@ -62,12 +67,56 @@ const Services = () => {
     };
   };
 
-  const handleAddToCart = (serviceId, serviceName, servicePrice) => {
+  // Check if service is a bundle package - Now handles ANY package type
+  const isBundleService = (service) => {
+    return service?.service_type?.startsWith('PACKAGE_');
+  };
+
+  // Get Standard Clean price for comparison
+  const getStandardCleanPrice = () => {
+    const standardService = services.find(service => 
+      service.name.toLowerCase().includes('standard') && 
+      !isBundleService(service)
+    );
+    return standardService?.price || 100; // Default to 100 if not found
+  };
+
+  // Calculate savings for bundle services
+  const calculateBundleSavings = (service) => {
+    if (!isBundleService(service)) return null;
+    
+    const standardPrice = getStandardCleanPrice();
+    const bundlePrice = service.price;
+    
+    // Use included_quantity from the service data
+    const sneakerCount = service.included_quantity || 1;
+    
+    if (sneakerCount <= 1) return null;
+    
+    const individualTotal = standardPrice * sneakerCount;
+    const savingsAmount = individualTotal - bundlePrice;
+    
+    if (savingsAmount <= 0) return null;
+    
+    return {
+      sneakerCount,
+      individualTotal: individualTotal.toFixed(2),
+      savingsAmount: savingsAmount.toFixed(2)
+    };
+  };
+
+  const handleAddToCart = (serviceId, serviceName, servicePrice, includedQuantity = 1) => {
     const isInCart = cart.some(item => item.service_id === serviceId);
+    
     if (isInCart) {
       toast.info(`${serviceName} is already in your cart!`);
     } else {
-      addToCart(serviceId, serviceName, servicePrice);
+      // For bundles, use the included quantity, otherwise default to 1
+      const service = services.find(s => s.id === serviceId);
+      const isBundle = isBundleService(service);
+      const quantity = isBundle ? (service.included_quantity || 1) : 1;
+      
+      addToCart(serviceId, serviceName, servicePrice, quantity);
       toast.success(`${serviceName} added to cart!`);
     }
     navigate('/cart');
@@ -153,17 +202,30 @@ const Services = () => {
               {services.map((service) => {
                 const status = getServiceStatus(service.name);
                 const isExpanded = expandedDescriptions[service.id];
+                const isBundle = isBundleService(service);
+                const bundleSavings = isBundle ? calculateBundleSavings(service) : null;
                 
                 return (
                   <motion.div
                     key={service.id}
-                    className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 relative group flex flex-col"
+                    className={`bg-white rounded-xl shadow-sm overflow-hidden border hover:shadow-md transition-all duration-300 relative group flex flex-col ${
+                      isBundle ? 'border-green-200 hover:border-green-300' : 'border-gray-100 hover:border-gray-200'
+                    }`}
                     variants={fadeInUp}
                   >
-                    {/* --- SLANTED RIBBON BANNER --- */}
-                    <div className="absolute top-0 right-0 w-28 h-28 overflow-hidden z-20 pointer-events-none">
-                      <div className={`absolute top-0 right-0 w-[140%] h-7 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white shadow-sm transform translate-x-[30%] translate-y-[80%] rotate-45 
-                        ${status.isPriority ? 'bg-gradient-to-r from-orange-500 to-yellow-500' : 'bg-gradient-to-r from-emerald-600 to-green-500'}`}>
+                    {/* Minimal Bundle Badge - Shows only savings amount */}
+                    {isBundle && bundleSavings && (
+                      <div className="absolute top-3 left-3 z-20">
+                        <div className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
+                          Save ₵{bundleSavings.savingsAmount}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delivery Ribbon */}
+                    <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-10 pointer-events-none">
+                      <div className={`absolute top-0 right-0 w-[140%] h-6 flex items-center justify-center text-[10px] font-semibold text-white transform translate-x-[30%] translate-y-[90%] rotate-45 
+                        ${status.isPriority ? 'bg-orange-500' : 'bg-green-500'}`}>
                         {status.bannerText}
                       </div>
                     </div>
@@ -172,101 +234,87 @@ const Services = () => {
                       <img
                         src={service.image}
                         alt={service.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      {signupDiscount && (
-                        <div className="absolute top-4 left-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-r-full shadow-lg">
-                          {parseInt(signupDiscount.percentage)}% OFF
-                        </div>
-                      )}
                     </div>
 
-                    <div className="p-6 flex flex-col flex-grow">
-                      <h3 className="text-lg font-bold text-gray-800 leading-tight mb-2">{service.name}</h3>
+                    <div className="p-5 flex flex-col flex-grow">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                        {service.name}
+                      </h3>
 
-                      <div className={`inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-[10px] font-semibold border mb-4 
-                        ${status.isPriority ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                      {/* Minimal Savings Display for Bundles - Shows only savings */}
+                      {isBundle && bundleSavings && (
+                        <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-100">
+                          <div className="text-center">
+                            <span className="text-sm text-gray-600">You save </span>
+                            <span className="text-base font-bold text-green-700">₵{bundleSavings.savingsAmount}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Delivery Time Badge */}
+                      <div className={`inline-flex items-center gap-1 w-fit px-2 py-1 rounded-full text-[10px] font-medium mb-3 
+                        ${status.isPriority ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {status.badgeText}
                       </div>
 
-                      {/* --- DESCRIPTION WITH TOOLTIP (Desktop) and READ MORE (Mobile) --- */}
-                      <div className="relative mb-6">
-                        {/* Desktop: Tooltip on hover */}
-                        <div 
-                          className="hidden md:block"
-                          onMouseEnter={() => setHoveredDescriptionId(service.id)}
-                          onMouseLeave={() => setHoveredDescriptionId(null)}
-                        >
-                          <p className="text-gray-500 text-sm line-clamp-2 cursor-help">
+                      {/* Description */}
+                      <div className="relative mb-4">
+                        <div className="hidden md:block">
+                          <p className="text-gray-600 text-sm line-clamp-2">
                             {service.description}
                           </p>
-                          
-                          <AnimatePresence>
-                            {hoveredDescriptionId === service.id && (
-                              <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 10 }}
-                                className="absolute bottom-full left-0 mb-2 w-full z-50 bg-gray-900 text-white text-xs p-3 rounded-lg shadow-xl"
-                              >
-                                {service.description}
-                                {/* Tooltip Arrow */}
-                                <div className="absolute top-full left-5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
                         </div>
-
-                        {/* Mobile: Read More Button */}
                         <div className="md:hidden">
-                          <div className="relative">
-                            <p className={`text-gray-500 text-sm transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
-                              {service.description}
-                            </p>
-                            
-                            {/* Fade effect for non-expanded text */}
-                            {!isExpanded && service.description.length > 100 && (
-                              <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-                            )}
-                          </div>
-                          
+                          <p className={`text-gray-600 text-sm ${isExpanded ? '' : 'line-clamp-2'}`}>
+                            {service.description}
+                          </p>
                           {service.description.length > 100 && (
                             <button
                               onClick={() => toggleDescription(service.id)}
-                              className="mt-2 flex items-center gap-1 text-primary text-xs font-medium hover:text-primary/80 transition-colors"
+                              className="mt-1 text-primary text-xs font-medium hover:text-primary/80"
                             >
-                              {isExpanded ? (
-                                <>
-                                  <FaChevronUp className="w-3 h-3" />
-                                  Read Less
-                                </>
-                              ) : (
-                                <>
-                                  <FaChevronDown className="w-3 h-3" />
-                                  Read More
-                                </>
-                              )}
+                              {isExpanded ? 'Read Less' : 'Read More'}
                             </button>
                           )}
                         </div>
                       </div>
 
+                      {/* Price and Add to Cart */}
                       <div className="mt-auto border-t border-gray-100 pt-4">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-3">
                           <div>
-                            <p className="text-xs text-gray-400 line-through">₵{service.price * 1.3}</p>
-                            <p className="text-xl font-black text-primary">₵{service.price}</p>
+                            {isBundle && bundleSavings ? (
+                              <div>
+                                <p className="text-xl font-bold text-green-700">₵{service.price}</p>
+                                <p className="text-xs text-gray-500">
+                                  <span className="line-through">₵{bundleSavings.individualTotal}</span> value
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-xl font-bold text-primary">₵{service.price}</p>
+                            )}
                           </div>
                         </div>
 
                         <button
-                          onClick={() => handleAddToCart(service.id, service.name, service.price)}
-                          className="w-full bg-primary hover:bg-black text-white py-3 rounded-xl font-bold text-sm transition-all duration-300 transform active:scale-95 shadow-md"
+                          onClick={() => handleAddToCart(
+                            service.id, 
+                            service.name, 
+                            service.price,
+                            service.included_quantity
+                          )}
+                          className={`w-full py-2.5 rounded-lg font-medium text-sm transition-colors duration-200 ${
+                            isBundle 
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-primary hover:bg-primary/90 text-white'
+                          }`}
                         >
-                          ADD TO CART
+                          {isBundle ? `Add ${service.included_quantity || 1}-Pair Bundle` : 'Add to Cart'}
                         </button>
                       </div>
                     </div>
