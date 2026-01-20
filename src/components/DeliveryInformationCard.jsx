@@ -1,55 +1,42 @@
-import { FaTruck  } from 'react-icons/fa';
+import { FaTruck } from 'react-icons/fa';
 import PlaceAutoCompleteElementWrapper from './PlaceAutoCompleteElementWrapper';
 import { FaInfo, FaInfoCircle } from 'react-icons/fa';
 
-
-
 const DeliveryInformationCard = (props) => {
   return (
-    // Delivery Information Card
+    // Pickup and Delivery Information Card
     <div className="bg-white shadow-xl rounded-xl border border-gray-200">
       <div className="bg-gray-50 px-6 py-4 rounded-tl-xl rounded-tr-xl  border-b border-gray-200">
         <h2 className="text-xl font-semibold flex items-center">
-          <FaTruck  className="mr-3 text-primary" />
-          Delivery and Pickup Information 
+          <FaTruck className="mr-3 text-primary" />
+          Pickup and Delivery Information 
         </h2>
       </div>
       
       <div className="p-6 space-y-5 h-full max-h-[290px] overflow-y-auto">
-        {/* Delivery Address Input */}
+        {/* Pickup Address Input - SHOW FIRST */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium text-gray-700">
-              Delivery Address <span className="text-red-500">*</span>
+              Pickup Address <span className="text-red-500">*</span>
             </label>
-            {/* The "Use Current Location" button is commented out, so we'll leave it out here for cleanliness. */}
           </div>
           <PlaceAutoCompleteElementWrapper
-            key={`delivery-${props.paymentView}`}
-            onPlaceSelect={(loc) => props.handlePlaceSelect(loc, 'delivery')}
-            currentInputValue={props.deliveryInputValue}
-            initialLocation={props.delivery}
-            placeholder="Enter delivery address"
-            type="delivery"
-            region={props.deliveryRegion}
-            onFocus={() => props.setActiveInput('delivery')}
+            key={`pickup-${props.paymentView}`}
+            onPlaceSelect={(loc) => props.handlePlaceSelect(loc, 'pickup')}
+            currentInputValue={props.pickupInputValue}
+            initialLocation={props.pickup}
+            placeholder="Enter pickup address"
+            type="pickup"
+            region={props.pickupRegion}
+            onFocus={() => props.setActiveInput('pickup')}
             pickupTime={props.pickupTime}
             setPickupTime={props.setPickupTime}
             useSame={props.useSame}
           />
         </div>
 
-        {props.useSame && (
-          // alert
-          <div className="p-3 bg-green-50 border border-blue-200 text-blue-800 rounded">
-            <p className="text-xs flex items-center">
-              <FaInfoCircle className="inline mr-2" />
-              Pickup address will be the same as delivery address.
-            </p>
-          </div>
-        )}
-
-        {/* Use Same Checkbox */}
+        {/* Use Same Checkbox - REVERSED LOGIC */}
         <label className="flex items-center cursor-pointer group">
           <div className="relative">
             <input
@@ -74,25 +61,35 @@ const DeliveryInformationCard = (props) => {
             </div>
           </div>
           <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-            Use delivery address for pickup
+            Use pickup address for delivery
           </span>
         </label>
         
-        {/* Pickup Address Input (Conditional) */}
+        {props.useSame && (
+          // alert
+          <div className="p-3 bg-green-50 border border-blue-200 text-blue-800 rounded">
+            <p className="text-xs flex items-center">
+              <FaInfoCircle className="inline mr-2" />
+              Delivery address will be the same as pickup address.
+            </p>
+          </div>
+        )}
+
+        {/* Delivery Address Input (Conditional) */}
         {!props.useSame && (
           <div className="pt-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pickup Address <span className="text-red-500">*</span>
+              Delivery Address <span className="text-red-500">*</span>
             </label>
             <PlaceAutoCompleteElementWrapper
-              key={`pickup-${props.paymentView}`}
-              onPlaceSelect={(loc) => props.handlePlaceSelect(loc, 'pickup')}
-              currentInputValue={props.pickupInputValue}
-              initialLocation={props.pickup}
-              placeholder="Enter pickup address"
-              type="pickup"
-              region={props.pickupRegion}
-              onFocus={() => props.setActiveInput('pickup')}
+              key={`delivery-${props.paymentView}`}
+              onPlaceSelect={(loc) => props.handlePlaceSelect(loc, 'delivery')}
+              currentInputValue={props.deliveryInputValue}
+              initialLocation={props.delivery}
+              placeholder="Enter delivery address"
+              type="delivery"
+              region={props.deliveryRegion}
+              onFocus={() => props.setActiveInput('delivery')}
               pickupTime={props.pickupTime}
               setPickupTime={props.setPickupTime}
               useSame={props.useSame}
@@ -100,9 +97,7 @@ const DeliveryInformationCard = (props) => {
           </div>
         )}
       </div>
-      <div className="h-5 bg-white z-50 rounded-bl-xl rounded-br-xl">
-
-      </div>
+      <div className="h-5 bg-white z-50 rounded-bl-xl rounded-br-xl"></div>
     </div>
   );
 };

@@ -268,20 +268,20 @@ const Checkout = () => {
     localStorage.setItem('pickupRegion', pickupRegion);
   }, [deliveryRegion, pickupRegion]);
 
-  // Sync pickup location when useSame is true
+  // Sync delivery location when useSame is true (REVERSED LOGIC)
   useEffect(() => {
-    if (useSame && delivery) {
-      setPickup({ ...delivery, region: deliveryRegion });
-      setPickupInputValue(delivery.address);
-      localStorage.setItem('pickupLocation', JSON.stringify({ ...delivery, region: deliveryRegion }));
-      localStorage.setItem('pickupInputValue', delivery.address);
-    } else if (useSame && !delivery) {
-      setPickup(null);
-      setPickupInputValue('');
-      localStorage.removeItem('pickupLocation');
-      localStorage.removeItem('pickupInputValue');
+    if (useSame && pickup) {
+      setDelivery({ ...pickup, region: pickupRegion });
+      setDeliveryInputValue(pickup.address);
+      localStorage.setItem('deliveryLocation', JSON.stringify({ ...pickup, region: pickupRegion }));
+      localStorage.setItem('deliveryInputValue', pickup.address);
+    } else if (useSame && !pickup) {
+      setDelivery(null);
+      setDeliveryInputValue('');
+      localStorage.removeItem('deliveryLocation');
+      localStorage.removeItem('deliveryInputValue');
     }
-  }, [useSame, delivery, deliveryRegion]);
+  }, [useSame, pickup, pickupRegion]);
 
   // Show alert only once
   useEffect(() => {
@@ -295,29 +295,31 @@ const Checkout = () => {
   // Handle place selection from map
   const handlePlaceSelect = useCallback((location, type) => {
     setPickupTime(location ? location.pickupTime : null);
-    if (type === 'delivery') {
-      setDelivery(location);
-      setDeliveryInputValue(location ? location.address : '');
-      localStorage.setItem('deliveryLocation', JSON.stringify(location));
-      localStorage.setItem('deliveryInputValue', location ? location.address : '');
-      if (useSame && location) {
-        setPickup({ ...location, region: deliveryRegion });
-        setPickupInputValue(location.address);
-        localStorage.setItem('pickupLocation', JSON.stringify({ ...location, region: deliveryRegion }));
-        localStorage.setItem('pickupInputValue', location.address);
-      } else if (useSame && !location) {
-        setPickup(null);
-        setPickupInputValue('');
-        localStorage.removeItem('pickupLocation');
-        localStorage.removeItem('pickupInputValue');
-      }
-    } else {
+    
+    if (type === 'pickup') {
       setPickup(location);
       setPickupInputValue(location ? location.address : '');
       localStorage.setItem('pickupLocation', JSON.stringify(location));
       localStorage.setItem('pickupInputValue', location ? location.address : '');
-    
+      
+      if (useSame && location) {
+        setDelivery({ ...location, region: pickupRegion });
+        setDeliveryInputValue(location.address);
+        localStorage.setItem('deliveryLocation', JSON.stringify({ ...location, region: pickupRegion }));
+        localStorage.setItem('deliveryInputValue', location.address);
+      } else if (useSame && !location) {
+        setDelivery(null);
+        setDeliveryInputValue('');
+        localStorage.removeItem('deliveryLocation');
+        localStorage.removeItem('deliveryInputValue');
+      }
+    } else {
+      setDelivery(location);
+      setDeliveryInputValue(location ? location.address : '');
+      localStorage.setItem('deliveryLocation', JSON.stringify(location));
+      localStorage.setItem('deliveryInputValue', location ? location.address : '');
     }
+    
     setActiveInput(null);
     if (location) {
       toast.success(
@@ -329,7 +331,7 @@ const Checkout = () => {
     } else {
       toast.info(`${type} location cleared.`);
     }
-  }, [useSame, deliveryRegion]);
+  }, [useSame, pickupRegion]);
 
   // Event listener for map location selection
   useEffect(() => {
@@ -413,12 +415,12 @@ const Checkout = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!delivery) {
-      toast.error('Please select a delivery location');
+    if (!pickup) { // Changed from !delivery to !pickup
+      toast.error('Please select a pickup location');
       return;
     }
-    if (!pickup && !useSame) {
-      toast.error('Please select a pickup location');
+    if (!delivery && !useSame) { // Changed condition
+      toast.error('Please select a delivery location');
       return;
     }
     if (cart.length === 0) {
@@ -616,9 +618,9 @@ const Checkout = () => {
                                     handlePayment={onPayment}
                                     placing={placing}
                                     cartLength={cart.length}
-                                    delivery={delivery}
+                                    pickup={pickup} // Make sure pickup is passed first
                                     useSame={useSame}
-                                    pickup={pickup}
+                                    delivery={delivery} // delivery second
                                     isPhoneValid={isPhoneValid}
                                     pickupTime={pickupTime}
                                   />
