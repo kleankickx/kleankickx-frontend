@@ -100,15 +100,6 @@ const Home = () => {
     fetchServices();
   }, []);
 
-  // Function to calculate previous price based on current price
-  const getPreviousPrice = (currentPrice) => {
-    const price = parseFloat(currentPrice);
-    if (price === 50.00) return 'GH₵70.00';
-    if (price === 100.00) return 'GH₵120.00';
-    if (price === 120.00) return 'GH₵150.00';
-    // Default calculation: add 40% for demo purposes
-    return `GH₵${(price * 1.4).toFixed(2)}`;
-  };
 
   // Function to get service status for banner
   const getServiceStatus = (serviceName) => {
@@ -254,7 +245,6 @@ const Home = () => {
           >
             {services.slice(0, 3).map((service, i) => {
               const status = getServiceStatus(service.name);
-              const previousPrice = getPreviousPrice(service.price);
               const isExpanded = expandedDescriptions[service.id];
               
               return (
@@ -281,7 +271,7 @@ const Home = () => {
                           <img 
                             src={service.image} 
                             alt={service.name} 
-                            className="w-full h-full object-contain p-4 group-hover:scale-105 transition duration-500" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
                           />
                         </div>
                       </Link>
@@ -365,7 +355,7 @@ const Home = () => {
 
                         <div className="border-t border-gray-200 pt-4 mt-auto">
                           <div className="flex gap-4 items-center">
-                            <p className="text-primary/50 text-lg line-through">{previousPrice}</p>
+        
                             <p className="text-primary font-bold text-lg">GH₵{service.price}</p>
                           </div>
                         </div>

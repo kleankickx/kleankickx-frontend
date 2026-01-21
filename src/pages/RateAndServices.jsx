@@ -61,15 +61,6 @@ const RateAndServices = () => {
     fetchServices();
   }, []);
 
-  // Function to calculate previous price based on current price
-  const getPreviousPrice = (currentPrice) => {
-    const price = parseFloat(currentPrice);
-    if (price === 50.00) return 'GH₵70.00';
-    if (price === 100.00) return 'GH₵120.00';
-    if (price === 120.00) return 'GH₵150.00';
-    // Default calculation: add 40% for demo purposes
-    return `GH₵${(price * 1.4).toFixed(2)}`;
-  };
 
   // Function to get service status for banner
   const getServiceStatus = (serviceName) => {
@@ -163,7 +154,6 @@ const RateAndServices = () => {
           >
             {displayServices.map((service, i) => {
               const status = getServiceStatus(service.name);
-              const previousPrice = getPreviousPrice(service.price);
               const isExpanded = expandedDescriptions[service.id];
               
               return (
@@ -189,99 +179,97 @@ const RateAndServices = () => {
                         <img 
                           src={service.image} 
                           alt={service.name} 
-                          className="h-full w-full object-contain p-4 group-hover:scale-105 transition duration-500" 
+                          className="h-full w-full object-cover group-hover:scale-105 transition duration-500" 
                         />
                       </div>
-                    </Link>
+                   
                     
-                    <div className="p-6 space-y-4 flex flex-col flex-grow">
-                      <h3 className="text-xl text-primary mb-2 font-semibold">{service.name}</h3>
-                      
-                      {/* Delivery Badge */}
-                      <div className={`inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-[10px] font-semibold border 
-                        ${status.isPriority ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {status.badgeText}
-                      </div>
-
-                      {/* Description with Tooltip (Desktop) and Read More (Mobile) */}
-                      <div className="relative flex-grow">
-                        {/* Desktop: Tooltip on hover */}
-                        <div 
-                          className="hidden md:block"
-                          onMouseEnter={() => setHoveredDescriptionId(service.id)}
-                          onMouseLeave={() => setHoveredDescriptionId(null)}
-                        >
-                          <p className="text-gray-600 text-sm line-clamp-2 cursor-help leading-relaxed">
-                            {service.description}
-                          </p>
-                          
-                          <AnimatePresence>
-                            {hoveredDescriptionId === service.id && (
-                              <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 10 }}
-                                className="absolute bottom-full left-0 mb-2 w-full z-50 bg-gray-900 text-white text-xs p-3 rounded-lg shadow-xl"
-                              >
-                                {service.description}
-                                {/* Tooltip Arrow */}
-                                <div className="absolute top-full left-5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                      <div className="p-6 space-y-4 flex flex-col flex-grow">
+                        <h3 className="text-xl text-primary mb-2 font-semibold">{service.name}</h3>
+                        
+                        {/* Delivery Badge */}
+                        <div className={`inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-[10px] font-semibold border 
+                          ${status.isPriority ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {status.badgeText}
                         </div>
 
-                        {/* Mobile: Read More Button */}
-                        <div className="md:hidden">
-                          <div className="relative">
-                            <p className={`text-gray-600 text-sm leading-relaxed transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
+                        {/* Description with Tooltip (Desktop) and Read More (Mobile) */}
+                        <div className="relative flex-grow">
+                          {/* Desktop: Tooltip on hover */}
+                          <div 
+                            className="hidden md:block"
+                            onMouseEnter={() => setHoveredDescriptionId(service.id)}
+                            onMouseLeave={() => setHoveredDescriptionId(null)}
+                          >
+                            <p className="text-gray-600 text-sm line-clamp-2 cursor-help leading-relaxed">
                               {service.description}
                             </p>
                             
-                            {/* Fade effect for non-expanded text */}
-                            {!isExpanded && service.description.length > 100 && (
-                              <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                            <AnimatePresence>
+                              {hoveredDescriptionId === service.id && (
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: 10 }}
+                                  className="absolute bottom-full left-0 mb-2 w-full z-50 bg-gray-900 text-white text-xs p-3 rounded-lg shadow-xl"
+                                >
+                                  {service.description}
+                                  {/* Tooltip Arrow */}
+                                  <div className="absolute top-full left-5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          {/* Mobile: Read More Button */}
+                          <div className="md:hidden">
+                            <div className="relative">
+                              <p className={`text-gray-600 text-sm leading-relaxed transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
+                                {service.description}
+                              </p>
+                              
+                              {/* Fade effect for non-expanded text */}
+                              {!isExpanded && service.description.length > 100 && (
+                                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                              )}
+                            </div>
+                            
+                            {service.description.length > 100 && (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  toggleDescription(service.id);
+                                }}
+                                className="mt-2 flex items-center gap-1 text-primary text-xs font-medium hover:text-primary/80 transition-colors"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <FaChevronUp className="w-3 h-3" />
+                                    Read Less
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaChevronDown className="w-3 h-3" />
+                                    Read More
+                                  </>
+                                )}
+                              </button>
                             )}
                           </div>
-                          
-                          {service.description.length > 100 && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                toggleDescription(service.id);
-                              }}
-                              className="mt-2 flex items-center gap-1 text-primary text-xs font-medium hover:text-primary/80 transition-colors"
-                            >
-                              {isExpanded ? (
-                                <>
-                                  <FaChevronUp className="w-3 h-3" />
-                                  Read Less
-                                </>
-                              ) : (
-                                <>
-                                  <FaChevronDown className="w-3 h-3" />
-                                  Read More
-                                </>
-                              )}
-                            </button>
-                          )}
                         </div>
-                      </div>
 
-                      <div className="mt-4 bg-primary text-white inline-flex items-center px-4 py-2 tracking-widest w-fit">
-                        <span className="font-medium">PRICE </span>
-                        <span className="mx-2">|</span>
-                        <span>GH₵{service.price}</span>
+                        <div className="mt-4 bg-primary text-white inline-flex items-center px-4 py-2 tracking-widest w-fit">
+                          <span className="font-medium">PRICE </span>
+                          <span className="mx-2">|</span>
+                          <span>GH₵{service.price}</span>
+                        </div>
+                        
+                        
                       </div>
-                      
-                      {/* Previous Price */}
-                      <div className="text-primary/50 text-sm line-through mt-1">
-                        {previousPrice}
-                      </div>
-                    </div>
+                    </Link>
                   </div>
                 </motion.div>
               );
