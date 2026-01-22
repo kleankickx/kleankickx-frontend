@@ -126,7 +126,7 @@ export const usePlaceOrder = (
     }, [baseURL, logout, navigate, setAccessToken, setRefreshToken]);
 
 
-    const handlePayment = useCallback(async (summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime) => {
+    const handlePayment = useCallback(async (summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime, isSelfHandled = false) => {
         // Use ref for the immediate check
         if (placingRef.current) return;
 
@@ -146,27 +146,39 @@ export const usePlaceOrder = (
             const appliedDiscounts = buildDiscountsPayload(summary);
             
             // 3. Post to Backend to Initialize Order and Payment
-            const response = await api.post('/api/orders/', {
+            const orderData = {
                 user_id: user.id,
-                delivery_location: delivery,
-                pickup_location: useSame ? delivery : pickup,
                 total_amount: total,
                 cart_items: cart,
-                delivery_cost: deliveryFee,
-                pickup_cost: useSame ? deliveryFee : pickupFee,
                 sub_total: subtotal,
                 phone_number: phoneNumber,
                 discounts_applied: appliedDiscounts,
-                pickup_time: pickupTime?.value
-            });
+                is_self_handled: isSelfHandled,  // ADD THIS
+            };
+            
+            // Conditionally add location data only if NOT self-handled
+            if (!isSelfHandled) {
+                orderData.delivery_location = delivery;
+                orderData.pickup_location = useSame ? delivery : pickup;
+                orderData.delivery_cost = deliveryFee;
+                orderData.pickup_cost = useSame ? deliveryFee : pickupFee;
+                orderData.pickup_time = pickupTime?.value;
+            } else {
+                // For self-handled orders, send null for locations or omit them
+                // Depending on your backend, you might want to send null or empty objects
+                orderData.delivery_location = null;
+                orderData.pickup_location = null;
+                orderData.delivery_cost = 0;
+                orderData.pickup_cost = 0;
+                // No pickup time needed for self-handled
+            }
+            
+            const response = await api.post('/api/orders/', orderData);
 
             // 4. Validate Response and Perform Local Cleanup
             const authUrl = response.data.paystack_auth_url;
             
             if (response.status === 201 && authUrl) {
-                
-                
-
                 // 4b. Discount Redemption (If applicable)
                 if (canUseRedeemedPoints) {
                     try {
@@ -191,16 +203,15 @@ export const usePlaceOrder = (
             console.error("Payment Initiation Failed:", error);
 
             // --- Error Handling ---
-
             // Token/Auth errors (handled by checkAndRefreshTokens throw)
             if (error.response?.status === 401 || error.message === 'No refresh token') {
                 // Handled in checkAndRefreshTokens, usually leads to logout/redirect
             } else {
                 // General API errors (e.g., Validation, 500)
                 const errorMessage = error.response?.data?.detail || 
-                                   error.response?.data?.error || 
-                                   'An unexpected error occurred. Please try again.';
-                                   
+                                error.response?.data?.error || 
+                                'An unexpected error occurred. Please try again.';
+                                
                 toast.error(errorMessage);
             }
 
@@ -216,6 +227,8 @@ export const usePlaceOrder = (
         setDeliveryInputValue, setPickupInputValue, setDeliveryRegion, setPickupRegion, 
         setUseSame, setAppliedPromotion,
     ]);
+
+
 
     return { placing, handlePayment };
 };

@@ -1,14 +1,8 @@
-import { FaSpinner,FaMoneyBillWave, FaLock, FaCreditCard } from 'react-icons/fa';
-import  MTNMomoLogo  from '../assets/mtn.png'
+import { FaSpinner, FaLock, FaCreditCard, FaHandHolding, FaInfoCircle } from 'react-icons/fa';
+import MTNMomoLogo from '../assets/mtn.png'
 import TelecelLogo from '../assets/telecel.png'
 import AirtelTigoLogo from '../assets/airtel.png'
 import VisaMastercardLogo from '../assets/visa.jpeg';
-// --- Payment Options Component (No Selection) ---
-
-const PaymentOptions = ({handlePayment, total, placing}) => {
-  
-};
-
 
 const PaymentCard = ({
   placing,
@@ -19,10 +13,24 @@ const PaymentCard = ({
   useSame,
   pickup,
   isPhoneValid,
-  pickupTime
-
+  pickupTime,
+  isSelfHandled = false, // Add this prop
 }) => {
-
+  
+  // Check if payment can proceed
+  const canProceed = () => {
+    if (cartLength === 0) return false;
+    if (!isPhoneValid) return false;
+    
+    // If self-handled, skip location validation
+    if (isSelfHandled) return true;
+    
+    // Otherwise, check locations
+    if (!pickup) return false;
+    if (!delivery && !useSame) return false;
+    
+    return true;
+  };
 
   const providers = [
     { name: 'MTN Mobile Money', icon: MTNMomoLogo, key: 'momo_mtn' },
@@ -34,19 +42,18 @@ const PaymentCard = ({
   return (
     <div className="rounded-xl border shadow-xl border-gray-200 bg-white">
       <div className="bg-gray-50 rounded-tl-xl rounded-tr-xl px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold flex items-start lg:items-center">
-                {/* Icon for Personal Details */}
-                <FaCreditCard className="mr-3 text-primary" />
-                Payment Options (via Paystack)
-              </h2>
+        <h2 className="text-xl font-semibold flex items-start lg:items-center">
+          <FaCreditCard className="mr-3 text-primary" />
+          Payment Options (via Paystack)
+        </h2>
       </div>
 
       <div className="p-6">
+        {/* Payment Providers */}
         <div className="grid lg:grid-cols-4 grid-cols-3 gap-4">
           {providers.map(provider => (
             <div
               key={provider.key}
-              // Styled for display only, no selection interaction
               className="flex flex-col items-center justify-center w-24 h-24 p-2 rounded-xl border border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md bg-white/50"
             >
               <img 
@@ -62,12 +69,25 @@ const PaymentCard = ({
           ))}
         </div>
         
+        {/* Validation Messages */}
+        {!canProceed() && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-700 font-medium mb-2">Complete these steps to proceed:</p>
+            <ul className="text-sm text-red-600 space-y-1">
+              {cartLength === 0 && <li>• Add items to your cart</li>}
+              {!isPhoneValid && <li>• Enter a valid Ghana phone number</li>}
+              {!isSelfHandled && !pickup && <li>• Select a pickup location</li>}
+              {!isSelfHandled && !delivery && !useSame && <li>• Select a delivery location or use same as pickup</li>}
+            </ul>
+          </div>
+        )}
+        
         {/* Pay Now Button */}
         <button
-          onClick={handlePayment} // Now calls onPayment without a selected provider argument
-          disabled={placing || cartLength === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid || !pickupTime}
-          className={`w-full py-3 px-6 mt-8 rounded-xl font-semibold text-white transition-all duration-300 flex cursor-pointer items-center justify-center relative overflow-hidden group ${
-            placing || cartLength === 0 || !delivery || (!useSame && !pickup) || !isPhoneValid || !pickupTime
+          onClick={handlePayment}
+          disabled={placing || !canProceed()}
+          className={`w-full py-3 px-6 mt-6 rounded-xl font-semibold text-white transition-all duration-300 flex cursor-pointer items-center justify-center relative overflow-hidden group ${
+            placing || !canProceed()
               ? 'bg-gray-300 cursor-not-allowed shadow-inner' 
               : 'bg-gradient-to-r from-emerald-600 to-primary hover:from-emerald-700 hover:to-primary-dark shadow-xl hover:shadow-2xl'
           }`}

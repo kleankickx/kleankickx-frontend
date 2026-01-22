@@ -1,5 +1,4 @@
-import { FaTags, FaGift, FaUserFriends, FaStar, FaInfoCircle } from 'react-icons/fa';
-
+import { FaTags, FaGift, FaUserFriends, FaStar, FaInfoCircle, FaHandHolding } from 'react-icons/fa';
 
 const OrderSummaryCard = ({
   cart,
@@ -20,14 +19,13 @@ const OrderSummaryCard = ({
   useSame,
   totalWithoutDiscounts,
   total,
+  isSelfHandled = false, // Add this with default value
 }) => {
   return (
     // Order Summary Card
     <div id="order-summary" className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xl">
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-
         <h2 className="text-xl font-semibold flex items-center">
-          {/* Icon for Order Summary */}
           <FaTags className="mr-2 text-primary" />  
           Order Summary
         </h2>
@@ -37,6 +35,14 @@ const OrderSummaryCard = ({
           <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
             <FaTags className="mr-1" />
             Promo Applied
+          </div>
+        )}
+        
+        {/* Self-Handled Badge */}
+        {isSelfHandled && (
+          <div className="flex items-start justify-center bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm">
+            <FaHandHolding className="mr-1" />
+            <span>Self-Handled</span>
           </div>
         )}
       </div>
@@ -132,25 +138,43 @@ const OrderSummaryCard = ({
             </div>
           )}
 
-          {/* Delivery Fee */}
-          <div className="flex justify-between pt-2">
-            <p className="text-gray-600">Delivery Fee</p>
-            <p className="font-medium">
-              {deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--'}
-            </p>
-          </div>
+          {/* Fees Section - Conditional based on self-handled */}
+          {isSelfHandled ? (
+            <div className="bg-green-50 rounded-lg p-3 -mx-1">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-green-700 items-start font-medium flex items-center">
+                  <FaHandHolding className="mr-2" />
+                  Self-Handled Service
+                </span>
+                <span className="text-green-700 font-medium">GHS 0.00</span>
+              </div>
+              <div className="text-xs text-green-600 ml-6">
+                No pickup or delivery fees (you'll handle these yourself)
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Delivery Fee */}
+              <div className="flex justify-between pt-2">
+                <p className="text-gray-600">Delivery Fee</p>
+                <p className="font-medium">
+                  {deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--'}
+                </p>
+              </div>
 
-          {/* Pickup Fee */}
-          <div className="flex justify-between">
-            <p className="text-gray-600">Pickup Fee</p>
-            <p className="font-medium">
-              {/* Uses delivery cost if useSame is true, otherwise uses pickup cost */}
-              {useSame 
-                ? (deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--') 
-                : (pickupFee ? `GHS ${parseFloat(pickupFee).toFixed(2)}` : '--')
-              }
-            </p>
-          </div>
+              {/* Pickup Fee */}
+              <div className="flex justify-between">
+                <p className="text-gray-600">Pickup Fee</p>
+                <p className="font-medium">
+                  {/* Uses delivery cost if useSame is true, otherwise uses pickup cost */}
+                  {useSame 
+                    ? (deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--') 
+                    : (pickupFee ? `GHS ${parseFloat(pickupFee).toFixed(2)}` : '--')
+                  }
+                </p>
+              </div>
+            </>
+          )}
 
           {/* FINAL TOTAL */}
           <div className="flex justify-between pt-4 mt-3 border-t border-gray-200">
@@ -168,6 +192,16 @@ const OrderSummaryCard = ({
         </div>
 
         {/* --- Information Banners --- */}
+
+        {isSelfHandled && (
+          <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-sm text-yellow-700 flex items-start border border-yellow-200">
+            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
+            <span>
+              <strong>Self-Handled Service:</strong> You'll bring items to our facility and pick them up when ready. 
+              Please contact us at <strong>+233 53 627 8834</strong> for facility location and hours.
+            </span>
+          </div>
+        )}
 
         {canUseSignup && signupDiscount && (
           <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700 flex items-start">

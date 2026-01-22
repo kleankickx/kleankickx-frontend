@@ -9,6 +9,7 @@ export const calculateOrderSummary = ({
   signupDiscountUsed,
   referralDiscountUsed,
   redeemedPointsDiscount,
+  isSelfHandled = false, // Add default value
 }) => {
   // Helper to ensure values are treated as numbers
   const toFloat = (value) => parseFloat(value || 0);
@@ -16,8 +17,16 @@ export const calculateOrderSummary = ({
   // --- 1. Base Totals & Fees ---
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
   
-  const deliveryFee = toFloat(delivery?.cost);
-  const pickupFee = useSame ? deliveryFee : toFloat(pickup?.cost);
+  // If self-handled, set all location fees to 0
+  let deliveryFee = 0;
+  let pickupFee = 0;
+  
+  if (!isSelfHandled) {
+    // Calculate fees normally when NOT self-handled
+    deliveryFee = toFloat(delivery?.cost);
+    pickupFee = useSame ? deliveryFee : toFloat(pickup?.cost);
+  }
+  // When self-handled, both fees remain 0
 
   // --- 2. Discount Definitions & Eligibility ---
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
@@ -70,6 +79,9 @@ export const calculateOrderSummary = ({
     subtotal: toFloat(subtotal),
     deliveryFee: toFloat(deliveryFee),
     pickupFee: toFloat(pickupFee),
+    
+    // Self-handled flag
+    isSelfHandled: Boolean(isSelfHandled), // Convert to boolean
     
     // Eligibility Flags
     canUseSignup,

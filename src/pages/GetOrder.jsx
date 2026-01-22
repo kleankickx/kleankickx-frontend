@@ -23,7 +23,10 @@ import {
   FaImage,
   FaExpand,
   FaCamera,
-  FaTimes
+  FaTimes,
+  FaHandsHelping, // New icon for self-handled
+  FaShippingFast, // For regular delivery
+  FaUserCheck // For self-service
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
@@ -38,7 +41,6 @@ const PaymentStatusBanner = ({ order, onRetryPayment }) => {
         return null;
     }
 
-    const isPending = paymentStatus === 'PENDING';
     const isFailed = paymentStatus === 'FAILED';
 
     const config = {
@@ -52,7 +54,7 @@ const PaymentStatusBanner = ({ order, onRetryPayment }) => {
         retryText: isFailed ? 'Retry Payment' : 'Complete Payment'
     };
 
-    if (!isPending && !isFailed) {
+    if (paymentStatus !== 'PENDING' && !isFailed) {
         return null;
     }
 
@@ -81,7 +83,7 @@ const PaymentStatusBanner = ({ order, onRetryPayment }) => {
     );
 };
 
-// Image Modal Component
+// Image Modal Component (remains the same)
 const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
     if (!isOpen) return null;
 
@@ -114,7 +116,7 @@ const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
     );
 };
 
-// Order Item Card with Image Support
+// Order Item Card with Image Support (remains the same)
 const OrderItemCard = ({ item, onImageClick }) => {
     const hasPhoto = item.image_url || item.photo;
 
@@ -188,7 +190,7 @@ const OrderItemCard = ({ item, onImageClick }) => {
     );
 };
 
-// Order Items Section with Gallery View
+// Order Items Gallery (remains the same)
 const OrderItemsGallery = ({ items }) => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
@@ -294,6 +296,92 @@ const OrderItemsGallery = ({ items }) => {
     );
 };
 
+// New Self-Handled Address Card Component
+const SelfHandledAddressCard = () => (
+    <div className="p-5 rounded-lg border border-amber-200 bg-amber-50">
+        <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-amber-100 rounded-full">
+                <FaHandsHelping className="text-amber-600 text-lg" />
+            </div>
+            <h3 className="font-semibold text-amber-800">
+                Self-Handled Service
+            </h3>
+        </div>
+        <div className="space-y-3 text-sm">
+            <div className="flex items-start gap-2">
+                <FaUserCheck className="text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-medium text-amber-700">You'll handle pickup and delivery</p>
+                    <p className="text-amber-600 mt-1">
+                        No pickup or delivery fees included. You'll bring items to our facility 
+                        and pick them up when ready.
+                    </p>
+                </div>
+            </div>
+            <div className="flex items-start gap-2 pt-3 border-t border-amber-200">
+                <FaInfoCircle className="text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-medium text-amber-700">Facility Information</p>
+                    <ul className="mt-1 space-y-1 text-amber-600">
+                        <li>• Please contact us for facility location and hours</li>
+                        <li>• Phone: +233 53 627 8834</li>
+                        <li>• Email: support@kleankickx.com</li>
+                    </ul>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 pt-3 mt-2 border-t border-amber-200">
+                <FaMoneyBillWave className="text-amber-500" />
+                <span className="font-medium text-amber-700">
+                    Pickup/Delivery Cost: GHS 0.00 (self-handled)
+                </span>
+            </div>
+        </div>
+    </div>
+);
+
+// Regular Address Card Component
+const RegularAddressCard = ({ type, address, cost }) => (
+    <div className="p-5 rounded-lg border border-gray-200 bg-white">
+        <div className="flex items-center gap-3 mb-4">
+            {type === 'delivery' ? (
+                <>
+                    <div className="p-2 bg-blue-100 rounded-full">
+                        <FaShippingFast className="text-blue-600 text-lg" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">
+                        Delivery Address
+                    </h3>
+                </>
+            ) : (
+                <>
+                    <div className="p-2 bg-green-100 rounded-full">
+                        <FaStore className="text-green-600 text-lg" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">
+                        Pickup Address
+                    </h3>
+                </>
+            )}
+        </div>
+        <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex items-start gap-2">
+                <FaMapMarkerAlt className="text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-medium">{address.location_name}</p>
+                    <p>{address.street_address}</p>
+                    <p>{address.region}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 pt-2 mt-2 border-t border-gray-100">
+                <FaMoneyBillWave className="text-gray-400" />
+                <span className="font-medium">
+                    Cost: GHS {parseFloat(cost).toFixed(2)}
+                </span>
+            </div>
+        </div>
+    </div>
+);
+
 // Main Component
 const GetOrder = () => {
     const [order, setOrder] = useState(null);
@@ -317,17 +405,15 @@ const GetOrder = () => {
         const paymentStatus = searchParams.get('payment');
         
         if (paymentStatus === 'success') {
-        toast.success('Payment completed successfully!');
-        // Clear any pending references
-        localStorage.removeItem('pending_order_ref');
-        localStorage.removeItem('paystack_ref');
+            toast.success('Payment completed successfully!');
+            localStorage.removeItem('pending_order_ref');
+            localStorage.removeItem('paystack_ref');
         } else if (paymentStatus === 'failed') {
-        toast.error('Payment was not completed');
+            toast.error('Payment was not completed');
         }
         
-        // Clean up URL parameters
         if (paymentStatus) {
-        window.history.replaceState({}, '', window.location.pathname);
+            window.history.replaceState({}, '', window.location.pathname);
         }
     }, [searchParams]);
 
@@ -362,7 +448,7 @@ const GetOrder = () => {
         fetchOrder();
     }, [orderReferenceCode, navigate, api]);
 
-    const getStatusDisplay = (status) => {
+    const getStatusDisplay = (status, isSelfHandled = false) => {
         const statusConfig = {
             pending: {
                 icon: <FaInfoCircle className="text-blue-500" />,
@@ -377,10 +463,10 @@ const GetOrder = () => {
                 displayText: 'Processing'
             },
             pickup: {
-                icon: <FaTruck className="text-indigo-500" />,
+                icon: isSelfHandled ? <FaUserCheck className="text-indigo-500" /> : <FaTruck className="text-indigo-500" />,
                 color: 'text-indigo-600',
                 bg: 'bg-indigo-50',
-                displayText: 'Ready for Pickup'
+                displayText: isSelfHandled ? 'Ready for Drop-off' : 'Ready for Pickup'
             },
             cleaning_ongoing: {
                 icon: <FaBroom className="text-purple-500" />,
@@ -392,7 +478,7 @@ const GetOrder = () => {
                 icon: <FaCheckDouble className="text-green-500" />,
                 color: 'text-green-600',
                 bg: 'bg-green-50',
-                displayText: 'Cleaning Completed'
+                displayText: isSelfHandled ? 'Ready for Collection' : 'Cleaning Completed'
             },
             scheduled_for_delivery: {
                 icon: <FaCalendarAlt className="text-teal-500" />,
@@ -401,10 +487,10 @@ const GetOrder = () => {
                 displayText: 'Scheduled Delivery'
             },
             delivered: {
-                icon: <FaCheckCircle className="text-emerald-500" />,
+                icon: isSelfHandled ? <FaHandsHelping className="text-emerald-500" /> : <FaCheckCircle className="text-emerald-500" />,
                 color: 'text-emerald-600',
                 bg: 'bg-emerald-50',
-                displayText: 'Delivered'
+                displayText: isSelfHandled ? 'Collected by Customer' : 'Delivered'
             },
             cancelled: {
                 icon: <FaTimesCircle className="text-red-500" />,
@@ -441,48 +527,6 @@ const GetOrder = () => {
             minute: '2-digit'
         });
     };
-
-    const AddressCard = ({ type, address, cost }) => (
-        <div className="p-5 rounded-lg border border-gray-200 bg-white">
-            <div className="flex items-center gap-3 mb-4">
-                {type === 'delivery' ? (
-                    <>
-                        <div className="p-2 bg-blue-100 rounded-full">
-                            <FaTruck className="text-blue-600 text-lg" />
-                        </div>
-                        <h3 className="font-semibold text-gray-900">
-                            Delivery Address
-                        </h3>
-                    </>
-                ) : (
-                    <>
-                        <div className="p-2 bg-green-100 rounded-full">
-                            <FaStore className="text-green-600 text-lg" />
-                        </div>
-                        <h3 className="font-semibold text-gray-900">
-                            Pickup Address
-                        </h3>
-                    </>
-                )}
-            </div>
-            <div className="space-y-2 text-sm text-gray-700">
-                <div className="flex items-start gap-2">
-                    <FaMapMarkerAlt className="text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                        <p className="font-medium">{address.location_name}</p>
-                        <p>{address.street_address}</p>
-                        <p>{address.region}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 pt-2 mt-2 border-t border-gray-100">
-                    <FaMoneyBillWave className="text-gray-400" />
-                    <span className="font-medium">
-                        Cost: GHS {parseFloat(cost).toFixed(2)}
-                    </span>
-                </div>
-            </div>
-        </div>
-    );
 
     const colorMap = {
         "redeemed_points": {
@@ -593,9 +637,17 @@ const GetOrder = () => {
                             <FaChevronLeft className="text-gray-500" />
                             Back to orders
                         </button>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                            Order #{orderReferenceCode}
-                        </h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                                Order #{orderReferenceCode}
+                            </h1>
+                            {order?.is_self_handled && (
+                                <span className="inline-flex items-center px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
+                                    <FaHandsHelping className="mr-1" />
+                                    Self-Handled
+                                </span>
+                            )}
+                        </div>
                         <p className="text-gray-500 text-sm mt-1">
                             {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
                         </p>
@@ -646,12 +698,20 @@ const GetOrder = () => {
                                 {/* Customer & Order Info */}
                                 <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
                                     <div className="w-full flex justify-between items-center border-gray-200 border-b pb-6">
-                                        <h2 className="text-xl font-semibold text-gray-900">
-                                            Order Information
-                                        </h2>
+                                        <div>
+                                            <h2 className="text-xl font-semibold text-gray-900">
+                                                Order Information
+                                            </h2>
+                                            {order.is_self_handled && (
+                                                <p className="text-sm text-amber-600 mt-1">
+                                                    <FaHandsHelping className="inline mr-1" />
+                                                    You'll handle pickup and delivery yourself
+                                                </p>
+                                            )}
+                                        </div>
                                         {order && (
                                             <div className="">
-                                                {getStatusDisplay(order.status)}
+                                                {getStatusDisplay(order.status, order.is_self_handled)}
                                             </div>
                                         )}
                                     </div>
@@ -665,6 +725,12 @@ const GetOrder = () => {
                                                         {order.first_name || 'N/A'} {order.last_name || 'N/A'}
                                                     </p>
                                                     <p className="text-sm text-gray-500">{order.email || ''}</p>
+                                                    {order.phone_number && (
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            <FaPhone className="inline mr-1" />
+                                                            {order.phone_number}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -689,6 +755,14 @@ const GetOrder = () => {
                                                     <span className="text-gray-600">Payment Status</span>
                                                     {getPaymentStatusDisplay(order.payment_status)}
                                                 </div>
+                                                {order.is_self_handled && (
+                                                    <div className="flex justify-between pt-2 border-t border-gray-100">
+                                                        <span className="text-gray-600">Service Type</span>
+                                                        <span className="font-medium text-amber-600">
+                                                            Self-Handled
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -719,18 +793,34 @@ const GetOrder = () => {
                                     <OrderItemsGallery items={order.items} />
                                 )}
 
-                                {/* Delivery & Pickup */}
-                                {(order.delivery_address || order.pickup_address) && (
+                                {/* Delivery & Pickup Section */}
+                                {order.is_self_handled ? (
+                                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                                        <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
+                                            Service Information
+                                        </h2>
+                                        <SelfHandledAddressCard />
+                                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p className="text-sm text-blue-700 flex items-start">
+                                                <FaInfoCircle className="mr-2 mt-0.5 flex-shrink-0" />
+                                                <span>
+                                                    <strong>Important:</strong> After payment, please bring your items to our facility 
+                                                    for cleaning. We'll notify you when they're ready for collection.
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (order.delivery_address || order.pickup_address) && (
                                     <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
                                         <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
                                             Delivery & Pickup
                                         </h2>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {order.delivery_address && (
-                                                <AddressCard type="delivery" address={order.delivery_address} cost={order.delivery_cost} />
+                                                <RegularAddressCard type="delivery" address={order.delivery_address} cost={order.delivery_cost} />
                                             )}
                                             {order.pickup_address && (
-                                                <AddressCard type="pickup" address={order.pickup_address} cost={order.pickup_cost} />
+                                                <RegularAddressCard type="pickup" address={order.pickup_address} cost={order.pickup_cost} />
                                             )}
                                         </div>
                                     </div>
@@ -768,18 +858,31 @@ const GetOrder = () => {
                                             );
                                         })}
 
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Delivery Fee</span>
-                                            <span className="font-medium">
-                                                {order.delivery_cost ? `GHS ${parseFloat(order.delivery_cost).toFixed(2)}` : 'N/A'}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Pickup Fee</span>
-                                            <span className="font-medium">
-                                                {order.pickup_cost ? `GHS ${parseFloat(order.pickup_cost).toFixed(2)}` : 'N/A'}
-                                            </span>
-                                        </div>
+                                        {/* Pickup/Delivery Fees */}
+                                        {order.is_self_handled ? (
+                                            <div className="flex justify-between text-amber-600">
+                                                <span className="flex items-center gap-1">
+                                                    <FaHandsHelping className="w-3 h-3" />
+                                                    Self-Handled Service
+                                                </span>
+                                                <span className="font-medium">GHS 0.00</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Delivery Fee</span>
+                                                    <span className="font-medium">
+                                                        {order.delivery_cost ? `GHS ${parseFloat(order.delivery_cost).toFixed(2)}` : 'N/A'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Pickup Fee</span>
+                                                    <span className="font-medium">
+                                                        {order.pickup_cost ? `GHS ${parseFloat(order.pickup_cost).toFixed(2)}` : 'N/A'}
+                                                    </span>
+                                                </div>
+                                            </>
+                                        )}
 
                                         <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
                                             <span className="font-semibold text-lg">Total Amount</span>
@@ -787,8 +890,8 @@ const GetOrder = () => {
                                                 {order.discounts_applied?.length > 0 && (
                                                     <div className="text-sm text-gray-400 line-through mb-1">
                                                         GHS {(parseFloat(order.subtotal) +
-                                                            parseFloat(order.delivery_cost || 0) +
-                                                            parseFloat(order.pickup_cost || 0)).toFixed(2)}
+                                                            (order.is_self_handled ? 0 : parseFloat(order.delivery_cost || 0)) +
+                                                            (order.is_self_handled ? 0 : parseFloat(order.pickup_cost || 0))).toFixed(2)}
                                                     </div>
                                                 )}
                                                 <span className="font-bold text-xl text-emerald-600">
@@ -796,8 +899,20 @@ const GetOrder = () => {
                                                 </span>
                                             </div>
                                         </div>
+                                        
+                                        {/* Self-Handled Note */}
+                                        {order.is_self_handled && (
+                                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                                <p className="text-xs text-amber-700">
+                                                    <FaInfoCircle className="inline mr-1" />
+                                                    No pickup or delivery fees included. You'll handle transportation yourself.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+
+                                
 
                                 {/* Photo Summary */}
                                 {order.items && order.items.some(item => item.image_url || item.photo) && (
@@ -861,13 +976,21 @@ const GetOrder = () => {
                                             <div>
                                                 <p className="text-sm text-gray-500">Call us</p>
                                                 <a
-                                                    href="tel:+233240000000"
+                                                    href="tel:+233536278834"
                                                     className="font-medium text-gray-900 hover:text-green-600 transition-colors"
                                                 >
                                                     +233 53 627 8834
                                                 </a>
                                             </div>
                                         </div>
+                                        {order.is_self_handled && (
+                                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                                <p className="text-xs text-amber-700 flex items-center">
+                                                    <FaInfoCircle className="inline mr-1" />
+                                                    For facility location and hours, please contact us.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

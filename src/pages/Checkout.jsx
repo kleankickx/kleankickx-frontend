@@ -89,7 +89,7 @@ const Checkout = () => {
   const [availablePromotions, setAvailablePromotions] = useState([]);
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [activeInput, setActiveInput] = useState(null);
-  
+  const [isSelfHandled, setIsSelfHandled] = useState(false);
   
 
 
@@ -191,6 +191,7 @@ const Checkout = () => {
       signupDiscountUsed,
       referralDiscountUsed,
       redeemedPointsDiscount,
+      isSelfHandled,
     });
   }, [
     cart, 
@@ -202,7 +203,8 @@ const Checkout = () => {
     user, 
     signupDiscountUsed, 
     referralDiscountUsed, 
-    redeemedPointsDiscount
+    redeemedPointsDiscount,
+    isSelfHandled
   ]);
 
   // Initialize the hook with all necessary dependencies
@@ -293,7 +295,7 @@ const Checkout = () => {
   }, []);
 
   // Handle place selection from map
-  const handlePlaceSelect = useCallback((location, type) => {
+  const handlePlaceSelect = useCallback((location, type, silent = false) => {
     setPickupTime(location ? location.pickupTime : null);
     
     if (type === 'pickup') {
@@ -321,15 +323,19 @@ const Checkout = () => {
     }
     
     setActiveInput(null);
-    if (location) {
-      toast.success(
-        <div className="flex items-center">
-          <FiCheck className="mr-2" />
-          {type} location set to {location.areaName}, {location.region}
-        </div>
-      );
-    } else {
-      toast.info(`${type} location cleared.`);
+    
+    // Only show toast if not in silent mode and there's actually a change
+    if (!silent) {
+      if (location) {
+        toast.success(
+          <div className="flex items-center">
+            <FiCheck className="mr-2" />
+            {type} location set to {location.areaName}, {location.region}
+          </div>
+        );
+      } else {
+        toast.info(`${type} location cleared.`);
+      }
     }
   }, [useSame, pickupRegion]);
 
@@ -438,7 +444,7 @@ const Checkout = () => {
   // Handle payment with Paystack
   const onPayment = async() => {
     // The hook handles token checks, Paystack initialization, and order submission
-    await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime);
+    await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime, isSelfHandled);
   };
 
   // Load Paystack script
@@ -581,6 +587,9 @@ const Checkout = () => {
                                       pickupRegion={pickupRegion}
                                       pickupTime={pickupTime}
                                       setPickupTime={setPickupTime}
+
+                                      isSelfHandled={isSelfHandled}
+                                      setIsSelfHandled={setIsSelfHandled}
                                     />
                                   </div>
                                 </div>
@@ -623,6 +632,7 @@ const Checkout = () => {
                                     delivery={delivery} // delivery second
                                     isPhoneValid={isPhoneValid}
                                     pickupTime={pickupTime}
+                                    isSelfHandled={isSelfHandled} 
                                   />
                                 </motion.div>
                               </div>
@@ -645,6 +655,7 @@ const Checkout = () => {
                                   cart={cart}
                                   appliedPromotion={appliedPromotion}
                                   useSame={useSame}
+                                  isSelfHandled={isSelfHandled} 
                                   {...summary} 
                                 />
                               </div>

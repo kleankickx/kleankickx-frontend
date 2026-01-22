@@ -61,7 +61,7 @@ const Footer = () => {
           {/* Social Media Links */}
           <div className="mt-6 flex space-x-4">
             <a
-              href="https://twitter.com/KleanKickx"
+              href="https://x.com/KleanKickxgh"
               target="_blank"
               rel="noopener noreferrer"
               className="text-2xl text-white hover:text-primary transition-colors"
@@ -69,7 +69,7 @@ const Footer = () => {
               <FaXTwitter />
             </a>
             <a
-              href="https://instagram.com/kleankickx"
+              href="https://instagram.com/kleankickxgh"
               target="_blank"
               rel="noopener noreferrer"
               className="text-2xl text-white hover:text-primary transition-colors"
