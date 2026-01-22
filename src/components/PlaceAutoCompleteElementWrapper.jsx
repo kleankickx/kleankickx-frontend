@@ -134,6 +134,7 @@ const PlaceAutocompleteElementWrapper = ({
           const firstPickupTime = firstDayTimeSlots[0];
           location.pickupTime = firstPickupTime.value;
 
+          console.log(responseConfig)
           const responsePricing = await axios.get('https://merchant-api-test.zippy.com.gh/delivery-times', {
             auth: {
               username: import.meta.env.VITE_ZIPPY_USERNAME,
@@ -147,12 +148,18 @@ const PlaceAutocompleteElementWrapper = ({
             }
           });
           const pricingData = responsePricing.data.data;
-          console.log('Zippy Pricing Data:', pricingData[0].totalPrice);
+          if (!pricingData || pricingData.length === 0) {
+            toast.warn('Delivery/pickup service is not available in this area.')
+          }
+          else{   
+            console.log(responsePricing)
+            console.log('Zippy Pricing Data:', pricingData[0].totalPrice);
 
-          location.cost = pricingData[0].totalPrice;
-          setSelectedLocation(location);
-          onPlaceSelect(location, type);
-          setPickupTime(firstPickupTime);
+            location.cost = pricingData[0].totalPrice;
+            setSelectedLocation(location);
+            onPlaceSelect(location, type);
+            setPickupTime(firstPickupTime);
+          }
           
         } catch (zippyError) {
           console.error('Error fetching Zippy config:', zippyError);
