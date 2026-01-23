@@ -32,7 +32,7 @@ export const calculateOrderSummary = ({
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
   const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
 
-  const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount;
+  const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount && signupDiscount.is_active;
   const canUseReferral = user && referralDiscountUsed?.first_order_completed === false && referralDiscount;
   const canUseRedeemedPoints = user && redeemedPointsDiscount && !redeemedPointsDiscount.is_applied;
   

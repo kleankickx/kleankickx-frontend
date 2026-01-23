@@ -15,6 +15,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { FaSpinner } from 'react-icons/fa6';
+import { FaInfoCircle } from "react-icons/fa";
 import axios from 'axios';
 import Tooltip from '../components/Tooltip';
 
@@ -43,6 +44,7 @@ const Cart = () => {
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
   const [availablePromotions, setAvailablePromotions] = useState([]);
   const [appliedPromotion, setAppliedPromotion] = useState(null);
+  const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
 
   // Helper function to convert base64 to blob URL
   const base64ToBlobUrl = (base64String) => {
@@ -223,6 +225,7 @@ const Cart = () => {
   const fetchUserReferralDiscountStatus = async () => {
     try {
       const { data } = await api.get('/api/discounts/referral/status/');
+      console.log(data)
       setReferralDiscountUsed(data);
     } catch (error) {
       console.error("Error fetching referral discount status:", error);
@@ -253,6 +256,24 @@ const Cart = () => {
     }
   }
 
+  const fetchRedeemedPointsDiscount = async () => {
+    try {
+      const response = await api.get('/api/referrals/active-discount/');
+      if (Object.keys(response.data).length !== 0) {
+        console.log(response.data)
+        setRedeemedPointsDiscount(response.data);
+      } else {
+        setRedeemedPointsDiscount(null);
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        setRedeemedPointsDiscount(null);
+      } else {
+        console.log("Error fetching redeemed points discount:", error);
+      }
+    }
+  }
+
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
@@ -261,7 +282,8 @@ const Cart = () => {
           fetchServices(),
           fetchUserSignupDiscountStatus(),
           fetchUserReferralDiscountStatus(),
-          fetchAvailablePromotions()
+          fetchAvailablePromotions(),
+          fetchRedeemedPointsDiscount(),
         ]);
       } catch (err) {
         console.error("Initialization error:", err);
@@ -372,8 +394,9 @@ const Cart = () => {
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
   const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
 
-  const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount;
+  const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount && signupDiscount.is_active;
   const canUseReferral = user && referralDiscountUsed?.first_order_completed === false && referralDiscount;
+  const canUseRedeemedPoints = user && redeemedPointsDiscount && !redeemedPointsDiscount.is_applied;
 
   const signupDiscountAmount = canUseSignup
     ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
@@ -387,7 +410,11 @@ const Cart = () => {
     ? (parseFloat(subtotal) * parseFloat(appliedPromotion.discount_percentage)) / 100
     : 0;
 
-  const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount)).toFixed(2);
+  const redeemedPointsDiscountAmount = canUseRedeemedPoints
+    ? ((parseFloat(subtotal) * parseFloat(redeemedPointsDiscount.percentage)) / 100)
+    : 0
+
+  const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount)).toFixed(2);
 
   const handleRemove = (id) => {
     const service = getService(id);
@@ -918,12 +945,20 @@ const Cart = () => {
                       </div>
                     )}
 
+                    {canUseRedeemedPoints && redeemedPointsDiscount && (
+                      <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm text-amber-700 flex items-start">
+                        <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
+                        <span>Your {redeemedPointsDiscount.percentage}% redeemed points discount has been applied!</span>
+                      </div>
+                    )}
+
+
                     {/* Total */}
                     <div className="border-t border-gray-200 pt-4">
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-gray-900 text-lg">Total</span>
                         <div className="text-right">
-                          {(canUseSignup || canUseReferral || appliedPromotion) && (
+                          {(canUseSignup || canUseReferral || appliedPromotion || canUseRedeemedPoints) && (
                             <div className="text-sm text-gray-500 line-through mb-1">
                               ₵{subtotal}
                             </div>

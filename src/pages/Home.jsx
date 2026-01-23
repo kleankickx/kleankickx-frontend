@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from "react-intersection-observer";
-import {useState, useEffect, useContext} from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
-import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
+import { FaSpinner, FaChevronDown, FaChevronUp, FaGift, FaArrowRight } from 'react-icons/fa6';
+import { FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 
 // assets & components
@@ -41,6 +42,36 @@ const staggerContainer = {
   },
 };
 
+// Modal animations
+const modalBackdrop = {
+  hidden: { opacity: 0 },
+  visible: { 
+    opacity: 1,
+    transition: { duration: 0.3 }
+  }
+};
+
+const modalContent = {
+  hidden: { opacity: 0, scale: 0.8, y: 20 },
+  visible: { 
+    opacity: 1, 
+    scale: 1, 
+    y: 0,
+    transition: { 
+      type: "spring", 
+      damping: 25, 
+      stiffness: 300,
+      delay: 0.1 
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    scale: 0.8, 
+    y: 20,
+    transition: { duration: 0.2 }
+  }
+};
+
 // Helper to animate numbers
 const AnimatedNumber = ({ value }) => {
   const [ref, inView] = useInView({ triggerOnce: true });
@@ -73,23 +104,237 @@ const AnimatedNumber = ({ value }) => {
   );
 }
 
+// Free Service Modal Component
+const FreeServiceModal = ({ isOpen, onClose, onClaim, userStatus, freeService }) => {
+  const navigate = useNavigate();
+  
+  const handleClaim = () => {
+    onClose();
+    onClaim();
+  };
+  
+  const handleClose = () => {
+    // Save to localStorage that user dismissed the modal
+    localStorage.setItem('free_service_modal_dismissed', 'true');
+    onClose();
+  };
+  
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9998]"
+            variants={modalBackdrop}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            onClick={handleClose}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[9999] pointer-events-none">
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden pointer-events-auto"
+              variants={modalContent}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              {/* Close button */}
+              <button
+                onClick={handleClose}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+              
+              {/* Header with gradient */}
+              <div className="relative h-32 bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 overflow-hidden">
+                {/* Animated confetti background */}
+                <div className="absolute inset-0 opacity-10">
+                  {[...Array(20)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-2 h-2 bg-white rounded-full"
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animation: `float ${3 + Math.random() * 3}s infinite ease-in-out ${Math.random() * 2}s`
+                      }}
+                    />
+                  ))}
+                </div>
+                
+                {/* Gift icon */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0] 
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 3,
+                      ease: "easeInOut" 
+                    }}
+                    className="relative"
+                  >
+                    <FaGift className="w-16 h-16 text-white drop-shadow-lg" />
+                  </motion.div>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                  🎁 Special Offer Just For You!
+                </h3>
+                
+                <div className="text-center mb-6">
+                  <p className="text-gray-600 mb-4">
+                    {userStatus.isAuthenticated ? (
+                      userStatus.hasUsedFreeService ? (
+                        <>
+                          Thank you for being a valued customer! You've already claimed your free service.
+                        </>
+                      ) : (
+                        <>
+                          As a new user, you're eligible for a <span className="font-bold text-green-600">FREE {freeService?.name || 'Standard Clean'}</span>!
+                        </>
+                      )
+                    ) : (
+                      <>
+                        Sign up today and get a <span className="font-bold text-green-600">FREE {freeService?.name || 'Standard Clean'}</span> as a welcome gift!
+                      </>
+                    )}
+                  </p>
+                  
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="text-3xl font-bold text-green-600">FREE</div>
+                      {freeService?.original_price && (
+                        <div className="text-gray-500 line-through">₵{freeService.original_price}</div>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Limited to one per account • Cannot be combined with other offers
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {userStatus.isAuthenticated ? (
+                    userStatus.hasUsedFreeService ? (
+                      <button
+                        onClick={() => {
+                          handleClose();
+                          navigate('/services');
+                        }}
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        Browse All Services
+                        <FaArrowRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleClaim}
+                          className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                        >
+                          <FaGift className="w-4 h-4" />
+                          Claim Free Service
+                        </button>
+                        <button
+                          onClick={handleClose}
+                          className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
+                        >
+                          Maybe Later
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleClose();
+                          navigate('/signup');
+                        }}
+                        className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        Sign Up to Claim
+                        <FaArrowRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleClose();
+                          navigate('/services');
+                        }}
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-lg"
+                      >
+                        Browse Services
+                      </button>
+                    </>
+                  )}
+                </div>
+                
+                {/* Footer note */}
+                <p className="text-xs text-gray-400 text-center mt-6">
+                  This offer expires soon. Don't miss out!
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const Home = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredDescriptionId, setHoveredDescriptionId] = useState(null);
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
-  const { discounts } = useContext(AuthContext);
+  const [showFreeServiceModal, setShowFreeServiceModal] = useState(false);
+  const { user, isAuthenticated } = useContext(AuthContext);
+  const navigate = useNavigate();
   
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
-  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
+  
+  // Track if modal has been shown in this session
+  const modalShownRef = useRef(false);
+  const modalTimerRef = useRef(null);
 
   useEffect(() => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${backendUrl}/api/services/`);
+        const response = await axios.get(`${backendUrl}/api/services/public/`);
         setServices(response.data);
+        
+        // Check for free service in the response
+        const freeService = response.data.find(service => service.is_free_signup_service);
+        
+        // Show modal after 3 seconds if conditions are met
+        if (!modalShownRef.current) {
+          modalTimerRef.current = setTimeout(() => {
+            const userStatus = getUserFreeServiceStatus();
+            const shouldShowModal = 
+              !localStorage.getItem('free_service_modal_dismissed') && // Not dismissed before
+              freeService && // Free service exists
+              (userStatus.isAuthenticated ? !userStatus.hasUsedFreeService : true); // Eligible
+            
+            if (shouldShowModal) {
+              setShowFreeServiceModal(true);
+              modalShownRef.current = true;
+            }
+          }, 3000);
+        }
+        
       } catch (err) {
         setError('Failed to load services.');
         console.error('Error fetching services:', err);
@@ -97,9 +342,30 @@ const Home = () => {
         setLoading(false);
       }
     };
+    
     fetchServices();
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (modalTimerRef.current) {
+        clearTimeout(modalTimerRef.current);
+      }
+    };
   }, []);
 
+  // Get user's free service status
+  const getUserFreeServiceStatus = () => {
+    if (!isAuthenticated || !user) {
+      return { isAuthenticated: false, hasUsedFreeService: false };
+    }
+    return {
+      isAuthenticated: true,
+      hasUsedFreeService: !!user.free_signup_service_used
+    };
+  };
+
+  // Find free service
+  const freeService = services.find(service => service.is_free_signup_service);
 
   // Function to get service status for banner
   const getServiceStatus = (serviceName) => {
@@ -120,8 +386,44 @@ const Home = () => {
     }));
   };
 
+  const handleClaimFreeService = () => {
+    if (isAuthenticated) {
+      // Navigate to services page and scroll to free service
+      navigate('/services');
+      // The free service should already be at the top if user is eligible
+    } else {
+      // Navigate to signup page
+      navigate('/signup');
+    }
+  };
+
+  // Add CSS animation for confetti
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes float {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(180deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <>
+      {/* Free Service Modal */}
+      <FreeServiceModal
+        isOpen={showFreeServiceModal}
+        onClose={() => setShowFreeServiceModal(false)}
+        onClaim={handleClaimFreeService}
+        userStatus={getUserFreeServiceStatus()}
+        freeService={freeService}
+      />
+      
       {/* HERO */}
       <section className="bg-[#E5FDFF] h-full lg:h-screen">
         <section className="py-[4rem] px-4 md:px-8 lg:px-24">
@@ -140,9 +442,12 @@ const Home = () => {
                 Getting your footwear cleaned has never been so easy. We pick up your dirty kicks, Klean them by hand, and then deliver your Kleankickx to you.
               </p>
               <motion.div variants={zoomIn} initial="hidden" animate="visible" className="mt-8">
-                <Link to="/services" className="bg-[#011627] rounded text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium">
+                <button 
+                  onClick={() => navigate('/services')}
+                  className="bg-[#011627] rounded text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium"
+                >
                   Schedule a Klean
-                </Link>
+                </button>
               </motion.div>
             </motion.div>
 
@@ -248,9 +553,17 @@ const Home = () => {
               const isExpanded = expandedDescriptions[service.id];
               
               return (
-               <Link to="/services"> 
-                  <motion.div key={service.id} variants={fadeIn} custom={i} className="group">
+               <div key={service.id}>
+                  <motion.div variants={fadeIn} custom={i} className="group">
                     <div className="bg-white border border-gray-200 rounded-lg shadow-lg hover:shadow-2xl transition duration-300 hover:border-primary overflow-hidden h-full flex flex-col relative">
+                      {/* Free Service Badge */}
+                      {service.is_free_signup_service && (
+                        <div className="absolute top-4 left-0 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-r-full shadow-lg z-10 flex items-center gap-1">
+                          <FaGift className="w-3 h-3" />
+                          FREE
+                        </div>
+                      )}
+
                       {/* Slanted Delivery Ribbon */}
                       <div className="absolute top-0 right-0 w-28 h-28 overflow-hidden z-20 pointer-events-none">
                         <div className={`absolute top-0 right-0 w-[140%] h-7 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white shadow-sm transform translate-x-[30%] translate-y-[80%] rotate-45 
@@ -258,13 +571,6 @@ const Home = () => {
                           {status.bannerText}
                         </div>
                       </div>
-
-                      {/* Discount Badge */}
-                      {signupDiscount && (
-                        <div className="absolute top-4 left-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-r-full shadow-lg z-10">
-                          {parseInt(signupDiscount.percentage)}% OFF
-                        </div>
-                      )}
 
                       <Link to="/services" className="flex-grow">
                         <div className="relative h-72 overflow-hidden bg-gray-100">
@@ -355,14 +661,15 @@ const Home = () => {
 
                         <div className="border-t border-gray-200 pt-4 mt-auto">
                           <div className="flex gap-4 items-center">
-        
-                            <p className="text-primary font-bold text-lg">GH₵{service.price}</p>
+                            <p className={`font-bold text-lg ${service.is_free_signup_service ? 'text-green-600' : 'text-primary'}`}>
+                              {service.is_free_signup_service ? 'FREE' : `GH₵${service.price}`}
+                            </p>
                           </div>
                         </div>
                       </div>
                     </div>
                   </motion.div>
-              </Link>
+                </div>
               );
             })}
           </motion.div>

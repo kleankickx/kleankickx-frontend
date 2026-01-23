@@ -138,6 +138,7 @@ const Checkout = () => {
     try {
       const response = await api.get('/api/referrals/active-discount/');
       if (Object.keys(response.data).length !== 0) {
+        console.log(response.data)
         setRedeemedPointsDiscount(response.data);
       } else {
         setRedeemedPointsDiscount(null);

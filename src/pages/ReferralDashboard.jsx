@@ -198,7 +198,7 @@ export default function ReferralDashboard() {
   };
 
   const redeemPoints = async () => {
-    if (loading.redeeming || points < 50) return;
+    if (loading.redeeming || points < 100) return;
     
     try {
       setLoading((prev) => ({ ...prev, redeeming: true }));
@@ -402,8 +402,7 @@ export default function ReferralDashboard() {
 
               {points <= 50 &&  (
                 <div className="text-center pt-4 text-gray-500">
-                  <p>Minimum 50 points needed to redeem</p>
-                  <p className="text-sm mt-1">Refer friends to earn points!</p>
+                  <p>You gain 50 on referral and need a minimum 100 to redeem the freebie</p>
                 </div>
               )}
 

@@ -34,7 +34,7 @@ const Navbar = () => {
   
   
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
- 
+  console.log(signupDiscount)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -108,7 +108,7 @@ const Navbar = () => {
   return (
     <div className='sticky inset-x-0 top-0 z-40'>
       {/* Discount Banner with Slide Animation */}
-      {signupDiscount && isBannerVisible && (
+      {signupDiscount && isBannerVisible && signupDiscount.is_active && (
         <div
           className={`bg-gradient-to-r from-green-500 to-green-600 text-white transform transition-transform duration-500 ease-in-out
             
