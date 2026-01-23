@@ -180,7 +180,7 @@ const Services = () => {
     if (is_free_signup_service) {
       if (!isAuthenticated) {
         toast.info('Please sign in to claim your free service!');
-        navigate('/login', { state: { from: '/services' } });
+        navigate('/auth/login', { state: { from: '/services' } });
         return;
       }
       

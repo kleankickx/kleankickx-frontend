@@ -260,7 +260,7 @@ const FreeServiceModal = ({ isOpen, onClose, onClaim, userStatus, freeService })
                       <button
                         onClick={() => {
                           handleClose();
-                          navigate('/signup');
+                          navigate('/auth/signup');
                         }}
                         className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
                       >
