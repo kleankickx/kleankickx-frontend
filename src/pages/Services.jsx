@@ -174,7 +174,7 @@ const Services = () => {
 
   // Handle adding to cart with free service logic
   const handleAddToCart = async (service) => {
-    const { id, name, price, is_free_signup_service } = service;
+    const { id, name, price, is_free_signup_service, service_type, included_quantity } = service;
     
     // Check if this is a free service
     if (is_free_signup_service) {
@@ -196,8 +196,15 @@ const Services = () => {
         return;
       }
       
-      // Add free service to cart
-      await addFreeServiceToCart(service);
+      // Add free service to cart with service data
+      addToCart(id, name, price, 1, {
+        is_free_signup_service: true,
+        service_type: service_type,
+        included_quantity: included_quantity,
+        original_price: service.original_price // If available
+      });
+      toast.success(`Free ${name} added to cart! You can checkout to claim it.`);
+      navigate('/cart');
       return;
     }
     
@@ -207,7 +214,12 @@ const Services = () => {
     if (isInCart) {
       toast.info(`${name} is already in your cart!`);
     } else {
-      addToCart(id, name, price, 1);
+      // Add service with all data
+      addToCart(id, name, price, 1, {
+        is_free_signup_service: false,
+        service_type: service_type,
+        included_quantity: included_quantity
+      });
       toast.success(`${name} added to cart!`);
     }
     navigate('/cart');

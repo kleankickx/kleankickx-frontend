@@ -26,7 +26,7 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart]);
 
-  const addToCart = (serviceId, serviceName, servicePrice, quantity = 1) => {
+  const addToCart = (serviceId, serviceName, servicePrice, quantity = 1, serviceData = {}) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.service_id === serviceId);
       
@@ -36,7 +36,13 @@ export const CartProvider = ({ children }) => {
             ? { 
                 ...item, 
                 quantity: item.quantity + quantity,
-                unit_price: servicePrice
+                unit_price: servicePrice,
+                // Update service data if needed
+                service_type: serviceData.service_type || item.service_type,
+                is_free_signup_service: serviceData.is_free_signup_service !== undefined 
+                  ? serviceData.is_free_signup_service 
+                  : item.is_free_signup_service,
+                included_quantity: serviceData.included_quantity || item.included_quantity
               }
             : item
         );
@@ -46,7 +52,12 @@ export const CartProvider = ({ children }) => {
           quantity, 
           service_name: serviceName, 
           unit_price: servicePrice,
-          imageBase64: null
+          imageBase64: null,
+          // Store additional service properties
+          service_type: serviceData.service_type || null,
+          is_free_signup_service: serviceData.is_free_signup_service || false,
+          included_quantity: serviceData.included_quantity || 1,
+          original_price: serviceData.original_price || servicePrice
         }];
       }
     });
