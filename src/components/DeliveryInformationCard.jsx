@@ -63,9 +63,7 @@ const DeliveryInformationCard = (props) => {
               <p className="text-sm text-yellow-700 flex items-start">
                 <FaInfoCircle className="inline mr-2 mt-0.5 flex-shrink-0" />
                 <span>
-                  <strong>Note:</strong> You'll need to bring your items to our facility for cleaning 
-                  and pick them up when ready. No pickup or delivery fees will be charged.
-                  Please contact us at <strong>+233 53 627 8834</strong> for facility location and hours.
+                  <strong>Note:</strong> Please drop off your sneakers at our Achimota Golf Hills workshop (searchable on Google Maps). There will be no pickup or delivery fees. Check our website for opening hours before you head out!
                 </span>
               </p>
             </div>

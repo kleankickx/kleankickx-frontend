@@ -219,7 +219,7 @@ const FreeServiceModal = ({ isOpen, onClose, onClaim, userStatus, freeService })
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
-                      Limited to one per account • Cannot be combined with other offers
+                      Limited to one free clean per account
                     </p>
                   </div>
                 </div>
