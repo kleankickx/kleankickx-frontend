@@ -12,12 +12,16 @@ import {
   XMarkIcon,
   FolderIcon,
   ShoppingBagIcon,
-  SparklesIcon
+  SparklesIcon,
+  CameraIcon,
+  CheckCircleIcon,
+  GiftIcon
 } from '@heroicons/react/24/outline';
 import { FaSpinner } from 'react-icons/fa6';
-import { FaInfoCircle } from "react-icons/fa";
+import { FaInfoCircle, FaCamera } from "react-icons/fa";
 import axios from 'axios';
 import Tooltip from '../components/Tooltip';
+import * as heic2any from 'heic2any'; // For HEIC support
 
 const Cart = () => {
   const { 
@@ -36,7 +40,11 @@ const Cart = () => {
   const [uploadingImages, setUploadingImages] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [imagePreviews, setImagePreviews] = useState({});
+  const [cameraMode, setCameraMode] = useState(null); // Track which service is in camera mode
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const fileInputRefs = useRef({});
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
@@ -45,13 +53,13 @@ const Cart = () => {
   const [availablePromotions, setAvailablePromotions] = useState([]);
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
+  const [freeServiceUsed, setFreeServiceUsed] = useState(false);
 
   // Helper function to convert base64 to blob URL
   const base64ToBlobUrl = (base64String) => {
     if (!base64String) return null;
     
     try {
-      // Remove data URL prefix if present
       const base64Data = base64String.includes('base64,') 
         ? base64String.split(',')[1] 
         : base64String;
@@ -89,15 +97,38 @@ const Cart = () => {
     });
   };
 
-  // Process and optimize image
-  const processImage = (file) => {
-    return new Promise((resolve, reject) => {
-      // Skip processing for small files (under 1MB)
-      if (file.size < 1024 * 1024) {
-        resolve(file);
-        return;
-      }
+  // Convert HEIC to JPEG
+  const convertHeicToJpeg = async (heicFile) => {
+    try {
+      const convertedBlob = await heic2any({
+        blob: heicFile,
+        toType: 'image/jpeg',
+        quality: 0.85
+      });
+      
+      return new File([convertedBlob], 
+        heicFile.name.replace(/\.heic$/i, '.jpg') || `converted-${Date.now()}.jpg`, 
+        { type: 'image/jpeg', lastModified: Date.now() }
+      );
+    } catch (error) {
+      console.error('HEIC conversion failed:', error);
+      throw new Error('Failed to convert HEIC image');
+    }
+  };
 
+  // Process and optimize image
+  const processImage = async (file) => {
+    // Check if file is HEIC
+    if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic')) {
+      file = await convertHeicToJpeg(file);
+    }
+
+    // Skip processing for small files (under 1MB)
+    if (file.size < 1024 * 1024) {
+      return file;
+    }
+
+    return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
       
@@ -108,7 +139,6 @@ const Cart = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          // Calculate new dimensions (max 1200px)
           let width = img.width;
           let height = img.height;
           const maxSize = 1200;
@@ -124,10 +154,8 @@ const Cart = () => {
           canvas.width = width;
           canvas.height = height;
           
-          // Draw and process image
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Convert canvas to blob
           canvas.toBlob((blob) => {
             if (!blob) {
               reject(new Error('Failed to process image'));
@@ -158,11 +186,14 @@ const Cart = () => {
 
   // Helper function to validate image file
   const validateImageFile = (file) => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
     const maxSize = 10 * 1024 * 1024; // 10MB
     
-    if (!validTypes.includes(file.type)) {
-      return { valid: false, message: 'Please upload a valid image (JPEG, PNG, or WebP)' };
+    const fileExtension = file.name.toLowerCase();
+    const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || fileExtension.endsWith('.heic');
+    
+    if (!validTypes.includes(file.type) && !isHeic) {
+      return { valid: false, message: 'Please upload a valid image (JPEG, PNG, WebP, or HEIC)' };
     }
     
     if (file.size > maxSize) {
@@ -188,7 +219,6 @@ const Cart = () => {
     });
     setImagePreviews(newPreviews);
 
-    // Cleanup function to revoke blob URLs
     return () => {
       Object.values(newPreviews).forEach(blobUrl => {
         if (blobUrl) {
@@ -225,7 +255,6 @@ const Cart = () => {
   const fetchUserReferralDiscountStatus = async () => {
     try {
       const { data } = await api.get('/api/discounts/referral/status/');
-      console.log(data)
       setReferralDiscountUsed(data);
     } catch (error) {
       console.error("Error fetching referral discount status:", error);
@@ -260,7 +289,6 @@ const Cart = () => {
     try {
       const response = await api.get('/api/referrals/active-discount/');
       if (Object.keys(response.data).length !== 0) {
-        console.log(response.data)
         setRedeemedPointsDiscount(response.data);
       } else {
         setRedeemedPointsDiscount(null);
@@ -274,6 +302,15 @@ const Cart = () => {
     }
   }
 
+  const fetchFreeServiceStatus = async () => {
+    try {
+      const { data } = await api.get('/api/discounts/free-service/status/');
+      setFreeServiceUsed(data.free_signup_service_used);
+    } catch (error) {
+      console.error("Error fetching free service status:", error);
+    }
+  }
+
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
@@ -284,6 +321,7 @@ const Cart = () => {
           fetchUserReferralDiscountStatus(),
           fetchAvailablePromotions(),
           fetchRedeemedPointsDiscount(),
+          fetchFreeServiceStatus(),
         ]);
       } catch (err) {
         console.error("Initialization error:", err);
@@ -302,11 +340,15 @@ const Cart = () => {
     return service && service.service_type?.startsWith('PACKAGE_');
   };
 
+  // Check if service is free
+  const isFreeService = (service) => {
+    return service && service.price === 0;
+  };
+
   // Get package info
   const getPackageInfo = (service) => {
     if (!service) return null;
     
-    // Extract number from PACKAGE_X format
     const match = service.service_type?.match(/PACKAGE_(\d+)/);
     const sneakerCount = match ? parseInt(match[1]) : 1;
     
@@ -361,11 +403,23 @@ const Cart = () => {
     };
   };
 
+  // Get free service info
+  const getFreeServiceInfo = (service) => {
+    return {
+      color: 'bg-gradient-to-r from-green-50 to-emerald-50',
+      borderColor: 'border-green-200',
+      textColor: 'text-green-800',
+      iconColor: 'text-green-600',
+      badgeColor: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white',
+      tagText: 'FREE CLEANING',
+      gradientColor: 'from-green-400 to-emerald-500'
+    };
+  };
+
   // Calculate savings for package
   const calculatePackageSavings = (service) => {
     if (!isPackageService(service)) return null;
     
-    // Find the standard clean individual service
     const standardService = services.find(s => 
       s.name.toLowerCase().includes('standard') && 
       !isPackageService(s)
@@ -412,17 +466,20 @@ const Cart = () => {
 
   const redeemedPointsDiscountAmount = canUseRedeemedPoints
     ? ((parseFloat(subtotal) * parseFloat(redeemedPointsDiscount.percentage)) / 100)
-    : 0
+    : 0;
 
   const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount)).toFixed(2);
 
   const handleRemove = (id) => {
     const service = getService(id);
     const isPackage = isPackageService(service);
+    const isFree = isFreeService(service);
     
     if (isPackage) {
       const packageInfo = getPackageInfo(service);
       toast.info(`Removed ${packageInfo?.sneakers || 'multi'}-sneaker bundle from cart.`);
+    } else if (isFree) {
+      toast.info('Removed free cleaning service from cart.');
     }
     
     if (imagePreviews[id]) {
@@ -439,7 +496,6 @@ const Cart = () => {
   const handleCheckout = async () => {
     if (!cart.length) return toast.error('Your cart is empty');
     
-    // Check if all items have images (optional)
     const itemsWithoutImages = cart.filter(item => !hasImage(item.service_id));
     
     if (itemsWithoutImages.length > 0) {
@@ -451,7 +507,6 @@ const Cart = () => {
   };
 
   const handleImageUpload = async (serviceId, file) => {
-    // Validate the image file
     const validation = validateImageFile(file);
     if (!validation.valid) {
       toast.error(validation.message);
@@ -461,19 +516,12 @@ const Cart = () => {
     setUploadingImages(prev => ({ ...prev, [serviceId]: true }));
     
     try {
-      // Process and optimize the image
       const processedFile = await processImage(file);
-      
-      // Convert to base64 for storage
       const base64String = await fileToBase64(processedFile);
-      
-      // Create blob URL for preview
       const blobUrl = URL.createObjectURL(processedFile);
       
-      // Store in cart context
       addImageToCartItem(serviceId, processedFile, blobUrl, base64String);
       
-      // Store blob URL in component state for preview
       setImagePreviews(prev => ({
         ...prev,
         [serviceId]: blobUrl
@@ -510,28 +558,117 @@ const Cart = () => {
 
   // Open gallery/file picker
   const openGallery = (serviceId) => {
-    // Use existing ref or create new input
     let input = fileInputRefs.current[serviceId];
     if (!input) {
       input = document.createElement('input');
       input.type = 'file';
-      input.accept = 'image/*';
+      input.accept = 'image/*,image/heic,image/heif,.heic';
+      input.capture = 'environment'; // For mobile, prefer rear camera
       input.style.display = 'none';
       document.body.appendChild(input);
       fileInputRefs.current[serviceId] = input;
       
-      // Clean up event listener
       input.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
           handleImageUpload(serviceId, file);
         }
-        // Reset input for next use
         input.value = '';
       };
     }
     
     input.click();
+  };
+
+  // Open camera
+  const openCamera = (serviceId) => {
+    setCameraMode(serviceId);
+    setShowCameraModal(true);
+    
+    // Start camera after modal opens
+    setTimeout(() => {
+      startCamera();
+    }, 100);
+  };
+
+  // Start camera
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment', // Use rear camera
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      toast.error('Could not access camera. Please check permissions.');
+      setShowCameraModal(false);
+    }
+  };
+
+  // Capture photo from camera
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert canvas to blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        toast.error('Failed to capture photo');
+        return;
+      }
+      
+      // Create file from blob
+      const file = new File([blob], `camera-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+      
+      // Upload the captured photo
+      await handleImageUpload(cameraMode, file);
+      
+      // Stop camera and close modal
+      stopCamera();
+      setShowCameraModal(false);
+      setCameraMode(null);
+      
+    }, 'image/jpeg', 0.9);
+  };
+
+  // Stop camera
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject;
+      const tracks = stream.getTracks();
+      
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  // Close camera modal
+  const closeCameraModal = () => {
+    stopCamera();
+    setShowCameraModal(false);
+    setCameraMode(null);
   };
 
   const ImagePreviewModal = () => {
@@ -555,6 +692,59 @@ const Cart = () => {
             className="w-full h-full max-h-[80vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      </div>
+    );
+  };
+
+  const CameraModal = () => {
+    if (!showCameraModal) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
+        <div className="relative w-full max-w-2xl bg-black rounded-2xl overflow-hidden">
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={closeCameraModal}
+              className="bg-black/50 text-white rounded-full p-2 hover:bg-black/70 cursor-pointer"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+          
+          <div className="relative aspect-video bg-black">
+            <video
+              ref={videoRef}
+              className="w-full h-full object-contain"
+              playsInline
+            />
+            <canvas
+              ref={canvasRef}
+              className="hidden"
+            />
+            
+            {/* Camera overlay grid */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-64 h-64 border-2 border-white/30 rounded-lg"></div>
+            </div>
+            
+            {/* Camera controls */}
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
+              <button
+                onClick={capturePhoto}
+                className="w-16 h-16 bg-white rounded-full border-4 border-gray-300 hover:scale-105 transition-transform cursor-pointer"
+              >
+                <div className="w-12 h-12 bg-white rounded-full mx-auto"></div>
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 text-white text-center">
+            <p className="text-lg font-medium mb-2">Take a clear photo of your shoes</p>
+            <p className="text-gray-300 text-sm">
+              Position the shoes within the frame and tap the capture button
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -585,6 +775,7 @@ const Cart = () => {
   return (
     <section className="bg-gradient-to-br from-green-50 to-white min-h-screen py-8 px-4 lg:px-24">
       <ImagePreviewModal />
+      <CameraModal />
       
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -603,38 +794,66 @@ const Cart = () => {
                   const itemHasImage = hasImage(item.service_id);
                   const previewUrl = imagePreviews[item.service_id];
                   const isPackage = isPackageService(service);
+                  const isFree = isFreeService(service);
                   const packageInfo = isPackage ? getPackageInfo(service) : null;
+                  const freeServiceInfo = isFree ? getFreeServiceInfo(service) : null;
                   const packageSavings = isPackage ? calculatePackageSavings(service) : null;
                   
                   return (
-                    <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                      {/* Bundle Header */}
-                      {isPackage && packageInfo && (
-                        <div className={`${packageInfo.color} ${packageInfo.borderColor} border-b px-6 py-3`}>
-                          <div className="flex items-center justify-between">
+                    <div key={item.service_id} className={`
+                      rounded-xl shadow-sm border overflow-hidden transition-all duration-300
+                      ${isFree ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' : 
+                        isPackage ? `${packageInfo?.color} ${packageInfo?.borderColor}` : 
+                        'bg-white border-gray-200'}
+                    `}>
+                      {/* Service Type Header */}
+                      {(isPackage || isFree) && (
+                        <div className={`
+                          border-b px-6 py-3 flex items-center justify-between
+                          ${isFree ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-300/30' : 
+                            isPackage ? `${packageInfo?.color} ${packageInfo?.borderColor}` : ''}
+                        `}>
+                          <div className="flex items-center gap-2">
+                            {isFree ? (
+                              <>
+                                <GiftIcon className="w-5 h-5 text-green-600" />
+                                <span className="font-bold text-green-800">
+                                  FREE CLEANING SERVICE
+                                </span>
+                              </>
+                            ) : isPackage ? (
+                              <>
+                                <ShoppingBagIcon className={`w-5 h-5 ${packageInfo?.iconColor}`} />
+                                <span className={`font-bold ${packageInfo?.textColor}`}>
+                                  {packageInfo?.tagText}
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                          {isPackage && packageSavings && (
                             <div className="flex items-center gap-2">
-                              <ShoppingBagIcon className={`w-5 h-5 ${packageInfo.iconColor}`} />
-                              <span className={`font-bold ${packageInfo.textColor}`}>
-                                {packageInfo.tagText}
+                              <SparklesIcon className="w-4 h-4 text-amber-500" />
+                              <span className="text-sm font-medium text-amber-700">
+                                Save ₵{packageSavings.savings}
                               </span>
                             </div>
-                            {packageSavings && (
-                              <div className="flex items-center gap-2">
-                                <SparklesIcon className="w-4 h-4 text-amber-500" />
-                                <span className="text-sm font-medium text-amber-700">
-                                  Save ₵{packageSavings.savings}
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                          )}
+                          {isFree && (
+                            <div className="flex items-center gap-2">
+                              <CheckCircleIcon className="w-4 h-4 text-green-600" />
+                              <span className="text-sm font-medium text-green-700">
+                                100% FREE
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                       
                       <div className="p-6">
                         <div className="flex flex-col sm:flex-row gap-6">
-                          {/* Service Image with Bundle Badge */}
+                          {/* Service Image */}
                           <div className="flex-shrink-0">
-                            <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
+                            <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-100 border-2 border-white shadow-md">
                               <img 
                                 src={service?.image || '/placeholder-shoe.jpg'} 
                                 alt={service?.name}
@@ -645,11 +864,21 @@ const Cart = () => {
                                   <PhotoIcon className="w-4 h-4" />
                                 </div>
                               )}
-                              {isPackage && (
-                                <div className="absolute -bottom-2 -left-2 bg-white border border-gray-300 rounded-full p-1.5 shadow-lg">
-                                  <div className={`w-6 h-6 rounded-full ${packageInfo.badgeColor} border flex items-center justify-center`}>
-                                    <span className={`text-xs font-bold ${packageInfo.textColor}`}>
-                                      {packageInfo?.sneakers || 1}
+                              {(isPackage || isFree) && (
+                                <div className={`
+                                  absolute -bottom-2 -left-2 rounded-full p-1.5 shadow-lg
+                                  ${isFree ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 
+                                    'bg-white border border-gray-300'}
+                                `}>
+                                  <div className={`
+                                    w-6 h-6 rounded-full border flex items-center justify-center
+                                    ${isFree ? 'bg-white' : packageInfo?.badgeColor}
+                                  `}>
+                                    <span className={`
+                                      text-xs font-bold
+                                      ${isFree ? 'text-green-700' : packageInfo?.textColor}
+                                    `}>
+                                      {isFree ? 'FREE' : (packageInfo?.sneakers || 1)}
                                     </span>
                                   </div>
                                 </div>
@@ -663,7 +892,7 @@ const Cart = () => {
                               <div className="flex-1">
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <h3 className="font-semibold text-gray-900 text-lg">
+                                    <h3 className={`font-semibold text-lg ${isFree ? 'text-green-900' : 'text-gray-900'}`}>
                                       {item.service_name || service?.name}
                                     </h3>
                                     {isPackage && (
@@ -671,57 +900,100 @@ const Cart = () => {
                                         <span className="text-sm text-gray-600">
                                           Bundle of {packageInfo?.sneakers || 3} sneakers
                                         </span>
-                                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                                           Bundle deal
                                         </span>
                                       </div>
                                     )}
-                                    <p className="text-primary font-bold text-xl mt-1">
-                                      ₵{parseFloat(item.unit_price || service?.price || 0).toFixed(2)}
+                                    {isFree && (
+                                      <div className="mt-1 flex items-center gap-2">
+                                        <span className="text-sm text-green-700 font-medium">
+                                          First-time free cleaning
+                                        </span>
+                                        <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded">
+                                          Free
+                                        </span>
+                                      </div>
+                                    )}
+                                    <p className={`font-bold text-xl mt-1 ${isFree ? 'text-green-700' : 'text-primary'}`}>
+                                      {isFree ? (
+                                        <>
+                                          <span className="text-gray-500 line-through text-lg mr-2">
+                                            ₵{parseFloat(service?.original_price || 0).toFixed(2)}
+                                          </span>
+                                          FREE
+                                        </>
+                                      ) : (
+                                        `₵${parseFloat(item.unit_price || service?.price || 0).toFixed(2)}`
+                                      )}
                                     </p>
                                     
                                     {/* Bundle Savings */}
                                     {isPackage && packageSavings && (
-                                      <div className="mt-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                                      <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-2">
-                                            <SparklesIcon className="w-4 h-4 text-green-600" />
-                                            <span className="text-sm font-medium text-green-800">Bundle Savings</span>
+                                            <SparklesIcon className="w-4 h-4 text-blue-600" />
+                                            <span className="text-sm font-medium text-blue-800">Bundle Savings</span>
                                           </div>
                                           <div className="text-right">
                                             <div className="text-sm text-gray-500 line-through">₵{packageSavings.regularPrice}</div>
-                                            <div className="text-sm font-bold text-green-700">Save ₵{packageSavings.savings} ({packageSavings.savingsPercentage}%)</div>
+                                            <div className="text-sm font-bold text-blue-700">
+                                              Save ₵{packageSavings.savings} ({packageSavings.savingsPercentage}%)
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Free Service Note */}
+                                    {isFree && (
+                                      <div className="mt-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+                                        <div className="flex items-start gap-2">
+                                          <GiftIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                                          <div>
+                                            <p className="text-sm font-medium text-green-800 mb-1">
+                                              Free Cleaning Included
+                                            </p>
+                                            <p className="text-xs text-green-700">
+                                              This service is completely free as part of your welcome offer. 
+                                              No payment required at checkout.
+                                            </p>
                                           </div>
                                         </div>
                                       </div>
                                     )}
                                   </div>
                                   
-                                  {/* Desktop Quantity Controls - No restrictions for bundles */}
+                                  {/* Desktop Quantity Controls */}
                                   <div className="hidden sm:flex items-center gap-4">
-                                    <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-gray-100">
-                                      <button 
-                                        onClick={() => updateQuantity(item.service_id, -1)}
-                                        className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer disabled:opacity-40 transition-colors"
-                                        disabled={item.quantity <= 1}
-                                      >
-                                        <MinusIcon className="w-4 h-4" />
-                                      </button>
-                                      <span className="w-8 text-center font-semibold text-gray-900">
-                                        {item.quantity}
-                                      </span>
-                                      <button 
-                                        onClick={() => updateQuantity(item.service_id, 1)}
-                                        className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer transition-colors"
-                                      >
-                                        <PlusIcon className="w-4 h-4" />
-                                      </button>
-                                    </div>
+                                    {!isFree && (
+                                      <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-gray-100">
+                                        <button 
+                                          onClick={() => updateQuantity(item.service_id, -1)}
+                                          className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer disabled:opacity-40 transition-colors"
+                                          disabled={item.quantity <= 1}
+                                        >
+                                          <MinusIcon className="w-4 h-4" />
+                                        </button>
+                                        <span className="w-8 text-center font-semibold text-gray-900">
+                                          {item.quantity}
+                                        </span>
+                                        <button 
+                                          onClick={() => updateQuantity(item.service_id, 1)}
+                                          className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer transition-colors"
+                                        >
+                                          <PlusIcon className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    )}
                                     
-                                    <Tooltip message="Remove item">
+                                    <Tooltip message={isFree ? "Remove free service" : "Remove item"}>
                                       <button 
                                         onClick={() => handleRemove(item.service_id)}
-                                        className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50 cursor-pointer"
+                                        className={`p-2 rounded-lg transition-colors hover:bg-red-50 cursor-pointer ${
+                                          isFree ? 'text-green-600 hover:text-red-500' : 'text-gray-400 hover:text-red-500'
+                                        }`}
                                       >
                                         <TrashIcon className="w-5 h-5" />
                                       </button>
@@ -733,11 +1005,11 @@ const Cart = () => {
                                 <div className="mt-6 pt-6 border-t border-gray-100">
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                      <h4 className="font-medium text-gray-900 mb-1">
+                                      <h4 className={`font-medium mb-1 ${isFree ? 'text-green-900' : 'text-gray-900'}`}>
                                         Shoe Photo
                                       </h4>
                                       <p className="text-sm text-gray-600">
-                                        Add a photo for better service
+                                        Add a photo for better service (required)
                                       </p>
                                     </div>
                                     
@@ -746,7 +1018,9 @@ const Cart = () => {
                                         <>
                                           <div className="relative">
                                             <div 
-                                              className="w-16 h-16 rounded-lg overflow-hidden border-2 border-green-200 cursor-pointer hover:border-green-300 transition-colors"
+                                              className={`w-16 h-16 rounded-lg overflow-hidden border-2 cursor-pointer hover:border-green-300 transition-colors ${
+                                                previewUrl ? 'border-green-200' : 'border-gray-200'
+                                              }`}
                                               onClick={() => setPreviewImage(previewUrl)}
                                             >
                                               {previewUrl ? (
@@ -783,67 +1057,99 @@ const Cart = () => {
                                           </div>
                                         </>
                                       ) : (
-                                        <button
-                                          onClick={() => openGallery(item.service_id)}
-                                          disabled={uploadingImages[item.service_id]}
-                                          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-colors"
-                                        >
-                                          {uploadingImages[item.service_id] ? (
-                                            <>
-                                              <FaSpinner className="animate-spin h-4 w-4" />
-                                              Uploading...
-                                            </>
-                                          ) : (
-                                            <>
-                                              <FolderIcon className="w-5 h-5" />
-                                              Add Photo from Gallery
-                                            </>
-                                          )}
-                                        </button>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                          <button
+                                            onClick={() => openCamera(item.service_id)}
+                                            disabled={uploadingImages[item.service_id]}
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-all shadow-md hover:shadow-lg"
+                                          >
+                                            {uploadingImages[item.service_id] ? (
+                                              <>
+                                                <FaSpinner className="animate-spin h-4 w-4" />
+                                                Uploading...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <CameraIcon className="w-5 h-5" />
+                                                Take Photo
+                                              </>
+                                            )}
+                                          </button>
+                                          <button
+                                            onClick={() => openGallery(item.service_id)}
+                                            disabled={uploadingImages[item.service_id]}
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg font-medium cursor-pointer disabled:opacity-50 transition-all shadow-md hover:shadow-lg"
+                                          >
+                                            <FolderIcon className="w-5 h-5" />
+                                            From Gallery
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
+                                  {!itemHasImage && (
+                                    <div className="mt-3 text-sm text-gray-600 flex items-center gap-2">
+                                      <FaInfoCircle className="w-4 h-4 text-blue-500" />
+                                      <span>Supports JPEG, PNG, WebP, HEIC formats (max 10MB)</span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Mobile Footer - No restrictions */}
+                        {/* Mobile Footer */}
                         <div className="mt-6 pt-6 border-t border-gray-100 sm:hidden">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-gray-100">
-                                <button 
-                                  onClick={() => updateQuantity(item.service_id, -1)}
-                                  className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer disabled:opacity-40"
-                                  disabled={item.quantity <= 1}
-                                >
-                                  <MinusIcon className="w-4 h-4" />
-                                </button>
-                                <span className="w-8 text-center font-semibold text-gray-900">
-                                  {item.quantity}
-                                </span>
-                                <button 
-                                  onClick={() => updateQuantity(item.service_id, 1)}
-                                  className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer"
-                                >
-                                  <PlusIcon className="w-4 h-4" />
-                                </button>
-                              </div>
+                              {!isFree && (
+                                <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-gray-100">
+                                  <button 
+                                    onClick={() => updateQuantity(item.service_id, -1)}
+                                    className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer disabled:opacity-40"
+                                    disabled={item.quantity <= 1}
+                                  >
+                                    <MinusIcon className="w-4 h-4" />
+                                  </button>
+                                  <span className="w-8 text-center font-semibold text-gray-900">
+                                    {item.quantity}
+                                  </span>
+                                  <button 
+                                    onClick={() => updateQuantity(item.service_id, 1)}
+                                    className="w-8 h-8 rounded flex items-center justify-center hover:bg-white cursor-pointer"
+                                  >
+                                    <PlusIcon className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
                               
                               <button 
                                 onClick={() => handleRemove(item.service_id)}
-                                className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                className={`p-2 rounded-lg transition-colors ${
+                                  isFree ? 'text-green-600 hover:text-red-500 hover:bg-red-50' : 
+                                         'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                                }`}
                               >
                                 <TrashIcon className="w-5 h-5" />
                               </button>
                             </div>
                             
                             <div className="text-right">
-                              <p className="text-sm text-gray-600">Item Total</p>
-                              <p className="text-lg font-bold text-gray-900">
-                                ₵{((service?.price || item.unit_price || 0) * item.quantity).toFixed(2)}
+                              <p className={`text-sm ${isFree ? 'text-green-700' : 'text-gray-600'}`}>
+                                {isFree ? 'Free Service' : 'Item Total'}
+                              </p>
+                              <p className={`text-lg font-bold ${isFree ? 'text-green-800' : 'text-gray-900'}`}>
+                                {isFree ? (
+                                  <>
+                                    <span className="text-gray-500 line-through text-sm mr-2">
+                                      ₵{((service?.original_price || 0) * item.quantity).toFixed(2)}
+                                    </span>
+                                    FREE
+                                  </>
+                                ) : (
+                                  `₵${((service?.price || item.unit_price || 0) * item.quantity).toFixed(2)}`
+                                )}
                               </p>
                             </div>
                           </div>
@@ -854,9 +1160,9 @@ const Cart = () => {
                 })}
 
                 {/* Info Card */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-blue-100 rounded-lg">
+                    <div className="p-3 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg">
                       <PhotoIcon className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
@@ -866,6 +1172,7 @@ const Cart = () => {
                         <li>• Helps identify your specific shoes</li>
                         <li>• Documents any pre-existing conditions</li>
                         <li>• Improves service quality</li>
+                        <li>• Required for free cleaning services</li>
                       </ul>
                     </div>
                   </div>
@@ -878,14 +1185,15 @@ const Cart = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">Order Summary</h3>
                   
                   {/* Items List */}
-                  <div className="space-y-3 mb-6">
+                  <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2">
                     {cart.map((item) => {
                       const service = getService(item.service_id);
                       const itemHasImage = hasImage(item.service_id);
                       const isPackage = isPackageService(service);
+                      const isFree = isFreeService(service);
                       
                       return (
-                        <div key={item.service_id} className="flex justify-between items-center">
+                        <div key={item.service_id} className="flex justify-between items-center py-2">
                           <div className="flex items-center gap-2">
                             <span className="text-gray-700">
                               {item.service_name || service?.name}
@@ -901,9 +1209,14 @@ const Cart = () => {
                                 Bundle
                               </span>
                             )}
+                            {isFree && (
+                              <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded">
+                                Free
+                              </span>
+                            )}
                           </div>
-                          <span className="font-medium">
-                            ₵{((service?.price || item.unit_price || 0) * item.quantity).toFixed(2)}
+                          <span className={`font-medium ${isFree ? 'text-green-700' : ''}`}>
+                            {isFree ? 'FREE' : `₵${((service?.price || item.unit_price || 0) * item.quantity).toFixed(2)}`}
                           </span>
                         </div>
                       );
@@ -952,7 +1265,6 @@ const Cart = () => {
                       </div>
                     )}
 
-
                     {/* Total */}
                     <div className="border-t border-gray-200 pt-4">
                       <div className="flex justify-between items-center">
@@ -974,7 +1286,7 @@ const Cart = () => {
                     <button
                       onClick={handleCheckout}
                       disabled={services.length === 0 || cart.length === 0}
-                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                     >
                       Proceed to Checkout
                     </button>
@@ -986,6 +1298,21 @@ const Cart = () => {
                     >
                       Continue Shopping
                     </button>
+
+                    {/* Free Service Note */}
+                    {cart.some(item => isFreeService(getService(item.service_id))) && (
+                      <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <GiftIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-green-800">Free Cleaning Service</p>
+                            <p className="text-xs text-green-700 mt-0.5">
+                              Your order includes a free cleaning service. No payment required!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1003,7 +1330,7 @@ const Cart = () => {
                 <p className="text-gray-600 mb-8">Add some services to get started</p>
                 <button
                   onClick={() => navigate('/services')}
-                  className="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors cursor-pointer"
+                  className="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors cursor-pointer shadow-md hover:shadow-lg"
                 >
                   Browse Services
                 </button>
