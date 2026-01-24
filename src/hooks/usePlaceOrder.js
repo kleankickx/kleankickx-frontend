@@ -153,7 +153,7 @@ export const usePlaceOrder = (
                 sub_total: subtotal,
                 phone_number: phoneNumber,
                 discounts_applied: appliedDiscounts,
-                is_self_handled: isSelfHandled,  // ADD THIS
+                is_self_handled: isSelfHandled,
             };
             
             // Conditionally add location data only if NOT self-handled
@@ -165,7 +165,6 @@ export const usePlaceOrder = (
                 orderData.pickup_time = pickupTime?.value;
             } else {
                 // For self-handled orders, send null for locations or omit them
-                // Depending on your backend, you might want to send null or empty objects
                 orderData.delivery_location = null;
                 orderData.pickup_location = null;
                 orderData.delivery_cost = 0;
@@ -175,39 +174,75 @@ export const usePlaceOrder = (
             
             const response = await api.post('/api/orders/', orderData);
 
-            // 4. Validate Response and Perform Local Cleanup
-            const authUrl = response.data.paystack_auth_url;
-            
-            if (response.status === 201 && authUrl) {
-                // 4b. Discount Redemption (If applicable)
-                if (canUseRedeemedPoints) {
-                    try {
-                        // Use api.patch directly since tokens are managed
-                        await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
-                    } catch (error) {
-                        console.error("Error marking discount as applied:", error);
+            // 4. Handle Response Based on Order Type
+            if (response.status === 201) {
+                // 4a. Check if this is a free order (total = 0)
+                if (response.data.is_free_order) {
+                    // Free order - no payment required
+                    toast.success(response.data.message || "Order placed successfully!");
+                    
+                    // 4b. Discount Redemption (If applicable)
+                    if (canUseRedeemedPoints) {
+                        try {
+                            await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
+                        } catch (error) {
+                            console.error("Error marking discount as applied:", error);
+                        }
                     }
+                    
+                    // Clear cart and reset form states
+                    clearCart();
+                    setDelivery(null);
+                    setPickup(null);
+                    setDeliveryInputValue('');
+                    setPickupInputValue('');
+                    setDeliveryRegion(null);
+                    setPickupRegion(null);
+                    setUseSame(false);
+                    setAppliedPromotion(null);
+                    
+                    // Navigate to order details
+                    const orderRef = response.data.order_reference_code;
+                    setTimeout(() => {
+                        navigate(`/orders/${orderRef}/`);
+                    }, 1500);
+                    
+                    return; // Exit early
                 }
                 
-                toast.info("Redirecting to Paystack for secure payment...");
-
-                // 5. REDIRECT THE USER
-                window.location.href = authUrl;
+                // 4c. Paid order - proceed with Paystack
+                const authUrl = response.data.paystack_auth_url;
                 
+                if (authUrl) {
+                    // 4d. Discount Redemption (If applicable)
+                    if (canUseRedeemedPoints) {
+                        try {
+                            await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
+                        } catch (error) {
+                            console.error("Error marking discount as applied:", error);
+                        }
+                    }
+                    
+                    toast.info("Redirecting to Paystack for secure payment...");
+
+                    // 5. REDIRECT THE USER
+                    window.location.href = authUrl;
+                } else {
+                    toast.error('Order placed, but failed to get payment link. Please check your order status.');
+                    navigate('/orders/');
+                }
             } else {
-                toast.error('Order placed, but failed to get payment link. Please check your order status.');
-                navigate('/orders/');
+                toast.error('Failed to create order. Please try again.');
             }
             
         } catch (error) {
             console.error("Payment Initiation Failed:", error);
 
             // --- Error Handling ---
-            // Token/Auth errors (handled by checkAndRefreshTokens throw)
             if (error.response?.status === 401 || error.message === 'No refresh token') {
                 // Handled in checkAndRefreshTokens, usually leads to logout/redirect
             } else {
-                // General API errors (e.g., Validation, 500)
+                // General API errors
                 const errorMessage = error.response?.data?.detail || 
                                 error.response?.data?.error || 
                                 'An unexpected error occurred. Please try again.';
@@ -227,8 +262,6 @@ export const usePlaceOrder = (
         setDeliveryInputValue, setPickupInputValue, setDeliveryRegion, setPickupRegion, 
         setUseSame, setAppliedPromotion,
     ]);
-
-
 
     return { placing, handlePayment };
 };
