@@ -362,92 +362,6 @@ const Cart = () => {
     </div>
   );
 
-  // Improved Photo Requirements Card Component - More Responsive
-  const PhotoRequirementsCard = () => (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 shadow-sm">
-      <div className="flex flex-col md:flex-row items-start gap-4">
-        <div className="p-3 bg-blue-100 rounded-lg flex-shrink-0">
-          <InformationCircleIcon className="w-6 h-6 text-blue-600" />
-        </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">Why Photos Are Required</h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="flex items-start gap-2 bg-white/60 p-3 rounded-lg border border-blue-100">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-700 text-sm font-bold">1</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 text-sm">Condition Assessment</h4>
-                <p className="text-blue-700 text-xs">Check shoe condition</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2 bg-white/60 p-3 rounded-lg border border-blue-100">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-700 text-sm font-bold">2</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 text-sm">Service Accuracy</h4>
-                <p className="text-blue-700 text-xs">Right cleaning treatment</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2 bg-white/60 p-3 rounded-lg border border-blue-100">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-700 text-sm font-bold">3</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 text-sm">Stain Identification</h4>
-                <p className="text-blue-700 text-xs">Target specific stains</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2 bg-white/60 p-3 rounded-lg border border-blue-100">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-700 text-sm font-bold">4</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 text-sm">Material Recognition</h4>
-                <p className="text-blue-700 text-xs">Use proper products</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2 bg-white/60 p-3 rounded-lg border border-blue-100">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-700 text-sm font-bold">5</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 text-sm">Quality Documentation</h4>
-                <p className="text-blue-700 text-xs">Reference for results</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-2 bg-white/60 p-3 rounded-lg border border-blue-100">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-700 text-sm font-bold">6</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 text-sm">Pre-Service Record</h4>
-                <p className="text-blue-700 text-xs">Accountability control</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-4 p-3 bg-white/80 rounded-lg border border-blue-100">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-blue-700 text-sm">
-              <div className="flex items-center gap-2">
-                <PhotoIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                <span className="font-medium">Photo Tip:</span>
-              </div>
-              <span className="sm:ml-2">Take clear, well-lit photos showing all angles of your shoes</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8">
       <CameraModal />
@@ -468,7 +382,7 @@ const Cart = () => {
             </div>
             <button
               onClick={() => navigate('/services')}
-              className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+              className="px-5 py-2.5 bg-primary border border-gray-300 rounded-lg font-medium text-white hover:bg-primary/80 transition-colors text-sm"
             >
               Continue Shopping
             </button>
@@ -740,12 +654,28 @@ const Cart = () => {
               })}
 
               {/* Photo Requirements Card */}
-              <PhotoRequirementsCard />
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg">
+                      <PhotoIcon className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-blue-900 mb-2">Why add shoe photos?</h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Ensures accurate cleaning service</li>
+                        <li>• Helps identify your specific shoes</li>
+                        <li>• Documents any pre-existing conditions</li>
+                        <li>• Improves service quality</li>
+                        <li>• Required for free cleaning services</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
             </div>
 
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sticky top-10">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sticky top-20">
                 <h2 className="text-lg font-bold text-gray-900 mb-5">Order Summary</h2>
                 
                 <div className="space-y-4">
@@ -826,22 +756,18 @@ const Cart = () => {
                       </div>
                     )}
 
-                    <div className="flex justify-between text-gray-700 pt-2">
-                      <span className="text-sm">Service Fee</span>
-                      <span className="font-medium">₵0.00</span>
-                    </div>
 
                     <div className="flex justify-between pt-4 border-t border-gray-200">
                       <div>
                         <span className="font-bold text-gray-900">Total</span>
-                        <p className="text-sm text-gray-600">Including all charges</p>
+                        
                       </div>
                       <div className="text-right">
                         {(canUseSignup || canUseReferral || appliedPromotion || canUseRedeemedPoints) && (
                           <div className="text-sm text-gray-500 line-through mb-1">₵{subtotal}</div>
                         )}
                         <div className="text-xl font-bold text-gray-900">₵{total}</div>
-                        <p className="text-sm text-gray-600">GHS</p>
+                       
                       </div>
                     </div>
                   </div>
@@ -860,13 +786,7 @@ const Cart = () => {
                     Proceed to Checkout
                   </button>
 
-                  {/* Security Note */}
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg text-center">
-                    <div className="flex items-center justify-center gap-2 text-gray-600 text-sm">
-                      <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                      <span>Secure checkout • SSL encrypted</span>
-                    </div>
-                  </div>
+                  
 
                   {/* Discount Info */}
                   {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
