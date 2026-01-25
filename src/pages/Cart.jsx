@@ -20,6 +20,7 @@ import {
 import { FaSpinner } from 'react-icons/fa6';
 import { FaTimes } from "react-icons/fa";
 import axios from 'axios';
+import heic2any from 'heic2any'; // Add this import
 
 const Cart = () => {
   const { 
@@ -52,7 +53,7 @@ const Cart = () => {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
 
-  // Helper functions
+  // Helper functions with HEIC support
   const base64ToBlobUrl = (base64String) => {
     if (!base64String) return null;
     try {
@@ -81,7 +82,44 @@ const Cart = () => {
     });
   };
 
-  const processImage = (file) => {
+  // Convert HEIC to JPEG
+  const convertHeicToJpeg = async (file) => {
+    try {
+      const result = await heic2any({
+        blob: file,
+        toType: 'image/jpeg',
+        quality: 0.8
+      });
+      
+      // Convert Blob to File
+      return new File([result], file.name.replace(/\.heic$/i, '.jpg'), {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+    } catch (error) {
+      console.error('Error converting HEIC to JPEG:', error);
+      throw new Error('Failed to convert HEIC image');
+    }
+  };
+
+  const processImage = async (file) => {
+    // Check if file is HEIC
+    const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || 
+                   file.name.toLowerCase().endsWith('.heic') || 
+                   file.name.toLowerCase().endsWith('.heif');
+    
+    if (isHeic) {
+      // Convert HEIC to JPEG first
+      const jpegFile = await convertHeicToJpeg(file);
+      // Then process the JPEG file
+      return await processJpegImage(jpegFile);
+    }
+    
+    // Process regular images
+    return await processJpegImage(file);
+  };
+
+  const processJpegImage = (file) => {
     return new Promise((resolve, reject) => {
       if (file.size < 1024 * 1024) return resolve(file);
       const img = new Image();
@@ -114,9 +152,35 @@ const Cart = () => {
   };
 
   const validateImageFile = (file) => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) return { valid: false, message: 'Please upload a valid image (JPEG, PNG, or WebP)' };
-    if (file.size > 10 * 1024 * 1024) return { valid: false, message: 'Image size should be less than 10MB' };
+    // Add HEIC/HEIF to valid types
+    const validTypes = [
+      'image/jpeg', 
+      'image/jpg', 
+      'image/png', 
+      'image/webp',
+      'image/heic',
+      'image/heif'
+    ];
+    
+    // Check file extension for HEIC
+    const fileName = file.name.toLowerCase();
+    const isHeicByExtension = fileName.endsWith('.heic') || fileName.endsWith('.heif');
+    const isHeicByType = file.type === 'image/heic' || file.type === 'image/heif';
+    
+    if (!validTypes.includes(file.type) && !isHeicByExtension && !isHeicByType) {
+      return { 
+        valid: false, 
+        message: 'Please upload a valid image (JPEG, PNG, WebP, or HEIC)' 
+      };
+    }
+    
+    if (file.size > 15 * 1024 * 1024) { // Increase limit to 15MB for HEIC
+      return { 
+        valid: false, 
+        message: 'Image size should be less than 15MB' 
+      };
+    }
+    
     return { valid: true };
   };
 
@@ -262,21 +326,43 @@ const Cart = () => {
     setTimeout(startCamera, 100);
   };
 
-  // Image handling
+  // Image handling with HEIC support
   const handleImageUpload = async (serviceId, file) => {
     const validation = validateImageFile(file);
     if (!validation.valid) return toast.error(validation.message);
     
     setUploadingImages(prev => ({ ...prev, [serviceId]: true }));
+    
     try {
+      // Show processing message for HEIC files
+      const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || 
+                     file.name.toLowerCase().endsWith('.heic') || 
+                     file.name.toLowerCase().endsWith('.heif');
+      
+      if (isHeic) {
+        toast.info('Processing HEIC image... This may take a moment.');
+      }
+      
       const processedFile = await processImage(file);
       const base64String = await fileToBase64(processedFile);
       const blobUrl = URL.createObjectURL(processedFile);
+      
       addImageToCartItem(serviceId, processedFile, blobUrl, base64String);
-      setImagePreviews(prev => ({ ...prev, [serviceId]: blobUrl }));
+      
+      setImagePreviews(prev => ({
+        ...prev,
+        [serviceId]: blobUrl
+      }));
+      
       toast.success('Photo added successfully!');
+      
     } catch (error) {
-      toast.error('Failed to upload image');
+      console.error('Image upload failed:', error);
+      if (error.message.includes('HEIC')) {
+        toast.error('Failed to convert HEIC image. Please try uploading as JPEG or PNG.');
+      } else {
+        toast.error(error.message || 'Failed to upload image');
+      }
     } finally {
       setUploadingImages(prev => ({ ...prev, [serviceId]: false }));
     }
@@ -295,8 +381,14 @@ const Cart = () => {
   const openGallery = (serviceId) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => e.target.files[0] && handleImageUpload(serviceId, e.target.files[0]);
+    input.accept = 'image/*,image/heic,image/heif,.heic,.heif'; // Add HEIC support
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageUpload(serviceId, file);
+      }
+      input.value = '';
+    };
     input.click();
   };
 
@@ -520,6 +612,9 @@ const Cart = () => {
                                 <p className="text-gray-600 text-sm">
                                   {hasImg ? 'Photo added successfully' : 'Required for service processing'}
                                 </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Supports JPEG, PNG, WebP, HEIC (max 15MB)
+                                </p>
                               </div>
                               
                               <div className="flex items-center gap-2">
@@ -584,6 +679,9 @@ const Cart = () => {
                                 <h4 className="font-medium text-gray-900 text-base mb-1">Shoe Photo</h4>
                                 <p className="text-gray-600 text-sm mb-3">
                                   {hasImg ? 'Photo added successfully' : 'Required for service processing'}
+                                </p>
+                                <p className="text-xs text-gray-500 mb-3">
+                                  Supports JPEG, PNG, WebP, HEIC (max 15MB)
                                 </p>
                               </div>
                               
@@ -668,6 +766,9 @@ const Cart = () => {
                         <li>• Improves service quality</li>
                         <li>• Required for free cleaning services</li>
                       </ul>
+                      <p className="text-xs text-blue-600 mt-3">
+                        📸 Supports: JPEG, PNG, WebP, and HEIC formats
+                      </p>
                     </div>
                   </div>
                 </div>
