@@ -132,7 +132,7 @@ const Footer = () => {
                     rel="noopener noreferrer"
                     className="bg-white/5 hover:bg-primary/20 p-3 rounded-lg transition-all duration-300 hover:scale-110"
                   >
-                    <FaXTwitter className="text-xl" />
+                    <FaXTwitter className="text-xl text-white" />
                   </a>
                   <a 
                     href="https://instagram.com/kleankickxgh" 
@@ -140,7 +140,7 @@ const Footer = () => {
                     rel="noopener noreferrer"
                     className="bg-white/5 hover:bg-primary/20 p-3 rounded-lg transition-all duration-300 hover:scale-110"
                   >
-                    <FaInstagram className="text-xl" />
+                    <FaInstagram className="text-xl text-white" />
                   </a>
                 </div>
               </div>
