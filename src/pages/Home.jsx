@@ -426,7 +426,7 @@ const Home = () => {
       
       {/* HERO */}
       <section className="bg-[#E5FDFF] h-full lg:h-screen">
-        <section className="py-[4rem] px-4 md:px-8 lg:px-24">
+        <section className="py-[6rem] px-4 md:px-8 lg:px-24">
           <div className="flex flex-col lg:flex-row items-center justify-between h-full text-center lg:text-left">
             <motion.div
               className=""
@@ -483,8 +483,8 @@ const Home = () => {
             {[
               {
                 step: '1',
-                title: 'Schedule a Klean',
-                text: 'Schedule your klean via our online channels. Our courier will reach out at the appointed time.',
+                title: 'Book a Klean',
+                text: 'Schedule your Klean through our website. Choose your service and preferred pickup or drop-off option. We handle the rest.',
               },
               {
                 isArrow: true,
@@ -492,8 +492,8 @@ const Home = () => {
               },
               {
                 step: '2',
-                title: 'Hand in Your Sneakers',
-                text: 'Our team of expert sneaker technicians will meticulously clean and restore your shoes to your exact specifications.',
+                title: 'We Klean & Restore',
+                text: 'Our trained sneaker technicians professionally clean and refresh your sneakers using KleanKickX’s controlled care system, designed to protect materials and extend lifespan.',
               },
               {
                 isArrow: true,
@@ -501,8 +501,8 @@ const Home = () => {
               },
               {
                 step: '3',
-                title: 'Receive Your KleanKickx',
-                text: "Get your sneakers sparkling klean in just 72 hours!. We will reach out to you to confirm your availability for the delivery of your refreshed sneakers."
+                title: 'Delivered Back Fresh',
+                text: "Your sneakers are quality-checked, carefully packed, and returned to you clean, refreshed, and ready to wear — typically within 72 hours."
               },
             ].map((item, idx) => (
               item.isArrow ? (

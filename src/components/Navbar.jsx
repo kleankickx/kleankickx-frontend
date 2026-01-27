@@ -147,7 +147,7 @@ const Navbar = () => {
       )}
 
 
-      <nav className="bg-gray-800 text-white py-3 shadow-md ">
+      <nav className="bg-gray-800 text-white py-5 shadow-md ">
         <div className="flex justify-between items-center px-4 lg:px-24 gap-8">
           <NavLink to="/" className="flex items-center gap-2">
             <img src={Logo} alt="KleanKickx" className="w-[6rem] object-cover" />
