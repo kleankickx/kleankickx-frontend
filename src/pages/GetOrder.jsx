@@ -32,6 +32,7 @@ import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import Footer from '../components/Footer';
 
 // Helper Components
 const PaymentStatusBanner = ({ order, onRetryPayment }) => {
@@ -998,6 +999,7 @@ const GetOrder = () => {
                     )}
                 </AnimatePresence>
             </div>
+            <Footer />
         </div>
     );
 };

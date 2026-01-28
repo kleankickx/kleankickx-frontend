@@ -23,6 +23,7 @@ import {
   FaEllipsisH
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import Footer from '../components/Footer';
 
 // --- Constants ---
 const PAGE_SIZE = 10;
@@ -31,6 +32,7 @@ const MyOrders = () => {
   const { isAuthenticated, user, api } = useContext(AuthContext);
   const navigate = useNavigate();
   const ordersContainerRef = useRef(null);
+  const ordersGridRef = useRef(null);
   
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,11 +75,17 @@ const MyOrders = () => {
       setPrevUrl(response.data.previous);
       setCurrentPage(page);
 
-      // Scroll to top of orders container
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      // Scroll to the orders grid section instead of window top
+      if (ordersGridRef.current) {
+        const headerOffset = 100; // Adjust based on your header height
+        const elementPosition = ordersGridRef.current.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
 
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -513,8 +521,8 @@ const MyOrders = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="px-6 md:px-8 lg:px-24">
+    <div className="min-h-screen bg-gray-50 pt-8">
+      <div className="px-6 md:px-8 lg:px-24 mb-12">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -631,7 +639,7 @@ const MyOrders = () => {
             <>
               {/* Orders Grid */}
               <div className="relative">
-                <div className={`transition-opacity duration-300 ${loading ? 'hidden' : ''}`}>
+                <div ref={ordersGridRef} className={`transition-opacity duration-300 ${loading ? 'hidden' : ''}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     <AnimatePresence>
                       {displayOrders.map((order) => (
@@ -656,6 +664,7 @@ const MyOrders = () => {
           )}
         </div>
       </div>
+       <Footer />
     </div>
   );
 };
