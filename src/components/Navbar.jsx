@@ -7,18 +7,24 @@ import {
   faBars,
   faTimes,
   faChevronDown,
-  faUserFriends,  
-  faKey, // Key icon for 'Change Password'
+  faChevronRight,
+  faUserFriends,
+  faKey,
   faRightFromBracket,
-  faShoePrints, // Logout icon
-  
-  
+  faShoePrints,
+  faGift,
+  faTicket,
+  faHome,
+  faTag,
+  faInfoCircle,
+  faClipboardList,
+  faFire,
+  faCaretDown,
 } from '@fortawesome/free-solid-svg-icons';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import Logo from '../assets/klean_logo.png';
-
 
 const Navbar = () => {
   const { cart } = useContext(CartContext);
@@ -27,14 +33,12 @@ const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
-  const dropdownRef = useRef(null); // Desktop dropdown
-  const mobileDropdownRef = useRef(null); // Mobile dropdown
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const dropdownRef = useRef(null);
+  const mobileDropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  
-  
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
-  console.log(signupDiscount)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -46,11 +50,11 @@ const Navbar = () => {
         !mobileDropdownRef.current.contains(e.target)
       ) {
         setIsDropdownOpen(false);
+        setActiveDropdown(null);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-
   }, []);
 
   const truncateWithEllipsis = (text, maxLength) => {
@@ -66,7 +70,10 @@ const Navbar = () => {
   const userDisplayName =
     user && (user.first_name?.trim() ? user.first_name : truncateWithEllipsis(user.email, 8));
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    setActiveDropdown(null);
+  };
 
   const handleLogout = (e) => {
     e.stopPropagation();
@@ -84,36 +91,71 @@ const Navbar = () => {
 
   const handleReferralRoute = (e) => {
     e.stopPropagation();
-      closeMobileMenu();
-      navigate('/referral-dashboard');
-      setIsDropdownOpen(false);
-   
+    closeMobileMenu();
+    navigate('/referral-dashboard');
+    setIsDropdownOpen(false);
   };
 
-
-  const navItems = [
-    { to: '/', label: 'Home' },
-    { to: '/rate-and-services', label: 'Rate & Services' },
-    { to: '/about-us', label: 'About Us' },
-    ...(isAuthenticated ? [{ to: '/orders', label: 'My Orders' }] : []),
-    { to: '/promotions', label: 'Promotions' },
+  // Desktop Navigation Groups
+  const navGroups = [
+    {
+      label: 'Home',
+      to: '/',
+      icon: faHome,
+      simple: true,
+    },
+    {
+      label: 'Services',
+      items: [
+        { to: '/rate-and-services', label: 'Rate & Services', icon: faClipboardList },
+        { to: '/services', label: 'Start Kleaning Here', icon: faShoePrints },
+      ],
+    },
+    {
+      label: 'About',
+      to: '/about-us',
+      icon: faInfoCircle,
+      simple: true,
+    },
+    {
+      label: 'Shop',
+      items: [
+        { to: '/services', label: 'Start Kleaning Here', icon: faShoePrints },
+        { to: '/vouchers', label: 'Buy Vouchers', icon: faGift },
+        { to: '/redeem', label: 'Redeem Voucher', icon: faTicket, highlight: true },
+      ],
+    },
+    {
+      label: 'Orders',
+      items: isAuthenticated
+        ? [
+            { to: '/orders', label: 'My Orders', icon: faClipboardList },
+            { to: '/account/vouchers', label: 'My Vouchers', icon: faGift },
+          ]
+        : [],
+      authOnly: true,
+    },
+    {
+      label: 'Promotions',
+      to: '/promotions',
+      icon: faFire,
+      simple: true,
+    },
   ];
 
   const handleCloseBanner = () => {
-    setIsBannerVisible(false); // start slide-out
+    setIsBannerVisible(false);
   };
 
-  
+  const toggleDropdown = (groupLabel) => {
+    setActiveDropdown(activeDropdown === groupLabel ? null : groupLabel);
+  };
 
   return (
-    <div className='sticky inset-x-0 top-0 z-40'>
+    <div className="sticky inset-x-0 top-0 z-40">
       {/* Discount Banner with Slide Animation */}
       {signupDiscount && isBannerVisible && signupDiscount.is_active && (
-        <div
-          className={`bg-gradient-to-r from-green-500 to-green-600 text-white transform transition-transform duration-500 ease-in-out
-            
-          `}
-        >
+        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white transform transition-transform duration-500 ease-in-out">
           <div className="py-2 px-4">
             <div className="max-w-7xl mx-auto flex items-start justify-between gap-2">
               <div className="flex items-start gap-1">
@@ -146,138 +188,212 @@ const Navbar = () => {
         </div>
       )}
 
-
-      <nav className="bg-gray-800 text-white py-5 shadow-md ">
-        <div className="flex justify-between items-center px-4 lg:px-24 gap-8">
-          <NavLink to="/" className="flex items-center gap-2">
-            <img src={Logo} alt="KleanKickx" className="w-[6rem] object-cover" />
+      <nav className="bg-gray-800 text-white py-4 shadow-md">
+        <div className="flex justify-between items-center px-4 lg:px-8 xl:px-12 gap-6">
+          {/* Logo */}
+          <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
+            <img src={Logo} alt="KleanKickx" className="w-28 object-cover" />
           </NavLink>
 
-          <ul className="hidden md:flex items-center justify-center gap-8">
-            {navItems.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  className={({ isActive }) =>
-                    isActive ? 'text-green-400' : 'hover:text-green-300'
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center justify-center flex-1 gap-1">
+            {navGroups.map((group) => {
+              if (group.authOnly && !isAuthenticated) return null;
+              
+              if (group.simple) {
+                return (
+                  <div key={group.label} className="relative">
+                    <NavLink
+                      to={group.to}
+                      className={({ isActive }) =>
+                        `flex items-center  gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                          isActive
+                            ? 'bg-gray-700 text-green-400'
+                            : 'hover:bg-gray-700 hover:text-green-300'
+                        }`
+                      }
+                    >
+                      {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-4 h-4" />} */}
+                      <span className="font-medium">{group.label}</span>
+                    </NavLink>
+                  </div>
+                );
+              }
 
-          <ul className="hidden md:flex items-center justify-center gap-4">
-            <li>
-              <NavLink
-                to="/services"
-                className="bg-white text-primary rounded px-4 py-2.5 hover:bg-primary hover:text-white transition duration-300"
-              >
-                Start Kleaning Here
-              </NavLink>
-            </li>
-            <li>
-              <button
-                onClick={() => navigate('/cart')}
-                className="relative hover:text-gray-300 cursor-pointer"
-              >
-                <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center cursor-pointer">
-                    {cartItemCount}
-                  </span>
-                )}
-              </button>
-            </li>
+              return (
+                <div key={group.label} className="relative group" ref={dropdownRef}>
+                  <button
+                    onClick={() => toggleDropdown(group.label)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
+                      activeDropdown === group.label
+                        ? 'bg-gray-700 text-green-400'
+                        : 'hover:bg-gray-700 hover:text-green-300'
+                    }`}
+                  >
+                    <span>{group.label}</span>
+                    <FontAwesomeIcon
+                      icon={faChevronDown}
+                      className={`w-3 h-3 transition-transform duration-200 ${
+                        activeDropdown === group.label ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
 
+                  {/* Dropdown Menu */}
+                  <div
+                    className={`absolute left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 transition-all duration-200 origin-top ${
+                      activeDropdown === group.label
+                        ? 'opacity-100 scale-100 visible'
+                        : 'opacity-0 scale-95 invisible'
+                    }`}
+                  >
+                    <div className="py-2">
+                      {group.items.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setActiveDropdown(null)}
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-3 transition-all ${
+                              item.highlight
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white mx-2 rounded-md hover:opacity-90'
+                                : isActive
+                                ? 'bg-gray-700 text-green-400'
+                                : 'hover:bg-gray-700 text-gray-200'
+                            }`
+                          }
+                        >
+                          {item.icon && (
+                            <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                          )}
+                          <span className="font-medium">{item.label}</span>
+                          {item.highlight && (
+                            <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
+                              New
+                            </span>
+                          )}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right Side Actions */}
+          <div className="hidden lg:flex items-center gap-4">
+            {/* Cart */}
+            <button
+              onClick={() => navigate('/cart')}
+              className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+            >
+              <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              )}
+            </button>
+
+            {/* User Actions */}
             {isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen((p) => !p)}
-                  className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-gray-700 transition cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-all cursor-pointer"
                 >
-                  <FontAwesomeIcon icon={faUser} className="text-xl" />
-                  <span className="truncate max-w-[150px] hidden sm:inline">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+                  </div>
+                  <span className="truncate max-w-[120px] font-medium">
                     {userDisplayName}
                   </span>
                   <FontAwesomeIcon
                     icon={faChevronDown}
-                    className={`transition-transform duration-200 ${
+                    className={`w-3 h-3 transition-transform duration-200 ${
                       isDropdownOpen ? 'rotate-180' : ''
                     }`}
                   />
                 </button>
                 {isDropdownOpen && (
-                  <ul className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded shadow-lg z-50 p-2 space-y-1">
-                    <li>
+                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2">
+                    <div className="space-y-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/account/vouchers');
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faGift} className="w-4 h-4 text-purple-400" />
+                        <span>My Vouchers</span>
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate('/change-password');
                           setIsDropdownOpen(false);
                         }}
-                        className="flex items-center w-full text-left rounded px-4 py-2 cursor-pointer hover:bg-gray-100"
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
                       >
-                        <FontAwesomeIcon icon={faKey} className="mr-2 h-4 w-4" /> {/* Change Password Icon */}
-                        Change Password
+                        <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-400" />
+                        <span>Change Password</span>
                       </button>
-                    </li>
-
-                    <li className="w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded">
-                      <Link to="/referral-dashboard" className="flex items-center">
-                        <FontAwesomeIcon icon={faUserFriends} className="mr-2 h-4 w-4" /> {/* Referrals Icon */}
-                        Referrals
-                      </Link>
-                    </li>
-
-                    {/* divider */}
-                    <li className="border-t border-gray-200 my-2" />
-                    <li>
+                      <button
+                        onClick={handleReferralRoute}
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-400" />
+                        <span>Referrals</span>
+                      </button>
+                      <div className="border-t border-gray-700 my-2" />
                       <button
                         onClick={handleLogout}
-                        className="flex items-center w-full text-left px-4 py-2 cursor-pointer hover:bg-gray-100 rounded"
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
                       >
-                        <FontAwesomeIcon icon={faRightFromBracket} className="mr-2 h-4 w-4" /> {/* Logout Icon */}
-                        Logout
+                        <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
+                        <span>Logout</span>
                       </button>
-                    </li>
-                  </ul>
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (
-              <>
-                <li>
-                  <NavLink to="/auth/register" className="hover:text-gray-300">
-
-                    Register
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/auth/login" className="hover:text-gray-300">
-                    Login
-                  </NavLink>
-                </li>
-              </>
+              <div className="flex items-center gap-3">
+                <NavLink
+                  to="/auth/login"
+                  className="px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Login
+                </NavLink>
+                <NavLink
+                  to="/auth/register"
+                  className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Register
+                </NavLink>
+              </div>
             )}
-          </ul>
+          </div>
 
           {/* Mobile menu toggle */}
-          <div className="md:hidden flex gap-4 items-center">
+          <div className="lg:hidden flex gap-4 items-center">
             <button
               onClick={() => navigate('/cart')}
-              className="relative hover:text-gray-300 cursor-pointer"
+              className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
               {cartItemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center cursor-pointer">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {cartItemCount}
                 </span>
               )}
             </button>
 
             <button
-              className="text-2xl cursor-pointer"
+              className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
               onClick={() => setIsMobileMenuOpen((p) => !p)}
             >
               <FontAwesomeIcon icon={isMobileMenuOpen ? faTimes : faBars} />
@@ -287,143 +403,186 @@ const Navbar = () => {
 
         {/* Mobile menu overlay */}
         <div
-          className={`fixed inset-0 bg-black/60 transition-opacity duration-300 ${
+          className={`fixed inset-0 bg-black/60 transition-opacity duration-300 lg:hidden ${
             isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-          } md:hidden`}
+          }`}
           onClick={closeMobileMenu}
         />
 
         {/* Mobile side drawer */}
         <div
-          className={`fixed top-0 right-0 h-full w-3/4 max-w-xs bg-gray-800 shadow-xl transform transition-transform duration-300 md:hidden ${
+          className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 lg:hidden ${
             isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          <div className="flex flex-col h-full p-6 space-y-6">
-            <button className="self-end text-2xl cursor-pointer" onClick={closeMobileMenu}>
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-
-            <ul className="flex flex-col gap-4">
-              {navItems.map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    onClick={closeMobileMenu}
-                    className={({ isActive }) =>
-                      isActive ? 'text-green-400' : 'hover:text-green-300'
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                </li>
-              ))}
-              <li>
-                <NavLink
-                to="/services"
-                onClick={closeMobileMenu}
-                className="inline-block bg-gradient-to-br from-green-900 to-green-800 text-white rounded px-4 py-2 text-center hover:bg-primary transition w-full"
-              > 
-                <FontAwesomeIcon icon={faShoePrints} className="mr-2" />
-                Start Kleaning Here
+          <div className="flex flex-col h-full p-5">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <NavLink to="/" onClick={closeMobileMenu}>
+                <img src={Logo} alt="KleanKickx" className="w-24" />
               </NavLink>
-              </li>
-            </ul>
-
-            {/* need help card */}
-             
-                    
-
-            <div className="border-t border-gray-700 pt-6 mt-auto space-y-4">
               <button
-                onClick={() => {
-                  navigate('/cart');
-                  closeMobileMenu();
-                }}
-                className="flex items-center gap-2 hover:bg-gray-700 px-3 py-2 rounded transition cursor-pointer w-full"
+                className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+                onClick={closeMobileMenu}
               >
-                <FontAwesomeIcon icon={faShoppingCart} />
-                Cart ({cartItemCount})
+                <FontAwesomeIcon icon={faTimes} />
               </button>
+            </div>
 
-              {isAuthenticated ? (
-                <div className="text-white" ref={mobileDropdownRef}>
-                  <button
-                    onClick={() => setIsDropdownOpen((prev) => !prev)}
-                    className="flex items-center justify-between w-full px-3 py-2 rounded hover:bg-gray-700 transition"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faUser} />
-                      <span className="truncate max-w-[150px]">{userDisplayName}</span>
+            {/* Navigation Content */}
+            <div className="flex-1 overflow-y-auto space-y-6">
+              {/* User Info */}
+              {isAuthenticated && (
+                <div className="p-4 bg-gray-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                      <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
                     </div>
-                    <FontAwesomeIcon
-                      icon={faChevronDown}
-                      className={`transition-transform duration-200 ${
-                        isDropdownOpen ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-
-                  {isDropdownOpen && (
-                    <ul className="mt-2 bg-gray-700 text-white rounded-md shadow space-y-2 p-2">
-                      <li>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate('/change-password');
-                            closeMobileMenu();
-                            setIsDropdownOpen(false);
-                          }}
-                          className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
-                        >
-                          <FontAwesomeIcon icon={faKey} className="mr-2" />
-                          Change Password
-                        </button>
-                      </li>
-                      <li>
-                          <button
-                          onClick={handleReferralRoute}
-                          className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
-                        >
-                        <FontAwesomeIcon icon={faUserFriends} className="mr-2" />
-                        Referrals
-                      </button>
-                      </li>
-
-                      <li className="border-t border-gray-600 my-2" />
-                      <li>
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center cursor-pointer w-full text-left px-4 py-2 hover:bg-gray-600 rounded"
-                        >
-                          <FontAwesomeIcon icon={faRightFromBracket} className="mr-2" />
-                          Logout
-                        </button>
-                      </li>
-                      
-                    </ul>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col space-y-2">
-                  <NavLink
-                    to="/auth/login"
-                    onClick={closeMobileMenu}
-                    className="hover:bg-gray-700 px-3 py-2 rounded"
-                  >
-                    <FontAwesomeIcon icon={faUser} className="mr-2" />
-                    Login
-                  </NavLink>
+                    <div>
+                      <p className="font-semibold">{userDisplayName}</p>
+                      <p className="text-sm text-gray-400">{user?.email}</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
+              {/* Navigation Items */}
+              <div className="space-y-1">
+                {navGroups
+                  .filter(group => !group.authOnly || (group.authOnly && isAuthenticated))
+                  .map((group) => (
+                    <div key={group.label} className="border-b border-gray-700/50 last:border-0">
+                      {group.simple ? (
+                        <NavLink
+                          to={group.to}
+                          onClick={closeMobileMenu}
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-3.5 rounded-lg transition-colors ${
+                              isActive
+                                ? 'bg-gray-700 text-green-400'
+                                : 'hover:bg-gray-700'
+                            }`
+                          }
+                        >
+                          {group.icon && <FontAwesomeIcon icon={group.icon} className="w-5 h-5" />}
+                          <span className="font-medium">{group.label}</span>
+                        </NavLink>
+                      ) : (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => toggleDropdown(group.label)}
+                            className={`flex items-center justify-between w-full px-4 py-3.5 rounded-lg transition-colors ${
+                              activeDropdown === group.label
+                                ? 'bg-gray-700 text-green-400'
+                                : 'hover:bg-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium">{group.label}</span>
+                            </div>
+                            <FontAwesomeIcon
+                              icon={faChevronRight}
+                              className={`w-3 h-3 transition-transform duration-200 ${
+                                activeDropdown === group.label ? 'rotate-90' : ''
+                              }`}
+                            />
+                          </button>
+                          
+                          {activeDropdown === group.label && (
+                            <div className="ml-4 pl-4 border-l border-gray-700 space-y-1 py-2">
+                              {group.items.map((item) => (
+                                <NavLink
+                                  key={item.to}
+                                  to={item.to}
+                                  onClick={closeMobileMenu}
+                                  className={({ isActive }) =>
+                                    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                                      item.highlight
+                                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90'
+                                        : isActive
+                                        ? 'bg-gray-700/50 text-green-400'
+                                        : 'hover:bg-gray-700/50'
+                                    }`
+                                  }
+                                >
+                                  {item.icon && (
+                                    <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                                  )}
+                                  <span>{item.label}</span>
+                                  {item.highlight && (
+                                    <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
+                                      New
+                                    </span>
+                                  )}
+                                </NavLink>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+
+              {/* User Actions for Mobile */}
+              {isAuthenticated && (
+                <div className="space-y-2 pt-4 border-t border-gray-700/50">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/change-password');
+                      closeMobileMenu();
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-left"
+                  >
+                    <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-400" />
+                    <span>Change Password</span>
+                  </button>
+                  <button
+                    onClick={handleReferralRoute}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-left"
+                  >
+                    <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-400" />
+                    <span>Referrals</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="pt-6 border-t border-gray-700/50 space-y-4">
+              {!isAuthenticated && (
+                <div className="flex flex-col gap-3">
+                  <NavLink
+                    to="/auth/login"
+                    onClick={closeMobileMenu}
+                    className="px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-center"
+                  >
+                    Login
+                  </NavLink>
+                  <NavLink
+                    to="/auth/register"
+                    onClick={closeMobileMenu}
+                    className="px-4 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition-colors text-center font-medium"
+                  >
+                    Register
+                  </NavLink>
+                </div>
+              )}
               
+              {isAuthenticated && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                >
+                  <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
       </nav>
-
-
     </div>
   );
 };

@@ -22,15 +22,20 @@ import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import GetOrder from './pages/GetOrder';
 import MyOrders from './pages/MyOrders';
+import VoucherStore from './pages/VoucherStore';
 import PaymentStatus from './pages/PaymentStatus';
 import PaymentRetry from './pages/PaymentRetry';
 import FailedOrders from './pages/FailedOrders';
+import AccountVouchers from './pages/AccountVouchers';
+import RedeemVoucher  from './pages/RedeemVoucher';
+import VoucherPurchaseSuccess from './pages/VoucherPurchaseSuccess';
 import { useContext, useEffect, useState, useCallback } from 'react';
 import { AuthContext } from './context/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
 import GoogleMapsLoader from './components/GoogleMapsLoader';
+
 
 
 const AppContent = () => {
@@ -61,6 +66,38 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireVerification={true}>
                 <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vouchers"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <VoucherStore />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account/vouchers"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <AccountVouchers   />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vouchers/purchase/success"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <VoucherPurchaseSuccess   />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/redeem"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <RedeemVoucher    />
               </ProtectedRoute>
             }
           />

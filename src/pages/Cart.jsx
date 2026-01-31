@@ -15,12 +15,13 @@ import {
   CheckCircleIcon,
   GiftIcon,
   InformationCircleIcon,
-  SparklesIcon
+  SparklesIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline';
-import { FaSpinner } from 'react-icons/fa6';
-import { FaTimes } from "react-icons/fa";
+import { FaSpinner, FaGift, FaTag } from 'react-icons/fa6';
+import { FaTimes } from 'react-icons/fa';
 import axios from 'axios';
-import heic2any from 'heic2any'; // Add this import
+import heic2any from 'heic2any';
 
 const Cart = () => {
   const { 
@@ -35,12 +36,14 @@ const Cart = () => {
   const { discounts, user, api } = useContext(AuthContext);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [serviceLoading, setServiceLoading] = useState({});
   const [uploadingImages, setUploadingImages] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [imagePreviews, setImagePreviews] = useState({});
   const [cameraMode, setCameraMode] = useState(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [isFrontCamera, setIsFrontCamera] = useState(false);
+  const [voucherDetails, setVoucherDetails] = useState({});
   const fileInputRefs = useRef({});
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -53,7 +56,100 @@ const Cart = () => {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
 
-  // Helper functions with HEIC support
+  // Fetch voucher details for items in cart
+  useEffect(() => {
+    const fetchVoucherDetails = async () => {
+      const voucherItems = cart.filter(item => item.is_voucher_redeem);
+      
+      for (const item of voucherItems) {
+        if (item.voucher_code && !voucherDetails[item.service_id]) {
+          try {
+            const response = await api.post('/api/vouchers/redeem/', {
+              voucher_code: item.voucher_code
+            });
+            
+            if (response.data.voucher) {
+              setVoucherDetails(prev => ({
+                ...prev,
+                [item.service_id]: response.data.voucher
+              }));
+            }
+          } catch (error) {
+            console.error('Error fetching voucher details:', error);
+          }
+        }
+      }
+    };
+
+    if (user && cart.some(item => item.is_voucher_redeem)) {
+      fetchVoucherDetails();
+    }
+  }, [cart, user, api]);
+
+  // Check if any voucher in cart has already been redeemed elsewhere
+  useEffect(() => {
+    // In Cart.jsx - Update checkVoucherStatus function
+    const checkVoucherStatus = async () => {
+      const voucherItems = cart.filter(item => item.is_voucher_redeem);
+      
+      for (const item of voucherItems) {
+        if (item.voucher_code) {
+          try {
+            const response = await api.post('/api/vouchers/redeem/', {
+              voucher_code: item.voucher_code
+            });
+            
+            // Check if voucher is already redeemed
+            if (response.data.voucher?.status === 'REDEEMED') {
+              toast.error(
+                <div className="flex items-center gap-2">
+                  <FaTimes className="text-red-500" />
+                  <span>Voucher {item.voucher_code} has already been redeemed!</span>
+                </div>,
+                { autoClose: 5000 }
+              );
+              
+              // Remove the invalid voucher from cart
+              removeFromCart(item.service_id);
+            }
+            
+            // Also check if voucher is expired
+            if (response.data.voucher?.valid_until) {
+              const expiryDate = new Date(response.data.voucher.valid_until);
+              const today = new Date();
+              if (expiryDate < today) {
+                toast.error(
+                  <div className="flex items-center gap-2">
+                    <FaTimes className="text-red-500" />
+                    <span>Voucher {item.voucher_code} has expired!</span>
+                  </div>,
+                  { autoClose: 5000 }
+                );
+                removeFromCart(item.service_id);
+              }
+            }
+          } catch (error) {
+            // If 404 or error, voucher might not exist
+            if (error.response?.status === 404) {
+              toast.error(
+                <div className="flex items-center gap-2">
+                  <FaTimes className="text-red-500" />
+                  <span>Voucher {item.voucher_code} is invalid or expired!</span>
+                </div>,
+                { autoClose: 5000 }
+              );
+              removeFromCart(item.service_id);
+            }
+          }
+        }
+      }
+    };
+
+    if (user && cart.some(item => item.is_voucher_redeem)) {
+      checkVoucherStatus();
+    }
+  }, [cart, user, api, removeFromCart]);
+
   const base64ToBlobUrl = (base64String) => {
     if (!base64String) return null;
     try {
@@ -82,7 +178,6 @@ const Cart = () => {
     });
   };
 
-  // Convert HEIC to JPEG
   const convertHeicToJpeg = async (file) => {
     try {
       const result = await heic2any({
@@ -91,7 +186,6 @@ const Cart = () => {
         quality: 0.8
       });
       
-      // Convert Blob to File
       return new File([result], file.name.replace(/\.heic$/i, '.jpg'), {
         type: 'image/jpeg',
         lastModified: Date.now()
@@ -103,19 +197,15 @@ const Cart = () => {
   };
 
   const processImage = async (file) => {
-    // Check if file is HEIC
     const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || 
                    file.name.toLowerCase().endsWith('.heic') || 
                    file.name.toLowerCase().endsWith('.heif');
     
     if (isHeic) {
-      // Convert HEIC to JPEG first
       const jpegFile = await convertHeicToJpeg(file);
-      // Then process the JPEG file
       return await processJpegImage(jpegFile);
     }
     
-    // Process regular images
     return await processJpegImage(file);
   };
 
@@ -152,7 +242,6 @@ const Cart = () => {
   };
 
   const validateImageFile = (file) => {
-    // Add HEIC/HEIF to valid types
     const validTypes = [
       'image/jpeg', 
       'image/jpg', 
@@ -162,7 +251,6 @@ const Cart = () => {
       'image/heif'
     ];
     
-    // Check file extension for HEIC
     const fileName = file.name.toLowerCase();
     const isHeicByExtension = fileName.endsWith('.heic') || fileName.endsWith('.heif');
     const isHeicByType = file.type === 'image/heic' || file.type === 'image/heif';
@@ -174,7 +262,7 @@ const Cart = () => {
       };
     }
     
-    if (file.size > 15 * 1024 * 1024) { // Increase limit to 15MB for HEIC
+    if (file.size > 15 * 1024 * 1024) {
       return { 
         valid: false, 
         message: 'Image size should be less than 15MB' 
@@ -205,11 +293,22 @@ const Cart = () => {
       try {
         // Fetch services
         if (cart.length > 0) {
-          const servicePromises = cart.filter(item => item.service_id).map(item => 
-            axios.get(`${baseURL}/api/services/${item.service_id}/`)
-          );
+          const servicePromises = cart.filter(item => item.service_id).map(async (item) => {
+            try {
+              setServiceLoading(prev => ({ ...prev, [item.service_id]: true }));
+              const response = await axios.get(`${baseURL}/api/services/${item.service_id}/`);
+              return response.data;
+            } catch (error) {
+              console.error(`Error fetching service ${item.service_id}:`, error);
+              return null;
+            } finally {
+              setServiceLoading(prev => ({ ...prev, [item.service_id]: false }));
+            }
+          });
+          
           const responses = await Promise.all(servicePromises);
-          setServices(responses.map(res => res.data));
+          const validServices = responses.filter(service => service !== null);
+          setServices(validServices);
         }
 
         // Fetch discount statuses
@@ -326,7 +425,7 @@ const Cart = () => {
     setTimeout(startCamera, 100);
   };
 
-  // Image handling with HEIC support
+  // Image handling
   const handleImageUpload = async (serviceId, file) => {
     const validation = validateImageFile(file);
     if (!validation.valid) return toast.error(validation.message);
@@ -334,7 +433,6 @@ const Cart = () => {
     setUploadingImages(prev => ({ ...prev, [serviceId]: true }));
     
     try {
-      // Show processing message for HEIC files
       const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || 
                      file.name.toLowerCase().endsWith('.heic') || 
                      file.name.toLowerCase().endsWith('.heif');
@@ -381,7 +479,7 @@ const Cart = () => {
   const openGallery = (serviceId) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*,image/heic,image/heif,.heic,.heif'; // Add HEIC support
+    input.accept = 'image/*,image/heic,image/heif,.heic,.heif';
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -393,9 +491,31 @@ const Cart = () => {
   };
 
   // Service helpers
-  const getService = (id) => services.find(s => s.id === id) || {};
+  const getService = (id) => {
+    const service = services.find(s => s.id === id);
+    if (!service) {
+      // Check if it's a voucher item in cart
+      const cartItem = cart.find(item => item.service_id === id);
+      
+      return {
+        id,
+        name: cartItem?.service_name || 'Loading service...',
+        description: cartItem?.is_voucher_redeem ? 
+          'Voucher redemption service' : 
+          'Cleaning service',
+        price: cartItem?.original_price || 0,
+        image: '/placeholder-shoe.jpg',
+        service_type: cartItem?.service_type || 'UNKNOWN',
+        included_quantity: cartItem?.included_quantity || 1,
+        is_free_signup_service: cartItem?.is_free_signup_service || false
+      };
+    }
+    return service;
+  };
+  
   const isPackageService = (s) => s?.service_type?.startsWith('PACKAGE_');
   const isFreeService = (s) => s?.is_free_signup_service === true;
+  const isVoucherService = (item) => item.is_voucher_redeem === true;
 
   const getPackageInfo = (service) => {
     const types = {
@@ -407,8 +527,13 @@ const Cart = () => {
     return types[service.service_type] || { color: 'bg-gray-50', textColor: 'text-gray-700', tagText: 'BUNDLE DEAL', sneakers: 1 };
   };
 
-  // Calculations
-  const subtotal = cart.reduce((t, item) => t + (getService(item.service_id).price || item.unit_price || 0) * item.quantity, 0).toFixed(2);
+  // Calculations - Vouchers have price 0
+  const subtotal = cart.reduce((t, item) => {
+    if (item.is_voucher_redeem) {
+      return t + 0; // Vouchers are free
+    }
+    return t + (getService(item.service_id).price || item.unit_price || 0) * item.quantity;
+  }, 0).toFixed(2);
 
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
   const referralDiscount = discounts?.find(d => d.discount_type === 'referral');
@@ -454,6 +579,17 @@ const Cart = () => {
     </div>
   );
 
+  // Format date for voucher expiration
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   return (
     <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8">
       <CameraModal />
@@ -493,259 +629,348 @@ const Cart = () => {
                 const service = getService(item.service_id);
                 const isPkg = isPackageService(service);
                 const isFree = isFreeService(service);
+                const isVoucher = isVoucherService(item);
                 const pkgInfo = isPkg ? getPackageInfo(service) : null;
                 const hasImg = hasImage(item.service_id);
                 const previewUrl = imagePreviews[item.service_id];
+                const voucher = voucherDetails[item.service_id];
+                const isLoading = serviceLoading[item.service_id];
 
                 return (
-                  <div key={item.service_id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div key={item.service_id} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${
+                    isVoucher ? 'border-purple-300 border-2' : 'border-gray-200'
+                  }`}>
                     {/* Service Type Badge */}
-                    {(isPkg || isFree) && (
-                      <div className={`${isFree ? 'bg-gradient-to-r from-green-500 to-emerald-500' : pkgInfo?.color} px-5 py-2.5`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {isFree ? (
-                              <>
-                                <GiftIcon className="w-5 h-5 text-white" />
-                                <span className="text-white font-semibold text-sm">FREE SERVICE</span>
-                              </>
-                            ) : (
-                              <>
-                                <ShoppingBagIcon className={`w-5 h-5 ${pkgInfo?.textColor}`} />
-                                <span className={`${pkgInfo?.textColor} font-semibold text-sm`}>
-                                  {pkgInfo?.tagText}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          {isPkg && (
-                            <span className={`${pkgInfo?.badgeColor} px-2.5 py-1 rounded-full text-xs font-medium ${pkgInfo?.textColor}`}>
-                              {pkgInfo?.sneakers} sneakers
-                            </span>
+                    <div className={`px-5 py-2.5 ${
+                      isVoucher ? 'bg-gradient-to-r from-purple-600 to-pink-600' :
+                      isFree ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 
+                      pkgInfo?.color || 'bg-gray-100'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {isVoucher ? (
+                            <>
+                              <FaGift className="w-5 h-5 text-white" />
+                              <span className="text-white font-semibold text-sm">VOUCHER REDEMPTION</span>
+                            </>
+                          ) : isFree ? (
+                            <>
+                              <GiftIcon className="w-5 h-5 text-white" />
+                              <span className="text-white font-semibold text-sm">FREE SERVICE</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBagIcon className={`w-5 h-5 ${isPkg ? pkgInfo?.textColor : 'text-gray-700'}`} />
+                              <span className={`${isPkg ? pkgInfo?.textColor : 'text-gray-700'} font-semibold text-sm`}>
+                                {isPkg ? pkgInfo?.tagText : 'STANDARD SERVICE'}
+                              </span>
+                            </>
                           )}
                         </div>
+                        {isPkg && (
+                          <span className={`${pkgInfo?.badgeColor} px-2.5 py-1 rounded-full text-xs font-medium ${pkgInfo?.textColor}`}>
+                            {pkgInfo?.sneakers} sneakers
+                          </span>
+                        )}
+                        {isVoucher && item.voucher_code && (
+                          <code className="bg-white/20 px-2.5 py-1 rounded text-xs font-mono text-white">
+                            {item.voucher_code}
+                          </code>
+                        )}
                       </div>
-                    )}
+                    </div>
 
                     <div className="p-5">
-                      <div className="flex flex-col sm:flex-row gap-5">
-                        {/* Service Image */}
-                        <div className="w-full sm:w-24 h-24 flex-shrink-0">
-                          <div className="relative w-full h-full rounded-lg overflow-hidden bg-gray-100">
-                            <img
-                              src={service.image || '/placeholder-shoe.jpg'}
-                              alt={service.name}
-                              className="w-full h-full object-cover"
-                            />
-                            {isFree && (
-                              <div className="absolute top-2 right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded text-xs font-bold shadow">
-                                FREE
-                              </div>
-                            )}
-                          </div>
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <FaSpinner className="animate-spin text-purple-600 mr-3" />
+                          <span className="text-gray-600">Loading service details...</span>
                         </div>
-
-                        {/* Item Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1 min-w-0 pr-3">
-                              <h3 className="font-bold text-gray-900 text-base mb-1">{service.name}</h3>
-                              <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
-                            </div>
-                            <button
-                              onClick={() => removeFromCart(item.service_id)}
-                              className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                            >
-                              <TrashIcon className="w-5 h-5" />
-                            </button>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 gap-3">
-                            <div className="flex items-center gap-3">
-                              {!isFree && (
-                                <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
-                                  <button
-                                    onClick={() => updateQuantity(item.service_id, -1)}
-                                    disabled={item.quantity <= 1}
-                                    className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                  >
-                                    <MinusIcon className="w-5 h-5" />
-                                  </button>
-                                  <span className="w-12 text-center font-bold text-gray-900 text-lg">{item.quantity}</span>
-                                  <button
-                                    onClick={() => updateQuantity(item.service_id, 1)}
-                                    className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-lg transition-colors"
-                                  >
-                                    <PlusIcon className="w-5 h-5" />
-                                  </button>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row gap-5">
+                          {/* Service Image */}
+                          <div className="w-full sm:w-24 h-24 flex-shrink-0">
+                            <div className="relative w-full h-full rounded-lg overflow-hidden bg-gray-100">
+                              <img
+                                src={service.image || '/placeholder-shoe.jpg'}
+                                alt={service.name}
+                                className="w-full h-full object-cover"
+                              />
+                              {isVoucher && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                                  <FaGift className="text-white text-2xl" />
+                                </div>
+                              )}
+                              {isFree && !isVoucher && (
+                                <div className="absolute top-2 right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded text-xs font-bold shadow">
+                                  FREE
                                 </div>
                               )}
                             </div>
-                            
-                            <div className="text-right">
-                              <div className={`font-bold ${isFree ? 'text-green-600' : 'text-gray-900'} text-lg`}>
-                                {isFree ? (
-                                  <>
-                                    <span className="line-through text-gray-400 text-sm mr-2">
-                                      ₵{service.price}
+                          </div>
+
+                          {/* Item Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 min-w-0 pr-3">
+                                <h3 className="font-bold text-gray-900 text-base mb-1">{service.name}</h3>
+                                <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
+                                
+                                {/* Voucher Details */}
+                                {isVoucher && item.voucher_code && (
+                                  <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <FaTag className="text-purple-600" />
+                                        <span className="text-sm font-medium text-purple-800">Voucher Code:</span>
+                                        <code className="font-mono font-bold text-purple-900 bg-white px-2 py-1 rounded text-sm">
+                                          {item.voucher_code}
+                                        </code>
+                                      </div>
+                                      {voucher?.valid_until && (
+                                        <div className="text-xs text-purple-600">
+                                          Expires: {formatDate(voucher.valid_until)}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {item.voucher_value && (
+                                      <div className="mt-2 text-sm text-purple-700">
+                                        <span className="font-medium">Original Value:</span> ₵{item.voucher_value}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => removeFromCart(item.service_id)}
+                                className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                              >
+                                <TrashIcon className="w-5 h-5" />
+                              </button>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 gap-3">
+                              <div className="flex items-center gap-3">
+                                {!isFree && !isVoucher && (
+                                  <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
+                                    <button
+                                      onClick={() => updateQuantity(item.service_id, -1)}
+                                      disabled={item.quantity <= 1}
+                                      className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                      <MinusIcon className="w-5 h-5" />
+                                    </button>
+                                    <span className="w-12 text-center font-bold text-gray-900 text-lg">{item.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(item.service_id, 1)}
+                                      className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-lg transition-colors"
+                                    >
+                                      <PlusIcon className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                )}
+                                {(isFree || isVoucher) && (
+                                  <div className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border border-green-200">
+                                    <span className="text-green-700 font-medium text-sm">
+                                      {isVoucher ? 'Voucher Applied' : 'Free Service'}
                                     </span>
-                                    FREE
-                                  </>
-                                ) : (
-                                  `₵${(service.price * item.quantity).toFixed(2)}`
+                                  </div>
                                 )}
                               </div>
-                              {isPkg && (
-                                <div className="text-sm text-green-600 font-medium">
-                                  Save with bundle
+                              
+                              <div className="text-right">
+                                <div className={`font-bold ${
+                                  isVoucher ? 'text-purple-600' :
+                                  isFree ? 'text-green-600' : 
+                                  'text-gray-900'
+                                } text-lg`}>
+                                  {isVoucher ? (
+                                    <>
+                                      <span className="line-through text-gray-400 text-sm mr-2">
+                                        ₵{service.price}
+                                      </span>
+                                      <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                        FREE
+                                      </span>
+                                    </>
+                                  ) : isFree ? (
+                                    <>
+                                      <span className="line-through text-gray-400 text-sm mr-2">
+                                        ₵{service.price}
+                                      </span>
+                                      FREE
+                                    </>
+                                  ) : (
+                                    `₵${(service.price * item.quantity).toFixed(2)}`
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Photo Upload Section - Improved Responsive Layout */}
-                          <div className="border-t border-gray-100 mt-4 pt-4">
-                            {/* Desktop Layout */}
-                            <div className="hidden sm:flex flex-row items-center justify-between gap-3">
-                              <div>
-                                <h4 className="font-medium text-gray-900 text-base mb-1">Shoe Photo</h4>
-                                <p className="text-gray-600 text-sm">
-                                  {hasImg ? 'Photo added successfully' : 'Required for service processing'}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Supports JPEG, PNG, WebP, HEIC (max 15MB)
-                                </p>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                {hasImg ? (
-                                  <>
-                                    <div className="relative">
-                                      <img
-                                        src={previewUrl}
-                                        alt="Shoe preview"
-                                        className="w-16 h-16 rounded-lg object-cover border-2 border-green-200 cursor-pointer"
-                                        onClick={() => setPreviewImage(previewUrl)}
-                                      />
-                                      <button
-                                        onClick={() => handleImageRemove(item.service_id)}
-                                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
-                                      >
-                                        <XMarkIcon className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                    <button
-                                      onClick={() => setPreviewImage(previewUrl)}
-                                      className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                    >
-                                      View
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      onClick={() => openCamera(item.service_id)}
-                                      disabled={uploadingImages[item.service_id]}
-                                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all disabled:opacity-50 text-sm"
-                                    >
-                                      {uploadingImages[item.service_id] ? (
-                                        <>
-                                          <FaSpinner className="animate-spin w-4 h-4" />
-                                          Uploading...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <CameraIcon className="w-4 h-4" />
-                                          Take Photo
-                                        </>
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => openGallery(item.service_id)}
-                                      disabled={uploadingImages[item.service_id]}
-                                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-800 transition-all disabled:opacity-50 text-sm"
-                                    >
-                                      <FolderIcon className="w-4 h-4" />
-                                      Gallery
-                                    </button>
-                                  </>
+                                {isPkg && (
+                                  <div className="text-sm text-green-600 font-medium">
+                                    Save with bundle
+                                  </div>
                                 )}
-                              </div>
-                            </div>
-
-                            {/* Mobile Layout - Photo section on left */}
-                            <div className="sm:hidden flex flex-col gap-3">
-                              <div>
-                                <h4 className="font-medium text-gray-900 text-base mb-1">Shoe Photo</h4>
-                                <p className="text-gray-600 text-sm mb-3">
-                                  {hasImg ? 'Photo added successfully' : 'Required for service processing'}
-                                </p>
-                                <p className="text-xs text-gray-500 mb-3">
-                                  Supports JPEG, PNG, WebP, HEIC (max 15MB)
-                                </p>
-                              </div>
-                              
-                              <div className="flex items-start gap-3">
-                                {hasImg ? (
-                                  <>
-                                    <div className="relative">
-                                      <img
-                                        src={previewUrl}
-                                        alt="Shoe preview"
-                                        className="w-16 h-16 rounded-lg object-cover border-2 border-green-200 cursor-pointer"
-                                        onClick={() => setPreviewImage(previewUrl)}
-                                      />
-                                      <button
-                                        onClick={() => handleImageRemove(item.service_id)}
-                                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
-                                      >
-                                        <XMarkIcon className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="text-sm text-gray-600 mb-1">Shoe preview</span>
-                                      <button
-                                        onClick={() => setPreviewImage(previewUrl)}
-                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm text-left"
-                                      >
-                                        View
-                                      </button>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="flex flex-wrap gap-2 w-full">
-                                    <button
-                                      onClick={() => openCamera(item.service_id)}
-                                      disabled={uploadingImages[item.service_id]}
-                                      className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all disabled:opacity-50 text-sm"
-                                    >
-                                      {uploadingImages[item.service_id] ? (
-                                        <>
-                                          <FaSpinner className="animate-spin w-4 h-4" />
-                                          Uploading...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <CameraIcon className="w-4 h-4" />
-                                          Take Photo
-                                        </>
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => openGallery(item.service_id)}
-                                      disabled={uploadingImages[item.service_id]}
-                                      className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-800 transition-all disabled:opacity-50 text-sm"
-                                    >
-                                      <FolderIcon className="w-4 h-4" />
-                                      Gallery
-                                    </button>
+                                {isVoucher && item.voucher_value && (
+                                  <div className="text-sm text-purple-600 font-medium">
+                                    {service.included_quantity || 1}-pair bundle
                                   </div>
                                 )}
                               </div>
                             </div>
+
+                            {/* Photo Upload Section - Show for ALL items */}
+                            <div className="border-t border-gray-100 mt-4 pt-4">
+                              {/* Desktop Layout */}
+                              <div className="hidden sm:flex flex-row items-center justify-between gap-3">
+                                <div>
+                                  <h4 className="font-medium text-gray-900 text-base mb-1">Shoe Photo</h4>
+                                  <p className="text-gray-600 text-sm">
+                                    {hasImg ? 'Photo added successfully' : 'Required for service processing'}
+                                  </p>
+                                  {isVoucher && (
+                                    <p className="text-xs text-yellow-600 mt-1">
+                                      📸 Voucher services also require shoe photos
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Supports JPEG, PNG, WebP, HEIC (max 15MB)
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  {hasImg ? (
+                                    <>
+                                      <div className="relative">
+                                        <img
+                                          src={previewUrl}
+                                          alt="Shoe preview"
+                                          className="w-16 h-16 rounded-lg object-cover border-2 border-green-200 cursor-pointer"
+                                          onClick={() => setPreviewImage(previewUrl)}
+                                        />
+                                        <button
+                                          onClick={() => handleImageRemove(item.service_id)}
+                                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                                        >
+                                          <XMarkIcon className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                      <button
+                                        onClick={() => setPreviewImage(previewUrl)}
+                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                      >
+                                        View
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => openCamera(item.service_id)}
+                                        disabled={uploadingImages[item.service_id]}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all disabled:opacity-50 text-sm"
+                                      >
+                                        {uploadingImages[item.service_id] ? (
+                                          <>
+                                            <FaSpinner className="animate-spin w-4 h-4" />
+                                            Uploading...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <CameraIcon className="w-4 h-4" />
+                                            Take Photo
+                                          </>
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => openGallery(item.service_id)}
+                                        disabled={uploadingImages[item.service_id]}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-800 transition-all disabled:opacity-50 text-sm"
+                                      >
+                                        <FolderIcon className="w-4 h-4" />
+                                        Gallery
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Mobile Layout */}
+                              <div className="sm:hidden flex flex-col gap-3">
+                                <div>
+                                  <h4 className="font-medium text-gray-900 text-base mb-1">Shoe Photo</h4>
+                                  <p className="text-gray-600 text-sm mb-3">
+                                    {hasImg ? 'Photo added successfully' : 'Required for service processing'}
+                                  </p>
+                                  {isVoucher && (
+                                    <p className="text-xs text-yellow-600 mb-3">
+                                      📸 Voucher services also require shoe photos
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    Supports JPEG, PNG, WebP, HEIC (max 15MB)
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-start gap-3">
+                                  {hasImg ? (
+                                    <>
+                                      <div className="relative">
+                                        <img
+                                          src={previewUrl}
+                                          alt="Shoe preview"
+                                          className="w-16 h-16 rounded-lg object-cover border-2 border-green-200 cursor-pointer"
+                                          onClick={() => setPreviewImage(previewUrl)}
+                                        />
+                                        <button
+                                          onClick={() => handleImageRemove(item.service_id)}
+                                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                                        >
+                                          <XMarkIcon className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-sm text-gray-600 mb-1">Shoe preview</span>
+                                        <button
+                                          onClick={() => setPreviewImage(previewUrl)}
+                                          className="text-blue-600 hover:text-blue-800 font-medium text-sm text-left"
+                                        >
+                                          View
+                                        </button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-2 w-full">
+                                      <button
+                                        onClick={() => openCamera(item.service_id)}
+                                        disabled={uploadingImages[item.service_id]}
+                                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all disabled:opacity-50 text-sm"
+                                      >
+                                        {uploadingImages[item.service_id] ? (
+                                          <>
+                                            <FaSpinner className="animate-spin w-4 h-4" />
+                                            Uploading...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <CameraIcon className="w-4 h-4" />
+                                            Take Photo
+                                          </>
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => openGallery(item.service_id)}
+                                        disabled={uploadingImages[item.service_id]}
+                                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-800 transition-all disabled:opacity-50 text-sm"
+                                      >
+                                        <FolderIcon className="w-4 h-4" />
+                                        Gallery
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -753,25 +978,25 @@ const Cart = () => {
 
               {/* Photo Requirements Card */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg">
-                      <PhotoIcon className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-blue-900 mb-2">Why add shoe photos?</h4>
-                      <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Ensures accurate cleaning service</li>
-                        <li>• Helps identify your specific shoes</li>
-                        <li>• Documents any pre-existing conditions</li>
-                        <li>• Improves service quality</li>
-                        <li>• Required for free cleaning services</li>
-                      </ul>
-                      <p className="text-xs text-blue-600 mt-3">
-                        📸 Supports: JPEG, PNG, WebP, and HEIC formats
-                      </p>
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg">
+                    <PhotoIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-blue-900 mb-2">Why add shoe photos?</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Ensures accurate cleaning service</li>
+                      <li>• Helps identify your specific shoes</li>
+                      <li>• Documents any pre-existing conditions</li>
+                      <li>• Improves service quality</li>
+                      <li>• Required for ALL cleaning services (including voucher redemptions)</li>
+                    </ul>
+                    <p className="text-xs text-blue-600 mt-3">
+                      📸 Supports: JPEG, PNG, WebP, and HEIC formats
+                    </p>
                   </div>
                 </div>
+              </div>
             </div>
 
             {/* Right Column - Order Summary */}
@@ -785,25 +1010,47 @@ const Cart = () => {
                     {cart.map((item) => {
                       const service = getService(item.service_id);
                       const isFree = isFreeService(service);
+                      const isVoucher = isVoucherService(item);
                       
                       return (
                         <div key={item.service_id} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                           <div className="flex items-center gap-2 max-w-[70%]">
                             <span className="text-gray-700 text-sm truncate">{service.name}</span>
                             <span className="text-gray-500 text-xs">×{item.quantity}</span>
-                            {isFree && (
+                            {isVoucher && (
+                              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded">
+                                Voucher
+                              </span>
+                            )}
+                            {isFree && !isVoucher && (
                               <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded">
                                 Free
                               </span>
                             )}
                           </div>
-                          <span className={`font-medium ${isFree ? 'text-green-600' : ''} text-sm`}>
-                            {isFree ? 'FREE' : `₵${(service.price * item.quantity).toFixed(2)}`}
+                          <span className={`font-medium ${
+                            isVoucher ? 'text-purple-600' :
+                            isFree ? 'text-green-600' : ''
+                          } text-sm`}>
+                            {isVoucher || isFree ? 'FREE' : `₵${(service.price * item.quantity).toFixed(2)}`}
                           </span>
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* Voucher Summary (if any) */}
+                  {cart.some(item => item.is_voucher_redeem) && (
+                    <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-purple-700 mb-2">
+                        <FaGift className="text-purple-600" />
+                        <span className="font-medium text-sm">Voucher Savings</span>
+                      </div>
+                      <p className="text-xs text-purple-600">
+                        Your voucher covers the full cost of {cart.filter(item => item.is_voucher_redeem).length} service(s)
+                      </p>
+                    </div>
+                  )}
 
                   {/* Totals */}
                   <div className="space-y-3 pt-4 border-t border-gray-200">
@@ -857,18 +1104,15 @@ const Cart = () => {
                       </div>
                     )}
 
-
                     <div className="flex justify-between pt-4 border-t border-gray-200">
                       <div>
                         <span className="font-bold text-gray-900">Total</span>
-                        
                       </div>
                       <div className="text-right">
-                        {(canUseSignup || canUseReferral || appliedPromotion || canUseRedeemedPoints) && (
+                        {(canUseSignup || canUseReferral || appliedPromotion || canUseRedeemedPoints) && parseFloat(total) > 0 && (
                           <div className="text-sm text-gray-500 line-through mb-1">₵{subtotal}</div>
                         )}
                         <div className="text-xl font-bold text-gray-900">₵{total}</div>
-                       
                       </div>
                     </div>
                   </div>
@@ -876,18 +1120,24 @@ const Cart = () => {
                   {/* Checkout Button */}
                   <button
                     onClick={() => {
-                      if (cart.every(i => hasImage(i.service_id))) {
+                      // Check if ALL items have photos (including voucher items)
+                      const allHavePhotos = cart.every(i => hasImage(i.service_id));
+                      
+                      if (allHavePhotos) {
                         navigate('/checkout');
                       } else {
-                        toast.warning("Please add photos for all items before checkout");
+                        // Count how many items are missing photos
+                        const missingPhotos = cart.filter(i => !hasImage(i.service_id)).length;
+                        toast.warning(
+                          `Please add photos for ${missingPhotos} item${missingPhotos !== 1 ? 's' : ''} before checkout`,
+                          { autoClose: 5000 }
+                        );
                       }
                     }}
                     className="w-full bg-primary text-white font-bold py-3.5 rounded-lg transition-all duration-200 shadow hover:shadow-lg mt-5 text-base"
                   >
                     Proceed to Checkout
                   </button>
-
-                  
 
                   {/* Discount Info */}
                   {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
@@ -913,12 +1163,20 @@ const Cart = () => {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">Your cart is empty</h2>
               <p className="text-gray-600 mb-7">Add some sneaker cleaning services to get started</p>
-              <button
-                onClick={() => navigate('/services')}
-                className="px-8 py-3.5 bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-all text-base"
-              >
-                Browse Services
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => navigate('/services')}
+                  className="px-8 py-3.5 bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-all text-base"
+                >
+                  Browse Services
+                </button>
+                <button
+                  onClick={() => navigate('/redeem')}
+                  className="px-8 py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold hover:opacity-90 transition-all text-base"
+                >
+                  Redeem Voucher
+                </button>
+              </div>
             </div>
           </div>
         )}

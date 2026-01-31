@@ -26,6 +26,7 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart]);
 
+  // Update the addToCart function in your CartContext.jsx
   const addToCart = (serviceId, serviceName, servicePrice, quantity = 1, serviceData = {}) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.service_id === serviceId);
@@ -37,12 +38,20 @@ export const CartProvider = ({ children }) => {
                 ...item, 
                 quantity: item.quantity + quantity,
                 unit_price: servicePrice,
-                // Update service data if needed
+                // Preserve existing data and merge new serviceData
+                ...serviceData,
                 service_type: serviceData.service_type || item.service_type,
                 is_free_signup_service: serviceData.is_free_signup_service !== undefined 
                   ? serviceData.is_free_signup_service 
                   : item.is_free_signup_service,
-                included_quantity: serviceData.included_quantity || item.included_quantity
+                is_voucher_redeem: serviceData.is_voucher_redeem !== undefined
+                  ? serviceData.is_voucher_redeem
+                  : item.is_voucher_redeem,
+                included_quantity: serviceData.included_quantity || item.included_quantity,
+                original_price: serviceData.original_price || item.original_price || servicePrice,
+                voucher_code: serviceData.voucher_code || item.voucher_code,
+                voucher_value: serviceData.voucher_value || item.voucher_value,
+                voucher_id: serviceData.voucher_id || item.voucher_id
               }
             : item
         );
@@ -53,11 +62,19 @@ export const CartProvider = ({ children }) => {
           service_name: serviceName, 
           unit_price: servicePrice,
           imageBase64: null,
-          // Store additional service properties
+          // Store all service properties including voucher info
           service_type: serviceData.service_type || null,
           is_free_signup_service: serviceData.is_free_signup_service || false,
+          is_voucher_redeem: serviceData.is_voucher_redeem || false,
           included_quantity: serviceData.included_quantity || 1,
-          original_price: serviceData.original_price || servicePrice
+          original_price: serviceData.original_price || servicePrice,
+          // Voucher-specific fields
+          voucher_code: serviceData.voucher_code || null,
+          voucher_value: serviceData.voucher_value || null,
+          voucher_id: serviceData.voucher_id || null,
+          is_bundle_service: serviceData.is_bundle_service || false,
+          // Add a timestamp for tracking
+          added_at: new Date().toISOString()
         }];
       }
     });
@@ -110,7 +127,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const hasImage = (serviceId) => {
-    const item = cart.find(item => item.service_id === serviceId);
+    const item = cart.find(item => item.service_id === serviceId);  
     return !!(item && item.imageBase64);
   };
 
@@ -122,6 +139,8 @@ export const CartProvider = ({ children }) => {
   const clearCart = () => {
     setCart([]);
     localStorage.removeItem('cart');
+    // You might also want to clear voucher validation state
+    localStorage.removeItem('voucher_validation');
   };
 
   const getCartItemCount = () => {
@@ -136,10 +155,32 @@ export const CartProvider = ({ children }) => {
     }, 0);
   };
 
+  // Add this to your CartContext functions
+  const getVoucherItems = () => {
+    if (!Array.isArray(cart)) return [];
+    return cart.filter(item => item.is_voucher_redeem === true);
+  };
+
+  const getNonVoucherItems = () => {
+    if (!Array.isArray(cart)) return [];
+    return cart.filter(item => !item.is_voucher_redeem);
+  };
+
+  const hasValidVouchers = () => {
+    const voucherItems = getVoucherItems();
+    return voucherItems.length > 0 && voucherItems.every(item => item.voucher_code);
+  };
+
+  const removeVoucherItem = (voucherCode) => {
+    setCart(prevCart => 
+      prevCart.filter(item => item.voucher_code !== voucherCode)
+    );
+  };
+
   return (
     <CartContext.Provider
       value={{
-        cart, // This is now guaranteed to be an array
+        cart,
         addToCart,
         updateQuantity,
         removeFromCart,
@@ -149,7 +190,12 @@ export const CartProvider = ({ children }) => {
         hasImage,
         getImageBase64,
         getCartItemCount,
-        getCartTotal
+        getCartTotal,
+        // New functions
+        getVoucherItems,
+        getNonVoucherItems,
+        hasValidVouchers,
+        removeVoucherItem
       }}
     >
       {children}
