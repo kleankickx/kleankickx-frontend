@@ -5,7 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { 
   FaGift, FaCopy, FaCheckCircle, FaClock, 
-  FaUser, FaQrcode, FaEnvelope, FaSpinner,
+  FaUser, FaSpinner,
   FaArrowRight, FaShoppingBag, FaTag
 } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
@@ -123,7 +123,7 @@ const AccountVouchers = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <FaSpinner className="animate-spin text-4xl text-primary mx-auto mb-4" />
+          <FaSpinner className="animate-spin text-4xl text-green-600 mx-auto mb-4" /> {/* Changed to green */}
           <p className="text-gray-600">Loading your vouchers...</p>
         </div>
       </div>
@@ -147,7 +147,7 @@ const AccountVouchers = () => {
             </div>
             <Link
               to="/vouchers"
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center gap-2" // Changed to green gradient
             >
               <FaGift />
               Buy More Vouchers
@@ -157,7 +157,7 @@ const AccountVouchers = () => {
 
         {/* Success Banner */}
         {location.search.includes('payment_status=success') && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+          <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg"> {/* Changed to green */}
             <div className="flex items-center">
               <FaCheckCircle className="text-green-500 mr-3" size={24} />
               <div>
@@ -171,8 +171,8 @@ const AccountVouchers = () => {
         {vouchers.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
             <div className="max-w-md mx-auto">
-              <div className="w-24 h-24 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FaGift className="text-4xl text-purple-600" />
+              <div className="w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6"> {/* Changed to green */}
+                <FaGift className="text-4xl text-green-600" /> {/* Changed to green */}
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">No Vouchers Yet</h3>
               <p className="text-gray-600 mb-8">
@@ -181,7 +181,7 @@ const AccountVouchers = () => {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   to="/vouchers"
-                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2" // Changed to green
                 >
                   <FaGift />
                   Browse Vouchers
@@ -211,7 +211,7 @@ const AccountVouchers = () => {
                     return (
                       <div key={voucher.id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 text-white">
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 text-white"> {/* Changed to green */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <FaTag />
@@ -239,7 +239,7 @@ const AccountVouchers = () => {
                                 className="ml-3 p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                                 title="Copy to clipboard"
                               >
-                                <FaCopy className={copiedCode === voucher.code ? 'text-green-600' : 'text-gray-600'} />
+                                <FaCopy className={copiedCode === voucher.code ? 'text-green-600' : 'text-gray-600'} /> {/* Changed to green */}
                               </button>
                             </div>
                           </div>
@@ -263,24 +263,14 @@ const AccountVouchers = () => {
                             )}
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="space-y-3">
-                            <button
-                                onClick={() => navigate(`/redeem?apply_voucher=${voucher.code}`)}
-                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                                >
-                                Redeem This Voucher
-                                <FaArrowRight />
-                            </button>
-                            
-                            <button
-                              onClick={() => navigate(`/share-voucher/${voucher.code}`)}
-                              className="w-full py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                            >
-                              <FaEnvelope />
-                              Share with Friend
-                            </button>
-                          </div>
+                          {/* Action Button - Removed share button */}
+                          <button
+                            onClick={() => navigate(`/redeem?apply_voucher=${voucher.code}`)}
+                            className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2" // Changed to green
+                          >
+                            Redeem This Voucher
+                            <FaArrowRight />
+                          </button>
                         </div>
                       </div>
                     );
