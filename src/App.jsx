@@ -69,14 +69,7 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/vouchers"
-            element={
-              <ProtectedRoute requireVerification={true}>
-                <VoucherStore />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/vouchers" element={<VoucherStore />} />
           <Route
             path="/account/vouchers"
             element={

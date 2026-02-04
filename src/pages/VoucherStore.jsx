@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { 
@@ -27,24 +27,53 @@ const VoucherStore = () => {
     sendToSelf: true,
     recipientEmail: '',
     giftMessage: '',
-    step: 1 // 1: Quantity, 2: Recipient, 3: Review
+    step: 1
   });
-  const { api } = useContext(AuthContext);
   
+  const { api, isAuthenticated, user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Track if we've already processed URL params on this visit
+  const [hasProcessedUrlParams, setHasProcessedUrlParams] = useState(false);
 
   useEffect(() => {
     fetchVoucherTypes();
     fetchCampaigns();
+    
+    // Check for pending order in localStorage
+    const pendingOrder = localStorage.getItem('pending_voucher_order');
+    if (pendingOrder) {
+      try {
+        const orderData = JSON.parse(pendingOrder);
+        toast.info(
+          <div className="flex items-center">
+            <FaGift className="mr-2 text-green-500" />
+            You have a pending voucher order. Click here to view.
+          </div>,
+          {
+            onClick: () => navigate('/account/vouchers'),
+            autoClose: 10000
+          }
+        );
+      } catch (error) {
+        console.error('Error parsing pending order:', error);
+        localStorage.removeItem('pending_voucher_order');
+      }
+    }
   }, []);
 
   useEffect(() => {
+    // Check for payment redirect
     const handlePaymentRedirect = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const paymentStatus = urlParams.get('payment_status');
       const orderNumber = urlParams.get('order');
       
       if (paymentStatus === 'success' && orderNumber) {
+        localStorage.removeItem('pending_voucher_order');
+        sessionStorage.removeItem('pending_voucher_purchase');
+        
         toast.success(
           <div className="flex items-center">
             <FaCheckCircle className="mr-2 text-green-500" />
@@ -59,6 +88,7 @@ const VoucherStore = () => {
           navigate(`/account/vouchers?order=${orderNumber}`);
         }, 2000);
       } else if (paymentStatus === 'failed') {
+        localStorage.removeItem('pending_voucher_order');
         toast.error('Payment failed. Please try again.');
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
@@ -68,8 +98,34 @@ const VoucherStore = () => {
     handlePaymentRedirect();
   }, [navigate]);
 
+  // SIMPLIFIED: Only process URL parameters once on component mount
+  useEffect(() => {
+    if (!hasProcessedUrlParams && voucherTypes.length > 0) {
+      const searchParams = new URLSearchParams(location.search);
+      const voucherId = searchParams.get('voucher');
+      const purchaseStep = searchParams.get('step');
+      
+      if (voucherId && purchaseStep === 'purchase') {
+        const voucher = voucherTypes.find(v => v.id === parseInt(voucherId));
+        if (voucher) {
+          setSelectedVoucher(voucher);
+          setShowPurchaseModal(true);
+          
+          // Clean up the URL immediately
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+        setHasProcessedUrlParams(true);
+      }
+    }
+  }, [location.search, voucherTypes, hasProcessedUrlParams]);
+
+  // SIMPLIFIED: Don't auto-open modal from session storage on login
+  // Only handle manual user actions
+
   const fetchVoucherTypes = async () => {
     try {
+      setLoading(true);
       const response = await api.get(`/api/vouchers/types/?in_stock=true`);
       
       let vouchersData = response.data;
@@ -96,7 +152,7 @@ const VoucherStore = () => {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await axios.get(`/api/vouchers/campaigns/`);
+      const response = await api.get(`/api/vouchers/campaigns/`);
       let campaignsData = response.data;
       
       if (response.data && response.data.results) {
@@ -112,7 +168,126 @@ const VoucherStore = () => {
     }
   };
 
+  const handleCampaignClick = async (campaign) => {
+    // Clear any pending data when changing campaigns
+    sessionStorage.removeItem('pending_voucher_purchase');
+    
+    // Close modal if open
+    if (showPurchaseModal) {
+      handleCloseModal();
+    }
+    
+    setSelectedCampaign(campaign);
+    
+    if (campaign) {
+      try {
+        setLoading(true);
+        const response = await api.get(`/api/vouchers/campaigns/${campaign.id}/vouchers/`);
+        let campaignVouchers = response.data;
+        
+        if (response.data && response.data.results) {
+          campaignVouchers = response.data.results;
+        }
+        
+        if (Array.isArray(campaignVouchers)) {
+          setVoucherTypes(campaignVouchers);
+        } else {
+          const filtered = voucherTypes.filter(voucher => {
+            if (!voucher.campaigns) return false;
+            
+            if (Array.isArray(voucher.campaigns) && voucher.campaigns.length > 0) {
+              if (typeof voucher.campaigns[0] === 'number') {
+                return voucher.campaigns.includes(campaign.id);
+              }
+              if (typeof voucher.campaigns[0] === 'object') {
+                return voucher.campaigns.some(c => c.id === campaign.id);
+              }
+            }
+            
+            return false;
+          });
+          
+          setVoucherTypes(filtered);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching campaign vouchers:', error);
+        await filterVouchersByCampaign(campaign);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      await fetchVoucherTypes();
+    }
+  };
+
+  const filterVouchersByCampaign = async (campaign) => {
+    try {
+      const response = await api.get(`/api/vouchers/types/?in_stock=true`);
+      let allVouchers = response.data;
+      
+      if (response.data && response.data.results) {
+        allVouchers = response.data.results;
+      }
+      
+      if (Array.isArray(allVouchers)) {
+        const filtered = allVouchers.filter(voucher => {
+          if (!voucher.campaigns) return false;
+          
+          if (Array.isArray(voucher.campaigns)) {
+            if (voucher.campaigns.length === 0) return false;
+            
+            if (typeof voucher.campaigns[0] === 'number') {
+              return voucher.campaigns.includes(campaign.id);
+            }
+            
+            if (typeof voucher.campaigns[0] === 'object') {
+              return voucher.campaigns.some(c => c.id === campaign.id);
+            }
+            
+            if (typeof voucher.campaigns[0] === 'string') {
+              return voucher.campaigns.some(c => parseInt(c) === campaign.id);
+            }
+          }
+          
+          if (typeof voucher.campaigns === 'string') {
+            const ids = voucher.campaigns.split(',').map(id => parseInt(id.trim()));
+            return ids.includes(campaign.id);
+          }
+          
+          return false;
+        });
+        
+        setVoucherTypes(filtered);
+      }
+    } catch (error) {
+      console.error('Error filtering vouchers:', error);
+    }
+  };
+
   const handlePurchaseClick = (voucher) => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      // Store voucher info for after login
+      sessionStorage.setItem('pending_voucher_purchase', JSON.stringify({
+        voucherId: voucher.id,
+        voucherName: voucher.name
+      }));
+      
+      // Redirect to login with continue parameter
+      toast.info('Please login to purchase vouchers');
+      navigate(`/auth/login?continue=${encodeURIComponent(`/vouchers?voucher=${voucher.id}&step=purchase`)}`);
+      return;
+    }
+    
+    // Check if user is verified if required
+    if (user && user.is_verified === false) {
+      toast.warn('Please verify your email before making a purchase');
+      navigate(`/auth/confirm-email/?email=${user?.email}&isVerified=false&next=${encodeURIComponent(`/vouchers?voucher=${voucher.id}&step=purchase`)}`);
+      return;
+    }
+    
+    // If authenticated and verified, proceed with purchase modal
     setSelectedVoucher(voucher);
     setPurchaseData({
       quantity: 1,
@@ -126,6 +301,23 @@ const VoucherStore = () => {
 
   const handleImageLoad = (voucherId) => {
     setLoadedImages(prev => ({ ...prev, [voucherId]: true }));
+  };
+
+  const handleCloseModal = () => {
+    // Clear everything when modal is closed
+    setShowPurchaseModal(false);
+    setSelectedVoucher(null);
+    setPurchasing(false);
+    setPurchaseData({
+      quantity: 1,
+      sendToSelf: true,
+      recipientEmail: '',
+      giftMessage: '',
+      step: 1
+    });
+    
+    // Clear session storage
+    sessionStorage.removeItem('pending_voucher_purchase');
   };
 
   const initiatePurchase = async () => {
@@ -167,20 +359,31 @@ const VoucherStore = () => {
       );
 
       if (response.data.success && response.data.payment_url) {
-        localStorage.setItem('pending_voucher_order', JSON.stringify({
+        const orderData = {
           order_number: response.data.order_number,
           voucher_type: selectedVoucher.name,
           quantity: purchaseData.quantity,
-          total_amount: response.data.total_amount
-        }));
+          total_amount: response.data.total_amount,
+          timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem('pending_voucher_order', JSON.stringify(orderData));
 
+        // Clear session storage
+        sessionStorage.removeItem('pending_voucher_purchase');
+        
+        // Navigate to payment URL
         window.location.href = response.data.payment_url;
       } else {
         toast.error(response.data.message || 'Failed to initialize payment');
+        setPurchasing(false);
       }
 
     } catch (error) {
       console.error('Purchase error:', error);
+      
+      localStorage.removeItem('pending_voucher_order');
+      sessionStorage.removeItem('pending_voucher_purchase');
       
       if (error.response) {
         const errorMessage = error.response.data?.message || 
@@ -189,8 +392,12 @@ const VoucherStore = () => {
         toast.error(errorMessage);
         
         if (error.response.status === 401) {
-          toast.info('Please login again');
-          navigate('/login');
+          toast.info('Session expired. Please login again');
+          sessionStorage.setItem('pending_voucher_purchase', JSON.stringify({
+            voucherId: selectedVoucher.id,
+            purchaseData: purchaseData
+          }));
+          navigate(`/auth/login?continue=${encodeURIComponent(`/vouchers?voucher=${selectedVoucher.id}&step=purchase`)}`);
         } else if (error.response.status === 400) {
           if (error.response.data?.voucher_type_id) {
             toast.error('Invalid voucher selected');
@@ -205,18 +412,10 @@ const VoucherStore = () => {
       } else {
         toast.error('An unexpected error occurred');
       }
-    } finally {
+      
       setPurchasing(false);
-      setShowPurchaseModal(false);
     }
   };
-
-  const filteredVouchers = selectedCampaign 
-    ? voucherTypes.filter(voucher => 
-        voucher.campaigns && 
-        Array.isArray(voucher.campaigns) && 
-        voucher.campaigns.includes(selectedCampaign.id))
-    : voucherTypes;
 
   const getStockStatus = (availableStock) => {
     if (availableStock <= 0) return { 
@@ -257,24 +456,24 @@ const VoucherStore = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-12">
-      {/* Header - Clean Left Aligned */}
+      {/* Header */}
       <div className="max-w-7xl mx-auto mb-12">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
-          <span className="text-green-600">Gift Vouchers</span>
+            <span className="text-green-600">Gift Vouchers</span>
           </h1>
           <p className="text-gray-600 text-lg max-w-2xl">
             Give the gift of pristine sneakers! Purchase vouchers at 10% discount and save on premium cleaning services.
           </p>
         </div>
 
-        {/* Campaign Selector - Minimal */}
+        {/* Campaign Selector */}
         {campaigns.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-700 mb-3">Special Campaigns</h2>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setSelectedCampaign(null)}
+                onClick={() => handleCampaignClick(null)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   !selectedCampaign 
                     ? 'bg-green-600 text-white shadow-sm' 
@@ -286,7 +485,7 @@ const VoucherStore = () => {
               {campaigns.map(campaign => (
                 <button
                   key={campaign.id}
-                  onClick={() => setSelectedCampaign(campaign)}
+                  onClick={() => handleCampaignClick(campaign)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedCampaign?.id === campaign.id
                       ? 'bg-green-600 text-white shadow-sm'
@@ -323,7 +522,12 @@ const VoucherStore = () => {
       <div className="max-w-7xl mx-auto mb-6">
         <div className="flex items-center justify-between">
           <p className="text-gray-700">
-            <span className="font-semibold">{filteredVouchers.length}</span> voucher{filteredVouchers.length !== 1 ? 's' : ''} available
+            <span className="font-semibold">{voucherTypes.length}</span> voucher{voucherTypes.length !== 1 ? 's' : ''} available
+            {selectedCampaign && (
+              <span className="ml-2 text-sm text-gray-500">
+                in "{selectedCampaign.name}"
+              </span>
+            )}
           </p>
           {selectedCampaign && (
             <span className="text-sm text-gray-500 px-3 py-1 bg-gray-100 rounded-full">
@@ -333,29 +537,31 @@ const VoucherStore = () => {
         </div>
       </div>
 
-      {/* Voucher Grid - Casual Design */}
+      {/* Voucher Grid */}
       <div className="max-w-7xl mx-auto">
-        {filteredVouchers.length === 0 ? (
+        {voucherTypes.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaGift className="text-2xl text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No vouchers available</h3>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              {selectedCampaign ? `No vouchers found for "${selectedCampaign.name}"` : 'No vouchers available'}
+            </h3>
             <p className="text-gray-600 mb-6">
               {selectedCampaign 
                 ? `Check back soon for "${selectedCampaign.name}" vouchers.`
                 : 'New vouchers coming soon!'}
             </p>
             <button 
-              onClick={() => setSelectedCampaign(null)}
+              onClick={() => handleCampaignClick(null)}
               className="px-5 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
             >
-              View All
+              View All Vouchers
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVouchers.map((voucher, index) => {
+            {voucherTypes.map((voucher, index) => {
               const serviceName = voucher.service_details?.name || voucher.service?.name || 'Premium Cleaning';
               const availableStock = voucher.available_stock || (voucher.stock_quantity - voucher.sold_quantity) || 0;
               const discountAmount = (voucher.original_price || 0) - (voucher.discounted_price || 0);
@@ -481,7 +687,7 @@ const VoucherStore = () => {
         )}
       </div>
 
-      {/* How It Works - Simple */}
+      {/* How It Works */}
       <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-200">
         <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">How It Works</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -501,15 +707,19 @@ const VoucherStore = () => {
         </div>
       </div>
 
-      {/* Enhanced Purchase Modal - Multi-step */}
+      {/* Enhanced Purchase Modal */}
       <AnimatePresence>
         {showPurchaseModal && selectedVoucher && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div 
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={handleCloseModal}
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-xl max-w-md w-full overflow-hidden shadow-xl"
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header with Steps */}
               <div className="">
@@ -519,8 +729,8 @@ const VoucherStore = () => {
                     <p className="text-sm text-gray-600">{selectedVoucher.name}</p>
                   </div>
                   <button
-                    onClick={() => setShowPurchaseModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    onClick={handleCloseModal}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
                     disabled={purchasing}
                   >
                     ✕
