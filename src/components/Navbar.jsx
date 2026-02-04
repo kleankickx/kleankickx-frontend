@@ -256,7 +256,7 @@ const Navbar = () => {
                           className={({ isActive }) =>
                             `flex items-center gap-3 px-4 py-3 transition-all ${
                               item.highlight
-                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white mx-2 rounded-md hover:opacity-90'
+                                ? 'bg-gradient-to-r from-green-600 to-primary text-white mx-2 rounded-md hover:opacity-90'
                                 : isActive
                                 ? 'bg-gray-700 text-green-400'
                                 : 'hover:bg-gray-700 text-gray-200'
@@ -267,11 +267,11 @@ const Navbar = () => {
                             <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
                           )}
                           <span className="font-medium">{item.label}</span>
-                          {item.highlight && (
+                          {/* {item.highlight && (
                             <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
                               New
                             </span>
-                          )}
+                          )} */}
                         </NavLink>
                       ))}
                     </div>
@@ -498,7 +498,7 @@ const Navbar = () => {
                                   className={({ isActive }) =>
                                     `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                                       item.highlight
-                                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90'
+                                        ? 'bg-gradient-to-r from-green-600 to-primary text-white hover:opacity-90'
                                         : isActive
                                         ? 'bg-gray-700/50 text-green-400'
                                         : 'hover:bg-gray-700/50'
