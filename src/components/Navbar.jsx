@@ -464,7 +464,7 @@ const Navbar = () => {
                             }`
                           }
                         >
-                          {group.icon && <FontAwesomeIcon icon={group.icon} className="w-5 h-5" />}
+                          {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-5 h-5" />} */}
                           <span className="font-medium">{group.label}</span>
                         </NavLink>
                       ) : (
@@ -505,9 +505,9 @@ const Navbar = () => {
                                     }`
                                   }
                                 >
-                                  {item.icon && (
+                                  {/* {item.icon && (
                                     <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
-                                  )}
+                                  )} */}
                                   <span>{item.label}</span>
                                   {item.highlight && (
                                     <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">

@@ -398,7 +398,7 @@ const Services = () => {
           className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
         >
           {/* Modal Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4 relative">
+          <div className="bg-gradient-to-r from-primary to-green-500 p-4 relative">
             <button
               onClick={closeAlreadyClaimedModal}
               className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors"
@@ -419,8 +419,8 @@ const Services = () => {
           {/* Modal Body */}
           <div className="p-6">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full mb-4">
-                <FaGift className="w-8 h-8 text-orange-500" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-100 to-red-100 rounded-full mb-4">
+                <FaGift className="w-8 h-8 text-green-500" />
               </div>
               
               <h4 className="text-lg font-semibold text-gray-800 mb-2">
@@ -434,7 +434,7 @@ const Services = () => {
               <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-4">
                 <div className="flex items-center justify-center gap-2">
                   <FaCheckCircle className="text-green-500 w-5 h-5" />
-                  <span className="font-bold text-orange-700">
+                  <span className="font-bold text-primary">
                     {freeServiceStatus.serviceName || 'Free Service'}
                   </span>
                 </div>
@@ -573,7 +573,7 @@ const Services = () => {
               ? 'border-yellow-300 hover:border-yellow-400 border-2'
               : showAlreadyClaimed
               ? 'border-gray-200 hover:border-gray-300'
-              : 'border-blue-200 hover:border-blue-300'
+              : 'border-blue-200 hover:border-gray-300'
             : isBundle
             ? 'border-green-200 hover:border-green-300'
             : 'border-gray-100 hover:border-gray-200'
@@ -598,7 +598,7 @@ const Services = () => {
                 ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white'
                 : showAlreadyClaimed
                 ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-700'
-                : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                : 'bg-gradient-to-r bg-gray-800 text-white'
             }`}>
               {canClaimFreeService ? 'FREE FOR YOU!' : 
                showAlreadyClaimed ? 'ALREADY CLAIMED' : 
@@ -731,7 +731,7 @@ const Services = () => {
                   ? canClaimFreeService
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-md hover:shadow-lg'
                     : !isAuthenticated
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-md hover:shadow-lg'
+                    ? 'bg-gray-800 text-white shadow-md hover:shadow-lg hover:bg-gray-700'
                     : 'bg-gray-200 cursor-not-allowed text-gray-500'
                   : isBundle
                   ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg'
