@@ -3,12 +3,12 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
-import { FaCheckCircle } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationTriangle, FaGift, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 
 const fadeInUp = {
@@ -27,17 +27,87 @@ const Services = () => {
   const [error, setError] = useState('');
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [redeemingFreeService, setRedeemingFreeService] = useState(false);
+  const [highlightedService, setHighlightedService] = useState(null);
+  const [showAlreadyClaimedModal, setShowAlreadyClaimedModal] = useState(false);
   const { cart, addToCart } = useContext(CartContext);
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, refreshUserData } = useContext(AuthContext);
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Ref for services section
+  // Refs for service cards
   const servicesSectionRef = useRef(null);
+  const serviceCardRefs = useRef({});
 
+  // Check if there's a service ID to highlight from location state
   useEffect(() => {
+    if (location.state?.highlightServiceId) {
+      const serviceId = location.state.highlightServiceId;
+      setHighlightedService(serviceId);
+      
+      // Scroll to the services section
+      setTimeout(() => {
+        if (servicesSectionRef.current) {
+          servicesSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+        
+        // Highlight animation
+        setTimeout(() => {
+          const cardElement = serviceCardRefs.current[serviceId];
+          if (cardElement) {
+            cardElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'center'
+            });
+          }
+        }, 500);
+      }, 300);
+      
+      // Show success message if available
+      if (location.state?.showSuccessMessage) {
+        toast.success(location.state.showSuccessMessage, {
+          position: 'top-right',
+          autoClose: 5000,
+        });
+      }
+      
+      // Remove highlight after animation
+      setTimeout(() => {
+        setHighlightedService(null);
+        // Clear the location state
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 5000);
+    }
+  }, [location.state, navigate, location.pathname]);
+
+  // Check if user has already claimed free service when they return from login
+  useEffect(() => {
+    const checkFreeServiceStatus = () => {
+      if (isAuthenticated && user && user.free_signup_service_used && location.state?.highlightServiceId) {
+        // User just returned from login and has already claimed their free service
+        // Show modal after a short delay
+        setTimeout(() => {
+          setShowAlreadyClaimedModal(true);
+        }, 1000);
+      }
+    };
+    
+    checkFreeServiceStatus();
+  }, [isAuthenticated, user, location.state]);
+
+  // Replace the useEffect that fetches services with this:
+  useEffect(() => {
+    const controller = new AbortController();
+    let mounted = true;
+
     const fetchServices = async () => {
+      if (!mounted) return;
+      
       setLoading(true);
       try {
         // Get the token from localStorage
@@ -58,7 +128,10 @@ const Services = () => {
         console.log(`Fetching from: ${endpoint}`);
         console.log(`User authenticated: ${isAuthenticated}`);
         
-        const response = await axios.get(endpoint, { headers });
+        const response = await axios.get(endpoint, { 
+          headers,
+          signal: controller.signal 
+        });
         const servicesData = response.data;
         
         // DEBUG: Log the services to see what we're getting
@@ -105,9 +178,28 @@ const Services = () => {
         
         console.log('Sorted services:', sorted);
         
-        setServices(servicesWithSavings);
-        setSortedServices(sorted);
+        if (mounted) {
+          setServices(servicesWithSavings);
+          setSortedServices(sorted);
+        }
+        
+        // Only refresh user data if we're authenticated AND user doesn't have free service info
+        // But check if we already have the data from token first
+        if (mounted && isAuthenticated && !user?.free_signup_service_used) {
+          console.log('Refreshing user data to get free service info...');
+          try {
+            await refreshUserData();
+          } catch (err) {
+            console.error('Failed to refresh user data:', err);
+          }
+        }
+        
       } catch (err) {
+        if (axios.isCancel(err)) {
+          console.log('Request canceled:', err.message);
+          return;
+        }
+        
         console.error('Error fetching services:', err);
         
         // Check if it's an authentication error
@@ -116,24 +208,38 @@ const Services = () => {
           
           // Try public endpoint as fallback
           try {
-            const publicResponse = await axios.get(`${backendUrl}/api/services/public/`);
-            setServices(publicResponse.data);
-            setSortedServices(publicResponse.data);
+            const publicResponse = await axios.get(`${backendUrl}/api/services/public/`, {
+              signal: controller.signal
+            });
+            if (mounted) {
+              setServices(publicResponse.data);
+              setSortedServices(publicResponse.data);
+            }
           } catch (fallbackErr) {
-            setError('Failed to load services.');
-            toast.error('Failed to load services. Please try again.');
+            if (mounted && !axios.isCancel(fallbackErr)) {
+              setError('Failed to load services.');
+              toast.error('Failed to load services. Please try again.');
+            }
           }
-        } else {
+        } else if (mounted && !axios.isCancel(err)) {
           setError('Failed to load services.');
           toast.error('Failed to load services. Please try again.');
         }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchServices();
-  }, [user, isAuthenticated]);
+    
+    // Cleanup function
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, [isAuthenticated]); // Only depend on isAuthenticated, not user or refreshUserData
 
   const getServiceStatus = (serviceName) => {
     const name = serviceName.toLowerCase();
@@ -172,6 +278,24 @@ const Services = () => {
     };
   };
 
+  // Handle free service button click for unauthenticated users
+  const handleFreeServiceClick = (service) => {
+    if (!isAuthenticated) {
+      // Navigate to login with return URL and service info
+      navigate('/auth/login', { 
+        state: { 
+          from: '/services',
+          message: `Sign in to claim your FREE ${service.name}!`,
+          highlightServiceId: service.id
+        } 
+      });
+      return;
+    }
+    
+    // If authenticated, proceed with adding to cart
+    handleAddToCart(service);
+  };
+
   // Handle adding to cart with free service logic
   const handleAddToCart = async (service) => {
     const { id, name, price, is_free_signup_service, service_type, included_quantity } = service;
@@ -179,14 +303,23 @@ const Services = () => {
     // Check if this is a free service
     if (is_free_signup_service) {
       if (!isAuthenticated) {
+        // This should not happen as we handle it in handleFreeServiceClick,
+        // but keep as fallback
         toast.info('Please sign in to claim your free service!');
-        navigate('/auth/login', { state: { from: '/services' } });
+        navigate('/auth/login', { 
+          state: { 
+            from: '/services',
+            message: `Sign in to claim your FREE ${name}!`,
+            highlightServiceId: id
+          } 
+        });
         return;
       }
       
       // Check if user has already used free service
       if (user?.free_signup_service_used) {
-        toast.error(`You have already used your free ${user.free_signup_service_used.name} service.`);
+        // Show the already claimed modal
+        setShowAlreadyClaimedModal(true);
         return;
       }
       
@@ -225,34 +358,6 @@ const Services = () => {
     navigate('/cart');
   };
 
-  // Function to add free service to cart
-  const addFreeServiceToCart = async (service) => {
-    setRedeemingFreeService(true);
-    try {
-      const { id, name, price } = service;
-      
-      // Add free service to cart with quantity 1
-      addToCart(id, name, price, 1);
-      toast.success(`Free ${name} added to cart! You can checkout to claim it.`);
-      
-      // Navigate to cart immediately
-      navigate('/cart');
-      
-    } catch (err) {
-      console.error('Error adding free service to cart:', err);
-      toast.error('Failed to add free service to cart. Please try again.');
-    } finally {
-      setRedeemingFreeService(false);
-    }
-  };
-
-  // Function to redeem free service (for future use if needed)
-  const redeemFreeService = async (serviceId) => {
-    // This function is kept for future backend integration
-    // Currently, free services are handled in cart/checkout
-    console.log('Redeeming free service:', serviceId);
-  };
-
   const toggleDescription = (serviceId) => {
     setExpandedDescriptions(prev => ({
       ...prev,
@@ -270,6 +375,102 @@ const Services = () => {
     }
   };
 
+  // Close the already claimed modal
+  const closeAlreadyClaimedModal = () => {
+    setShowAlreadyClaimedModal(false);
+    // Clear the location state
+    navigate(location.pathname, { replace: true, state: {} });
+  };
+
+  // Render Already Claimed Modal
+  const renderAlreadyClaimedModal = () => {
+    const freeServiceStatus = getUserFreeServiceStatus();
+    
+    if (!showAlreadyClaimedModal) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          transition={{ duration: 0.3 }}
+          className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+        >
+          {/* Modal Header */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4 relative">
+            <button
+              onClick={closeAlreadyClaimedModal}
+              className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors"
+            >
+              <FaTimes className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-full">
+                <FaExclamationTriangle className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Oops! Already Claimed 🎁</h3>
+                <p className="text-white/90 text-sm mt-1">Welcome back!</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Modal Body */}
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full mb-4">
+                <FaGift className="w-8 h-8 text-orange-500" />
+              </div>
+              
+              <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                Your Free Service Has Been Claimed
+              </h4>
+              
+              <p className="text-gray-600 mb-4">
+                It looks like you've already used your welcome gift:
+              </p>
+              
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-center gap-2">
+                  <FaCheckCircle className="text-green-500 w-5 h-5" />
+                  <span className="font-bold text-orange-700">
+                    {freeServiceStatus.serviceName || 'Free Service'}
+                  </span>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 mb-6">
+                Don't worry! You can still enjoy our premium cleaning services at great prices.
+                Check out our other amazing services below!
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={closeAlreadyClaimedModal}
+                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-semibold py-3 rounded-lg transition-all duration-200"
+              >
+                Browse Other Services
+              </button>
+              
+              <button
+                onClick={() => {
+                  closeAlreadyClaimedModal();
+                  navigate('/cart');
+                }}
+                className="w-full bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-medium py-3 rounded-lg transition-all duration-200 border border-gray-300"
+              >
+                View My Cart
+              </button>
+            </div>
+          </div>
+          
+        </motion.div>
+      </div>
+    );
+  };
+
   // Render free service banner
   const renderFreeServiceBanner = () => {
     const freeServiceStatus = getUserFreeServiceStatus();
@@ -277,15 +478,17 @@ const Services = () => {
     if (isAuthenticated) {
       if (freeServiceStatus.hasUsed) {
         return (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm">
             <div className="flex items-center gap-3">
-              <FaCheckCircle className="text-green-500 text-xl" />
+              <div className="bg-green-500 text-white p-2 rounded-full">
+                <FaCheckCircle className="text-xl" />
+              </div>
               <div>
                 <p className="text-green-800 font-medium">
                   You've already claimed your free service: <span className="font-bold">{freeServiceStatus.serviceName}</span>
                 </p>
                 <p className="text-green-600 text-sm mt-1">
-                  Thank you for being a valued customer!
+                  Thank you for being a valued customer! Check out our other services below.
                 </p>
               </div>
             </div>
@@ -298,10 +501,8 @@ const Services = () => {
             <div className="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="bg-yellow-500 text-white p-2 rounded-full">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                    </svg>
+                  <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-2 rounded-full">
+                    <FaGift className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-yellow-800 font-bold text-lg">Welcome Gift! 🎁</h3>
@@ -312,7 +513,7 @@ const Services = () => {
                 </div>
                 <button
                   onClick={scrollToServices}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 whitespace-nowrap"
+                  className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 whitespace-nowrap shadow-md"
                 >
                   Claim Your Free Service
                 </button>
@@ -327,15 +528,13 @@ const Services = () => {
     const freeService = services.find(s => s.is_free_signup_service);
     if (freeService) {
       return (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-500 text-white p-2 rounded-full">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full">
+              <FaGift className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-blue-800 font-bold text-lg">New User Bonus!</h3>
+              <h3 className="text-blue-800 font-bold text-lg">New User Bonus! 🎉</h3>
               <p className="text-blue-700">
                 Sign up today and get a <span className="font-bold">FREE {freeService.name}</span> as a welcome gift!
               </p>
@@ -354,6 +553,7 @@ const Services = () => {
     const isExpanded = expandedDescriptions[service.id];
     const isBundle = isBundleService(service);
     const isFreeService = service.is_free_signup_service;
+    const isHighlighted = highlightedService === service.id;
     
     // Check if user can claim free service
     const canClaimFreeService = isFreeService && isAuthenticated && user && !user.free_signup_service_used;
@@ -363,8 +563,11 @@ const Services = () => {
     
     return (
       <motion.div
+        ref={el => serviceCardRefs.current[service.id] = el}
         key={service.id}
         className={`bg-white rounded-xl shadow-sm overflow-hidden border hover:shadow-md transition-all duration-300 relative group flex flex-col ${
+          isHighlighted ? 'ring-4 ring-yellow-400 ring-offset-2 transform scale-105 transition-all duration-500 z-10' : ''
+        } ${
           isFreeService
             ? canClaimFreeService
               ? 'border-yellow-300 hover:border-yellow-400 border-2'
@@ -376,6 +579,16 @@ const Services = () => {
             : 'border-gray-100 hover:border-gray-200'
         }`}
         variants={fadeInUp}
+        animate={isHighlighted ? {
+          scale: [1, 1.05, 1],
+          rotate: [0, 1, -1, 0],
+          transition: {
+            duration: 1,
+            times: [0, 0.25, 0.5, 1],
+            repeat: 3,
+            ease: "easeInOut"
+          }
+        } : {}}
       >
         {/* Free Service Badge */}
         {isFreeService && (
@@ -384,8 +597,8 @@ const Services = () => {
               canClaimFreeService
                 ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white'
                 : showAlreadyClaimed
-                ? 'bg-gray-300 text-gray-700'
-                : 'bg-blue-500 text-white'
+                ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-700'
+                : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
             }`}>
               {canClaimFreeService ? 'FREE FOR YOU!' : 
                showAlreadyClaimed ? 'ALREADY CLAIMED' : 
@@ -397,7 +610,7 @@ const Services = () => {
         {/* Bundle Savings Badge */}
         {isBundle && !isFreeService && service.savingsAmount && (
           <div className="absolute top-3 left-3 z-20">
-            <div className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
               Save ₵{service.savingsAmount}
             </div>
           </div>
@@ -406,7 +619,7 @@ const Services = () => {
         {/* Delivery Ribbon */}
         <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-10 pointer-events-none">
           <div className={`absolute top-0 right-0 w-[140%] h-6 flex items-center justify-center text-[10px] font-semibold text-white transform translate-x-[30%] translate-y-[90%] rotate-45 
-            ${status.isPriority ? 'bg-orange-500' : 'bg-green-500'}`}>
+            ${status.isPriority ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-green-500 to-emerald-500'}`}>
             {status.bannerText}
           </div>
         </div>
@@ -511,16 +724,18 @@ const Services = () => {
             </div>
 
             <button
-              onClick={() => handleAddToCart(service)}
-              disabled={redeemingFreeService || (isFreeService && !canClaimFreeService)}
+              onClick={() => isFreeService ? handleFreeServiceClick(service) : handleAddToCart(service)}
+              disabled={redeemingFreeService || (isFreeService && !canClaimFreeService && isAuthenticated)}
               className={`w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
                 isFreeService
                   ? canClaimFreeService
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-md hover:shadow-lg'
+                    : !isAuthenticated
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-md hover:shadow-lg'
                     : 'bg-gray-200 cursor-not-allowed text-gray-500'
                   : isBundle
-                  ? 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg'
-                  : 'bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg'
+                  : 'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-md hover:shadow-lg'
               }`}
             >
               {redeemingFreeService && isFreeService ? (
@@ -531,15 +746,23 @@ const Services = () => {
               ) : isFreeService ? (
                 canClaimFreeService ? (
                   <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                    <FaGift className="w-4 h-4" />
                     Add to Cart to Claim Your Free Clean
                   </>
                 ) : showAlreadyClaimed ? (
-                  'Already Claimed'
+                  <>
+                    <FaCheckCircle className="w-4 h-4" />
+                    Already Claimed
+                  </>
+                ) : !isAuthenticated ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    Sign In to Claim Free Service
+                  </>
                 ) : (
-                  'Sign In to Claim'
+                  'Not Eligible'
                 )
               ) : isBundle ? (
                 <>
@@ -565,6 +788,9 @@ const Services = () => {
 
   return (
     <>
+      {/* Already Claimed Modal */}
+      {renderAlreadyClaimedModal()}
+      
       <section className="bg-cover bg-center h-[18rem] relative" style={{ backgroundImage: `url(${bgImage})` }}>
         <div className="absolute inset-0 bg-black/50" />
         <motion.div 
@@ -582,7 +808,7 @@ const Services = () => {
           
           <motion.button
             onClick={scrollToServices}
-            className="mt-8 w-fit bg-primary cursor-pointer hover:bg-primary/90 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 group"
+            className="mt-8 w-fit bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 group"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

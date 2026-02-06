@@ -5,11 +5,10 @@ import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'; // Ensure you have heroicons installed
-import 'react-toastify/dist/ReactToastify.css'; // Ensure toast styles are imported
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import 'react-toastify/dist/ReactToastify.css';
 import { motion } from 'framer-motion';
 import logo from "../assets/logo2.png"
-
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,17 +19,35 @@ const Login = () => {
   const { login, googleLogin } = useContext(AuthContext);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-
-  // backend URL from environment variable
-  const backendUrl = import.meta.env.VITE_BACKEND_URL  || 'http://127.0.0.1:10000';
-
-  // get the continue path from the query string
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const continuePath = searchParams.get('continue') || null;
+
+  // Get the redirect path and service info from location state
+  const from = location.state?.from || '/';
+  const message = location.state?.message;
+  const highlightServiceId = location.state?.highlightServiceId;
 
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const handleLoginSuccess = () => {
+    toast.success('Logged in successfully!', { 
+      position: 'top-right',
+      autoClose: 3000,
+    });
+    
+    // If there's a service to highlight, redirect back to services with that info
+    if (highlightServiceId) {
+      navigate('/services', { 
+        state: { 
+          highlightServiceId,
+          showSuccessMessage: `Welcome back! You can now claim your free service.`
+        } 
+      });
+    } else {
+      // Default redirect to the page they came from or home
+      navigate(from, { replace: true });
+    }
   };
 
   const handleEmailLogin = async (e) => {
@@ -50,19 +67,19 @@ const Login = () => {
     }
 
     try {
-      await login(email, password);
+      // Call login and get user data
+      const userData = await login(email, password);
+      console.log('Login successful, user data:', userData);
+      
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
         });
       }
       
-      toast.success('Logged in successfully!', { position: 'top-right' });
-      // navigate to the previous page or default to home
-      navigate(continuePath || '/'); // Navigate to the previous page or default to home
+      // Call the success handler
+      handleLoginSuccess();
       
-      
-
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
       toast.error('Login failed. Please check your credentials.', { position: 'top-right' });
@@ -74,17 +91,19 @@ const Login = () => {
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setLoading(true);
     try {
-      await googleLogin(credentialResponse);
+      // Call googleLogin and get user data
+      const userData = await googleLogin(credentialResponse);
+      console.log('Google login successful, user data:', userData);
+      
       if (cartExpired) {
         toast.warn('Your cart was cleared due to expiration and synced with the server.', {
           position: 'top-right',
         });
       }
-    //   await syncCartWithBackend(access);
-      toast.success('Logged in with Google!', { position: 'top-right' });
-      {/* navigate to the previous page */}
-      navigate(continuePath || '/'); // Navigate to the previous page or default to -1
-
+      
+      // Call the success handler
+      handleLoginSuccess();
+      
     } catch (err) {
       setError(err.response?.data?.error || 'Google login failed.');
       toast.error('Google login failed. Please try again.', { position: 'top-right' });
@@ -95,170 +114,204 @@ const Login = () => {
 
   return (
     <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex justify-center items-center flex-col">
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className=""
-        >
-            <Link to="/">
-                <img src={logo} className="w-[10rem]" />
-            </Link> 
-                  
-        </motion.div>
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className=""
+      >
+        <Link to="/">
+          <img src={logo} className="w-[10rem]" alt="Kleankickx Logo" />
+        </Link>                  
+      </motion.div>
+      
       {/* Login Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className=" bg-white rounded-lg shadow-md p-6 lg:w-[30rem] w-full"
-        >
-          <h2 className="text-2xl font-bold text-black mb-6 inline-block">Login</h2>
-
-          {error && (
-            <div className="bg-red-100 text-red-700 p-4 rounded mb-4">{error}</div>
-          )}
-
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email address"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-0 text-gray-700"
-                aria-label="Email address"
-                disabled={loading}
-              />
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-white rounded-lg shadow-md p-6 lg:w-[30rem] w-full"
+      >
+        <h2 className="text-2xl font-bold text-black mb-2">Login</h2>
+        
+        {/* Display message from Services page if exists */}
+        {message && (
+          <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V7z" clipRule="evenodd" />
+              </svg>
+              <p className="text-yellow-800 text-sm font-medium">
+                {message}
+              </p>
             </div>
-
-            <div className="relative">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                className="w-full pr-10 p-2 text-gray-700 border border-gray-300 rounded-md focus:ring-0 focus:outline-none"
-                aria-label="Password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[2.7rem] transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-primary focus:outline-none"
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="w-[1.5rem]" />
-                ) : (
-                  <EyeIcon className="w-[1.5rem]" />
-                )}
-              </button>
-            </div>
-
-            <div className="text-right -mt-2 mb-2">
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
-              disabled={loading}
-              aria-label="Login with email and password"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5 text-current"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g fill="none" fillRule="evenodd">
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeOpacity="0.2"
-                        strokeWidth="4"
-                      />
-                      <path
-                        d="M12 2a10 10 0 0 1 10 10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                      >
-                        <animateTransform
-                          attributeName="transform"
-                          type="rotate"
-                          from="0 12 12"
-                          to="360 12 12"
-                          dur="1s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-                    </g>
-                  </svg>
-                  Logging in...
-                </span>
-              ) : (
-                'Login'
-              )}
-            </button>
-          </form>
-
-          <div className="my-6 flex items-center">
-            <hr className="flex-grow border-gray-300" />
-            <span className="mx-4 text-gray-500">or</span>
-            <hr className="flex-grow border-gray-300" />
           </div>
+        )}
+        
+        {highlightServiceId && !message && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <p className="text-blue-800 text-sm font-medium">
+                <span className="font-bold">Pro Tip:</span> After login, you'll be taken back to the free service you wanted to claim!
+              </p>
+            </div>
+          </div>
+        )}
 
-          <div className="">
-            <GoogleLogin
-            
-              onSuccess={handleGoogleLoginSuccess}
-              onError={() => {
-                setError('Google login failed.');
-                toast.error('Google login failed. Please try again.', { position: 'top-right' });
-              }}
-              width="100%"
-              text="signin_with"
-              shape="rectangular"
-              theme="filled_black"
+        {error && (
+          <div className="bg-red-100 text-red-700 p-4 rounded mb-4">{error}</div>
+        )}
+
+        <form onSubmit={handleEmailLogin} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="Enter your email address"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-0 text-gray-700"
+              aria-label="Email address"
               disabled={loading}
-              auto_select={false}
             />
           </div>
 
-          <p className="mt-4 text-center text-sm text-gray-600">
-            Don’t have an account?{' '}
-            <Link to="/auth/register" className="text-primary hover:underline">
-              Register
+          <div className="relative">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              className="w-full pr-10 p-2 text-gray-700 border border-gray-300 rounded-md focus:ring-0 focus:outline-none"
+              aria-label="Password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-[2.7rem] transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-primary focus:outline-none"
+              tabIndex={-1}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                <EyeSlashIcon className="w-[1.5rem]" />
+              ) : (
+                <EyeIcon className="w-[1.5rem]" />
+              )}
+            </button>
+          </div>
+
+          <div className="text-right -mt-2 mb-2">
+            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+              Forgot password?
             </Link>
-          </p>
-        </motion.div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
+            disabled={loading}
+            aria-label="Login with email and password"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin h-5 w-5 text-current"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g fill="none" fillRule="evenodd">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeOpacity="0.2"
+                      strokeWidth="4"
+                    />
+                    <path
+                      d="M12 2a10 10 0 0 1 10 10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    >
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0 12 12"
+                        to="360 12 12"
+                        dur="1s"
+                        repeatCount="indefinite"
+                      />
+                    </path>
+                  </g>
+                </svg>
+                Logging in...
+              </span>
+            ) : (
+              'Login'
+            )}
+          </button>
+        </form>
+
+        <div className="my-6 flex items-center">
+          <hr className="flex-grow border-gray-300" />
+          <span className="mx-4 text-gray-500">or</span>
+          <hr className="flex-grow border-gray-300" />
+        </div>
+
+        <div className="">
+          <GoogleLogin
+            onSuccess={handleGoogleLoginSuccess}
+            onError={() => {
+              setError('Google login failed.');
+              toast.error('Google login failed. Please try again.', { position: 'top-right' });
+            }}
+            width="100%"
+            text="signin_with"
+            shape="rectangular"
+            theme="filled_black"
+            disabled={loading}
+            auto_select={false}
+          />
+        </div>
+
+        <p className="mt-4 text-center text-sm text-gray-600">
+          Don't have an account?{' '}
+          <Link 
+            to="/auth/register" 
+            className="text-primary hover:underline"
+            state={{
+              from: '/services',
+              message: message || 'Sign up to claim your free service!',
+              highlightServiceId: highlightServiceId
+            }}
+          >
+            Register
+          </Link>
+        </p>
+      </motion.div>
 
       {/* terms and conditions */}
       <div className="max-w-md mx-auto mt-8 text-center text-xs text-gray-500">
         By logging in, you agree to our{' '}
-        <Link  className="text-primary hover:underline">
+        <Link to="/terms" className="text-primary hover:underline">
           Terms of Service
         </Link>{' '}
         and{' '}
-        <Link  className="text-primary hover:underline">
+        <Link to="/privacy" className="text-primary hover:underline">
           Privacy Policy
         </Link>.
       </div>
@@ -267,8 +320,3 @@ const Login = () => {
 };
 
 export default Login;
-
-
-
-
-

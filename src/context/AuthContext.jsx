@@ -1,161 +1,5 @@
-// // src/context/AuthProvider.jsx
-// import React, { createContext, useState, useEffect } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { jwtDecode } from 'jwt-decode';
-// import { toast } from 'react-toastify';
-// import { createApiClient } from '../api';
-// import axios from 'axios';
-
-// export const AuthContext = createContext();
-
-// const AuthProvider = ({ children }) => {
-//   const navigate = useNavigate();
-//   // Base URL for backend API
-//   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
-
-//   const [accessToken, setAccessToken] = useState(localStorage.getItem('access_token'));
-//   const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token'));
-//   const [user, setUser] = useState({});
-//   const [isAuthenticated, setIsAuthenticated] = useState(!!accessToken);
-
-//   // Decode access token
-//   const decodeToken = (token) => {
-//     try {
-//       const decoded = jwtDecode(token);
-
-//       return {
-//         email: decoded.email || '',
-//         first_name: decoded.first_name || '',
-//         last_name: decoded.last_name || '',
-//         is_verified: decoded.is_verified || false,
-//       };
-//     } catch (err) {
-//       console.error('Failed to decode token:', err);
-//       return null;
-//     }
-//   };
-
-//   // Restore auth state on page load
-//   useEffect(() => {
-//     const storedAccess = localStorage.getItem('access_token');
-//     const storedRefresh = localStorage.getItem('refresh_token');
-//     if (storedAccess && storedRefresh) {
-//       const decodedUser = decodeToken(storedAccess);
-      
-//       if (decodedUser) {
-//         console.log("Decoded:", decodedUser)
-//         setAccessToken(storedAccess);
-//         setRefreshToken(storedRefresh);
-//         setUser(decodedUser);
-//         setIsAuthenticated(true);
-//       } else {
-//         {/* check if user is on checkout page logout*/}
-        
-
-//       }
-//     } else {
-//       {/* do something */}
-//     }
-//   }, []);
-
-//   // Helpers to sync state and storage
-//   const persistToken = (key, value) => {
-//     if (value) localStorage.setItem(key, value);
-//     else localStorage.removeItem(key);
-//   };
-
-//   const authMethods = {
-//     accessToken,
-//     refreshToken,
-//     setAccessToken: (token) => {
-//       setAccessToken(token);
-//       persistToken('access_token', token);
-//     },
-//     setRefreshToken: (token) => {
-//       setRefreshToken(token);
-//       persistToken('refresh_token', token);
-//     },
-//     logout: () => {
-//       setAccessToken(null);
-//       setRefreshToken(null);
-//       setUser(null);
-//       setIsAuthenticated(false);
-//       persistToken('access_token', null);
-//       persistToken('refresh_token', null);
-//       navigate('/login');
-//     },
-//   };
-
-//   // Create authenticated Axios instance
-//   const api = createApiClient(authMethods);
-
-//   // Login
-//   const login = async (email, password) => {
-//     try {
-//       const response = await axios.post(`${baseURL}/api/users/login/`, { email, password });
-//       const { access, refresh } = response.data;
-
-//       authMethods.setAccessToken(access);
-//       authMethods.setRefreshToken(refresh);
-
-//       const decoded = decodeToken(access);
-//       if (!decoded) throw new Error('Invalid access token');
-//       setUser(decoded);
-//       setIsAuthenticated(true);
-//     } catch (err) {
-//       toast.error('Login failed. Please check your credentials.');
-//       throw err;
-//     }
-//   };
-
-//   // Google Login
-//   const googleLogin = async (credentialResponse) => {
-//     try {
-//       const response = await api.post(
-//         '/api/users/google-login/',
-//         { token: credentialResponse.credential },
-//         { withCredentials: true }
-//       );
-
-//       const { access, refresh } = response.data;
-//       authMethods.setAccessToken(access);
-//       authMethods.setRefreshToken(refresh);
-
-//       const decoded = decodeToken(access);
-//       if (!decoded) throw new Error('Invalid access token');
-//       setUser(decoded);
-//       setIsAuthenticated(true);
-//     } catch (err) {
-//       toast.error('Google login failed. Please try again.');
-//       throw err;
-//     }
-//   };
-
-//   return (
-//     <AuthContext.Provider
-//       value={{
-//         isAuthenticated,
-//         user,
-//         accessToken,
-//         refreshToken,
-//         login,
-//         logout: authMethods.logout,
-//         googleLogin,
-//         setAccessToken: authMethods.setAccessToken,
-//         setRefreshToken: authMethods.setRefreshToken,
-//         api,
-//       }}
-//     >
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// };
-
-// export default AuthProvider;
-
-
 // src/context/AuthProvider.jsx
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect,useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-toastify';
@@ -174,10 +18,11 @@ const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!accessToken);
   const [discounts, setDiscounts] = useState([]);
 
+  // In your AuthProvider.jsx, update the decodeToken function:
   const decodeToken = (token) => {
     try {
       const decoded = jwtDecode(token);
-      console.log(decoded)
+      console.log("Decoded token:", decoded);
       return {
         email: decoded.email || '',
         first_name: decoded.first_name || '',
@@ -185,14 +30,18 @@ const AuthProvider = ({ children }) => {
         is_verified: decoded.is_verified || false,
         signup_discount_used: decoded.signup_discount_used || false,
         phone_number: decoded.phone_number || '',
+        free_signup_service_used: decoded.free_signup_service_used_id ? {
+          id: decoded.free_signup_service_used_id,
+          claimed_at: decoded.free_service_used_at || null
+        } : null,
       };
-      
     } catch (err) {
       console.error('Failed to decode token:', err);
       return null;
     }
   };
 
+  
 
   const fetchDiscounts = async () => {
     try {
@@ -210,14 +59,15 @@ const AuthProvider = ({ children }) => {
 
     if (storedAccess && storedRefresh) {
       const decodedUser = decodeToken(storedAccess);
-      console.log(decodedUser)
+      console.log("Initial decoded user:", decodedUser);
       if (decodedUser) {
         setAccessToken(storedAccess);
         setRefreshToken(storedRefresh);
         setUser(decodedUser);
         setIsAuthenticated(true);
-       
         
+        // Also refresh user data from backend to get latest free_signup_service_used
+        // We'll do this after the API is set up
       } else {
         clearAuth();
       }
@@ -228,9 +78,10 @@ const AuthProvider = ({ children }) => {
 
   // fetch discounts on component mount
   useEffect(() => {
-    fetchDiscounts();
-  }, []);
-
+    if (isAuthenticated) {
+      fetchDiscounts();
+    }
+  }, [isAuthenticated]);
 
   const persistToken = (key, value) => {
     if (value) localStorage.setItem(key, value);
@@ -248,14 +99,14 @@ const AuthProvider = ({ children }) => {
 
   // 🚀 NEW METHOD: Directly set tokens from the verification success call
   const updateTokens = (access, refresh) => {
-      authMethods.setAccessToken(access);
-      authMethods.setRefreshToken(refresh);
+    authMethods.setAccessToken(access);
+    authMethods.setRefreshToken(refresh);
 
-      const decoded = decodeToken(access);
-      if (!decoded) throw new Error('Invalid access token');
+    const decoded = decodeToken(access);
+    if (!decoded) throw new Error('Invalid access token');
 
-      setUser(decoded);
-      setIsAuthenticated(true);
+    setUser(decoded);
+    setIsAuthenticated(true);
   };
 
   const authMethods = {
@@ -277,42 +128,85 @@ const AuthProvider = ({ children }) => {
 
   const api = createApiClient(authMethods);
 
+  // Function to refresh user data from backend
+  const refreshUserData = useCallback(async () => {
+    if (!accessToken) return;
+    
+    try {
+      const response = await api.get('/api/users/profile/');
+      console.log("Refreshed user data:", response.data);
+      
+      // Update user state with backend data
+      setUser(prev => ({
+        ...prev,
+        ...response.data,
+        free_signup_service_used: response.data.free_signup_service_used || null
+      }));
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  }, [accessToken, api]); 
+
+  // Updated login function to return user data
   const login = async (email, password) => {
     try {
       const response = await api.post('/api/users/login/', { email, password });
-      const { access, refresh } = response.data;
+      const { access, refresh, user: userData } = response.data;
 
       authMethods.setAccessToken(access);
       authMethods.setRefreshToken(refresh);
 
+      // Decode token first
       const decoded = decodeToken(access);
       if (!decoded) throw new Error('Invalid access token');
 
-      setUser(decoded);
+      // Combine decoded data with backend user data if available
+      const fullUserData = {
+        ...decoded,
+        ...userData, // This should include free_signup_service_used from backend
+      };
+
+      setUser(fullUserData);
       setIsAuthenticated(true);
+      
+      // Return the full user data so Login component can use it
+      return fullUserData;
     } catch (err) {
       toast.error('Login failed. Please check your credentials.');
       throw err;
     }
   };
 
-  const googleLogin = async (credentialResponse,  referralCode = null) => {
+  // Updated googleLogin function to return user data
+  const googleLogin = async (credentialResponse, referralCode = null) => {
     try {
       const payload = { token: credentialResponse.credential };
-      if (referralCode) payload.referral_code = referralCode; // ✅ send referral
+      if (referralCode) payload.referral_code = referralCode;
       
       const response = await api.post('/api/users/google-login/', payload, { withCredentials: true });
 
-      const { access, refresh } = response.data;
+      const { access, refresh, user: userData } = response.data;
       authMethods.setAccessToken(access);
       authMethods.setRefreshToken(refresh);
 
+      // Decode token first
       const decoded = decodeToken(access);
-      console.log("Decoded", decoded)
+      console.log("Decoded Google user:", decoded);
       if (!decoded) throw new Error('Invalid access token');
 
-      setUser(decoded);
+      // Combine decoded data with backend user data if available
+      const fullUserData = {
+        ...decoded,
+        ...userData, // This should include free_signup_service_used from backend
+      };
+
+      setUser(fullUserData);
       setIsAuthenticated(true);
+      
+      // Return the full user data so Login component can use it
+      return fullUserData;
     } catch (err) {
       toast.error('Google login failed. Please try again.');
       throw err;
@@ -334,7 +228,7 @@ const AuthProvider = ({ children }) => {
         api,
         updateTokens,
         discounts,
-        
+        refreshUserData, // Export this function so Services can use it
       }}
     >
       {children}
