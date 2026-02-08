@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { 
   FaGift, FaTag, FaShoppingCart, 
@@ -34,33 +33,16 @@ const VoucherStore = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Track if we've already processed URL params on this visit
-  const [hasProcessedUrlParams, setHasProcessedUrlParams] = useState(false);
+  // Track if we've already processed the URL for this session
+  const [hasProcessedInitialUrl, setHasProcessedInitialUrl] = useState(false);
 
   useEffect(() => {
     fetchVoucherTypes();
     fetchCampaigns();
     
-    // Check for pending order in localStorage
-    const pendingOrder = localStorage.getItem('pending_voucher_order');
-    if (pendingOrder) {
-      try {
-        const orderData = JSON.parse(pendingOrder);
-        toast.info(
-          <div className="flex items-center">
-            <FaGift className="mr-2 text-green-500" />
-            You have a pending voucher order. Click here to view.
-          </div>,
-          {
-            onClick: () => navigate('/account/vouchers'),
-            autoClose: 10000
-          }
-        );
-      } catch (error) {
-        console.error('Error parsing pending order:', error);
-        localStorage.removeItem('pending_voucher_order');
-      }
-    }
+    // Clear any session storage on mount
+    sessionStorage.removeItem('pending_voucher_purchase');
+    sessionStorage.removeItem('pending_voucher_order');
   }, []);
 
   useEffect(() => {
@@ -71,8 +53,9 @@ const VoucherStore = () => {
       const orderNumber = urlParams.get('order');
       
       if (paymentStatus === 'success' && orderNumber) {
-        localStorage.removeItem('pending_voucher_order');
+        // Clear all session storage
         sessionStorage.removeItem('pending_voucher_purchase');
+        sessionStorage.removeItem('pending_voucher_order');
         
         toast.success(
           <div className="flex items-center">
@@ -81,15 +64,16 @@ const VoucherStore = () => {
           </div>
         );
         
+        // Clean URL
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
         
         setTimeout(() => {
           navigate(`/account/vouchers?order=${orderNumber}`);
         }, 2000);
-      } else if (paymentStatus === 'failed') {
-        localStorage.removeItem('pending_voucher_order');
-        toast.error('Payment failed. Please try again.');
+      } else if (paymentStatus === 'failed' || paymentStatus === 'cancelled') {
+        sessionStorage.removeItem('pending_voucher_order');
+        toast.error('Payment was cancelled or failed. Please try again.');
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
       }
@@ -98,30 +82,49 @@ const VoucherStore = () => {
     handlePaymentRedirect();
   }, [navigate]);
 
-  // SIMPLIFIED: Only process URL parameters once on component mount
+  // ONLY ONE WAY TO OPEN MODAL: URL parameters after login redirect
   useEffect(() => {
-    if (!hasProcessedUrlParams && voucherTypes.length > 0) {
-      const searchParams = new URLSearchParams(location.search);
-      const voucherId = searchParams.get('voucher');
-      const purchaseStep = searchParams.get('step');
+    // Don't process if we've already done it or if no voucher types loaded yet
+    if (hasProcessedInitialUrl || voucherTypes.length === 0 || !isAuthenticated) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    const voucherId = searchParams.get('voucher');
+    const purchaseStep = searchParams.get('step');
+    
+    // Only open modal if BOTH parameters are present
+    if (voucherId && purchaseStep === 'purchase') {
+      // Mark as processed immediately
+      setHasProcessedInitialUrl(true);
       
-      if (voucherId && purchaseStep === 'purchase') {
-        const voucher = voucherTypes.find(v => v.id === parseInt(voucherId));
-        if (voucher) {
-          setSelectedVoucher(voucher);
-          setShowPurchaseModal(true);
-          
-          // Clean up the URL immediately
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
-        }
-        setHasProcessedUrlParams(true);
+      // Clear URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Find the voucher
+      const voucher = voucherTypes.find(v => v.id === parseInt(voucherId));
+      if (voucher) {
+        // Don't show toast - just open modal quietly
+        setSelectedVoucher(voucher);
+        setShowPurchaseModal(true);
+        setPurchaseData({
+          quantity: 1,
+          sendToSelf: true,
+          recipientEmail: '',
+          giftMessage: '',
+          step: 1
+        });
       }
     }
-  }, [location.search, voucherTypes, hasProcessedUrlParams]);
+  }, [location.search, voucherTypes, isAuthenticated, hasProcessedInitialUrl]);
 
-  // SIMPLIFIED: Don't auto-open modal from session storage on login
-  // Only handle manual user actions
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      sessionStorage.removeItem('pending_voucher_purchase');
+    };
+  }, []);
 
   const fetchVoucherTypes = async () => {
     try {
@@ -169,9 +172,6 @@ const VoucherStore = () => {
   };
 
   const handleCampaignClick = async (campaign) => {
-    // Clear any pending data when changing campaigns
-    sessionStorage.removeItem('pending_voucher_purchase');
-    
     // Close modal if open
     if (showPurchaseModal) {
       handleCloseModal();
@@ -268,14 +268,18 @@ const VoucherStore = () => {
   const handlePurchaseClick = (voucher) => {
     // Check authentication first
     if (!isAuthenticated) {
-      // Store voucher info for after login
-      sessionStorage.setItem('pending_voucher_purchase', JSON.stringify({
-        voucherId: voucher.id,
-        voucherName: voucher.name
-      }));
+      // Use URL parameters ONLY - no session storage
+      toast.info(
+        <div className="flex items-center">
+          <FaGift className="mr-2 text-green-500" />
+          Please login to purchase "{voucher.name}"
+        </div>,
+        {
+          autoClose: 5000
+        }
+      );
       
-      // Redirect to login with continue parameter
-      toast.info('Please login to purchase vouchers');
+      // Navigate to login with URL parameters
       navigate(`/auth/login?continue=${encodeURIComponent(`/vouchers?voucher=${voucher.id}&step=purchase`)}`);
       return;
     }
@@ -288,6 +292,9 @@ const VoucherStore = () => {
     }
     
     // If authenticated and verified, proceed with purchase modal
+    // Reset the URL processing flag so we can manually open modal
+    setHasProcessedInitialUrl(true);
+    
     setSelectedVoucher(voucher);
     setPurchaseData({
       quantity: 1,
@@ -318,6 +325,7 @@ const VoucherStore = () => {
     
     // Clear session storage
     sessionStorage.removeItem('pending_voucher_purchase');
+    sessionStorage.removeItem('pending_voucher_order');
   };
 
   const initiatePurchase = async () => {
@@ -359,18 +367,17 @@ const VoucherStore = () => {
       );
 
       if (response.data.success && response.data.payment_url) {
+        // Use sessionStorage only for payment flow (will clear on tab close)
         const orderData = {
           order_number: response.data.order_number,
           voucher_type: selectedVoucher.name,
           quantity: purchaseData.quantity,
           total_amount: response.data.total_amount,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          status: 'pending_payment'
         };
         
-        localStorage.setItem('pending_voucher_order', JSON.stringify(orderData));
-
-        // Clear session storage
-        sessionStorage.removeItem('pending_voucher_purchase');
+        sessionStorage.setItem('pending_voucher_order', JSON.stringify(orderData));
         
         // Navigate to payment URL
         window.location.href = response.data.payment_url;
@@ -382,8 +389,7 @@ const VoucherStore = () => {
     } catch (error) {
       console.error('Purchase error:', error);
       
-      localStorage.removeItem('pending_voucher_order');
-      sessionStorage.removeItem('pending_voucher_purchase');
+      sessionStorage.removeItem('pending_voucher_order');
       
       if (error.response) {
         const errorMessage = error.response.data?.message || 
@@ -393,10 +399,6 @@ const VoucherStore = () => {
         
         if (error.response.status === 401) {
           toast.info('Session expired. Please login again');
-          sessionStorage.setItem('pending_voucher_purchase', JSON.stringify({
-            voucherId: selectedVoucher.id,
-            purchaseData: purchaseData
-          }));
           navigate(`/auth/login?continue=${encodeURIComponent(`/vouchers?voucher=${selectedVoucher.id}&step=purchase`)}`);
         } else if (error.response.status === 400) {
           if (error.response.data?.voucher_type_id) {
@@ -455,14 +457,14 @@ const VoucherStore = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-12">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4 md:px-8 lg:px-24">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-12">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            <span className="text-green-600">Gift Vouchers</span>
+            <span className="">Gift Vouchers</span>
           </h1>
-          <p className="text-gray-600 text-lg max-w-2xl">
+          <p className="text-gray-600 max-w-2xl">
             Give the gift of pristine sneakers! Purchase vouchers at 10% discount and save on premium cleaning services.
           </p>
         </div>
@@ -471,7 +473,7 @@ const VoucherStore = () => {
         {campaigns.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-700 mb-3">Special Campaigns</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
               <button
                 onClick={() => handleCampaignClick(null)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${

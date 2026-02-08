@@ -1,4 +1,3 @@
-// src/components/Login.jsx
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -21,6 +20,10 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const location = useLocation();
 
+  // Get redirect URL from URL parameters (for voucher purchase)
+  const searchParams = new URLSearchParams(location.search);
+  const continueUrl = searchParams.get('continue');
+
   // Get the redirect path and service info from location state
   const from = location.state?.from || '/';
   const message = location.state?.message;
@@ -36,7 +39,14 @@ const Login = () => {
       autoClose: 3000,
     });
     
-    // If there's a service to highlight, redirect back to services with that info
+    // PRIORITY 1: If there's a continue URL from voucher purchase
+    if (continueUrl) {
+      // Navigate directly to the voucher purchase URL
+      navigate(continueUrl, { replace: true });
+      return;
+    }
+    
+    // PRIORITY 2: If there's a service to highlight
     if (highlightServiceId) {
       navigate('/services', { 
         state: { 
@@ -44,10 +54,11 @@ const Login = () => {
           showSuccessMessage: `Welcome back! You can now claim your free service.`
         } 
       });
-    } else {
-      // Default redirect to the page they came from or home
-      navigate(from, { replace: true });
+      return;
     }
+    
+    // DEFAULT: Redirect to the page they came from or home
+    navigate(from, { replace: true });
   };
 
   const handleEmailLogin = async (e) => {
@@ -148,7 +159,21 @@ const Login = () => {
           </div>
         )}
         
-        {highlightServiceId && !message && (
+        {/* Show special message for voucher purchase redirect */}
+        {continueUrl && continueUrl.includes('/vouchers?voucher=') && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <p className="text-green-800 text-sm font-medium">
+                After login, you'll be redirected to complete your voucher purchase.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {highlightServiceId && !message && !continueUrl && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-2">
               <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -294,9 +319,11 @@ const Login = () => {
             to="/auth/register" 
             className="text-primary hover:underline"
             state={{
-              from: '/services',
+              from: from,
               message: message || 'Sign up to claim your free service!',
-              highlightServiceId: highlightServiceId
+              highlightServiceId: highlightServiceId,
+              // Preserve continue URL for registration too
+              ...(continueUrl && { continue: continueUrl })
             }}
           >
             Register

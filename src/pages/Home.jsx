@@ -461,69 +461,12 @@ const Home = () => {
         </section>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="bg-[#11B59C] relative overflow-hidden">
-        {/* decorative blobs */}
-        <div className="absolute h-40 w-40 left-[30rem] bg-[#40EAD2]/40 rounded-full blur-2xl" />
-        <div className="absolute h-40 w-40 top-40 right-[30rem] bg-[#40EAD2]/40 rounded-full blur-2xl" />
-        <div className="absolute h-40 w-40 -top-10 right-[10rem] bg-[#40EAD2]/40 rounded-full blur-2xl" />
-
-        <motion.div
-          className="px-4 md:px-8 lg:px-24 py-20"
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <motion.h2 variants={fadeInUp} className="text-2xl md:text-5xl text-center font-bold text-black header mb-12">
-            How It Works: <span className="text-white">In 3 Easy Steps</span>
-          </motion.h2>
-
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-            {[
-              {
-                step: '1',
-                title: 'Book a Klean',
-                text: 'Schedule your Klean through our website. Choose your service and preferred pickup or drop-off option. We handle the rest.',
-              },
-              {
-                isArrow: true,
-                img: arrow1,
-              },
-              {
-                step: '2',
-                title: 'We Klean & Restore',
-                text: 'Our trained sneaker technicians professionally clean and refresh your sneakers using KleanKickX’s controlled care system, designed to protect materials and extend lifespan.',
-              },
-              {
-                isArrow: true,
-                img: arrow2,
-              },
-              {
-                step: '3',
-                title: 'Delivered Back Fresh',
-                text: "Your sneakers are quality-checked, carefully packed, and returned to you clean, refreshed, and ready to wear — typically within 72 hours."
-              },
-            ].map((item, idx) => (
-              item.isArrow ? (
-                <motion.img key={idx} src={item.img} alt="arrow" className="w-20 mx-auto rotate-90 md:rotate-0" variants={fadeIn} custom={idx} />
-              ) : (
-                <motion.div key={idx} variants={fadeIn} custom={idx}>
-                  <h1 className="text-2xl text-white header">{item.step}</h1>
-                  <h3 className="text-xl font-medium text-white header mt-2">{item.title}</h3>
-                  <p className="text-black mt-2 max-w-xs mx-auto md:mx-0">{item.text}</p>
-                </motion.div>
-              )
-            ))}
-          </div>
-        </motion.div>
-      </section>
-
-      {/* SERVICES */}
+       {/* SERVICES */}
       <section className="px-4 md:px-8 lg:px-24 py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-center text-[#011627] header mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-center header mb-2">
           Our Premium Services
         </h2>
+        <p className="text-center text-gray-600 mb-16 max-w-2xl mx-auto">Discover our range of premium cleaning services tailored to keep your sneakers looking fresh and clean.</p>
         
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
@@ -690,6 +633,10 @@ const Home = () => {
         )}
       </section>
 
+      
+
+     
+
       {/* STATISTICS & CAROUSEL */}
       <section className="px-4 md:px-8 lg:px-24 py-20 bg-[#011627] text-center">
         <motion.h2 variants={fadeInUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-3xl md:text-5xl font-bold text-white header mb-16">
@@ -722,8 +669,66 @@ const Home = () => {
         <ShoeCarousel />
       </section>
 
+      {/* HOW IT WORKS */}
+      <section className="bg-[#11B59C] relative overflow-hidden">
+        {/* decorative blobs */}
+        <div className="absolute h-40 w-40 left-[30rem] bg-[#40EAD2]/40 rounded-full blur-2xl" />
+        <div className="absolute h-40 w-40 top-40 right-[30rem] bg-[#40EAD2]/40 rounded-full blur-2xl" />
+        <div className="absolute h-40 w-40 -top-10 right-[10rem] bg-[#40EAD2]/40 rounded-full blur-2xl" />
+
+        <motion.div
+          className="px-4 md:px-8 lg:px-24 py-20"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          <motion.h2 variants={fadeInUp} className="text-2xl md:text-5xl text-center font-bold text-black header mb-12">
+            How It Works: <span className="text-white">In 3 Easy Steps</span>
+          </motion.h2>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+            {[
+              {
+                step: '1',
+                title: 'Book a Klean',
+                text: 'Schedule your Klean through our website. Choose your service and preferred pickup or drop-off option. We handle the rest.',
+              },
+              {
+                isArrow: true,
+                img: arrow1,
+              },
+              {
+                step: '2',
+                title: 'We Klean & Restore',
+                text: 'Our trained sneaker technicians professionally clean and refresh your sneakers using KleanKickX’s controlled care system, designed to protect materials and extend lifespan.',
+              },
+              {
+                isArrow: true,
+                img: arrow2,
+              },
+              {
+                step: '3',
+                title: 'Delivered Back Fresh',
+                text: "Your sneakers are quality-checked, carefully packed, and returned to you clean, refreshed, and ready to wear — typically within 72 hours."
+              },
+            ].map((item, idx) => (
+              item.isArrow ? (
+                <motion.img key={idx} src={item.img} alt="arrow" className="w-20 mx-auto rotate-90 md:rotate-0" variants={fadeIn} custom={idx} />
+              ) : (
+                <motion.div key={idx} variants={fadeIn} custom={idx}>
+                  <h1 className="text-2xl text-white header">{item.step}</h1>
+                  <h3 className="text-xl font-medium text-white header mt-2">{item.title}</h3>
+                  <p className="text-black mt-2 max-w-xs mx-auto md:mx-0">{item.text}</p>
+                </motion.div>
+              )
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
       {/* CARE */}
-      <section className="relative h-[30rem] bg-cover bg-center" style={{ backgroundImage: `url(${kleankickxCare})` }}>
+      {/* <section className="relative h-[30rem] bg-cover bg-center" style={{ backgroundImage: `url(${kleankickxCare})` }}>
         <motion.div
           className="relative z-10 h-full pt-[4rem] px-4 md:px-8 lg:px-24 text-center flex flex-col items-center text-white"
           variants={fadeInUp}
@@ -736,10 +741,10 @@ const Home = () => {
              We're your one-stop shop for reviving your beloved sneakers. Whether athlete, collector, or casual wearer, we bring them back to life.
           </p>
         </motion.div>
-      </section>
+      </section> */}
 
       {/* WHO WE ARE */}
-      <section className="bg-cover bg-no-repeat" style={{ backgroundImage: `url(${whoWeAre})` }}>
+      {/* <section className="bg-cover bg-no-repeat" style={{ backgroundImage: `url(${whoWeAre})` }}>
         <motion.div
           className="px-4 md:px-8 lg:px-24 py-16 lg:py-[8rem] max-w-4xl"
           variants={fadeInUp}
@@ -755,7 +760,7 @@ const Home = () => {
             Learn More
           </Link>
         </motion.div>
-      </section>
+      </section> */}
 
       {/* TIPS & FOOTER */}
       <KleanTips />

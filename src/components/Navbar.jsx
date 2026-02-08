@@ -35,27 +35,42 @@ const Navbar = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const dropdownRef = useRef(null);
-  const mobileDropdownRef = useRef(null);
+  const userDropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
 
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClick = (e) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target) &&
-        mobileDropdownRef.current &&
-        !mobileDropdownRef.current.contains(e.target)
-      ) {
-        setIsDropdownOpen(false);
+    const handleClickOutside = (event) => {
+      // Close desktop navigation dropdowns
+      if (dropdownRef.current && 
+          !dropdownRef.current.contains(event.target) && 
+          activeDropdown !== null) {
         setActiveDropdown(null);
       }
+      
+      // Close user dropdown
+      if (userDropdownRef.current && 
+          !userDropdownRef.current.contains(event.target) && 
+          isDropdownOpen) {
+        setIsDropdownOpen(false);
+      }
+      
+      // Close mobile menu when clicking outside
+      if (mobileMenuRef.current && 
+          !mobileMenuRef.current.contains(event.target) && 
+          isMobileMenuOpen) {
+        closeMobileMenu();
+      }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeDropdown, isDropdownOpen, isMobileMenuOpen]);
 
   const truncateWithEllipsis = (text, maxLength) => {
     if (!text) return '';
@@ -189,14 +204,14 @@ const Navbar = () => {
       )}
 
       <nav className="bg-gray-800 text-white py-4 shadow-md">
-        <div className="flex justify-between items-center px-4 lg:px-8 xl:px-12 gap-6">
+        <div className="flex justify-between items-center px-4 md:px-8 lg:px-24 gap-6">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
             <img src={Logo} alt="KleanKickx" className="w-28 object-cover" />
           </NavLink>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center justify-center flex-1 gap-1">
+          <div className="hidden lg:flex items-center justify-center flex-1 gap-1" ref={dropdownRef}>
             {navGroups.map((group) => {
               if (group.authOnly && !isAuthenticated) return null;
               
@@ -206,14 +221,13 @@ const Navbar = () => {
                     <NavLink
                       to={group.to}
                       className={({ isActive }) =>
-                        `flex items-center  gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                        `flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
                           isActive
                             ? 'bg-gray-700 text-green-400'
                             : 'hover:bg-gray-700 hover:text-green-300'
                         }`
                       }
                     >
-                      {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-4 h-4" />} */}
                       <span className="font-medium">{group.label}</span>
                     </NavLink>
                   </div>
@@ -221,7 +235,7 @@ const Navbar = () => {
               }
 
               return (
-                <div key={group.label} className="relative group" ref={dropdownRef}>
+                <div key={group.label} className="relative group">
                   <button
                     onClick={() => toggleDropdown(group.label)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
@@ -267,11 +281,6 @@ const Navbar = () => {
                             <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
                           )}
                           <span className="font-medium">{item.label}</span>
-                          {/* {item.highlight && (
-                            <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
-                              New
-                            </span>
-                          )} */}
                         </NavLink>
                       ))}
                     </div>
@@ -298,7 +307,7 @@ const Navbar = () => {
 
             {/* User Actions */}
             {isAuthenticated ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative" ref={userDropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen((p) => !p)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-all cursor-pointer"
@@ -411,6 +420,7 @@ const Navbar = () => {
 
         {/* Mobile side drawer */}
         <div
+          ref={mobileMenuRef}
           className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 lg:hidden ${
             isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
@@ -464,7 +474,6 @@ const Navbar = () => {
                             }`
                           }
                         >
-                          {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-5 h-5" />} */}
                           <span className="font-medium">{group.label}</span>
                         </NavLink>
                       ) : (
@@ -505,9 +514,6 @@ const Navbar = () => {
                                     }`
                                   }
                                 >
-                                  {/* {item.icon && (
-                                    <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
-                                  )} */}
                                   <span>{item.label}</span>
                                   {item.highlight && (
                                     <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
