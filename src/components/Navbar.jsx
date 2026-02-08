@@ -154,7 +154,11 @@ const Navbar = () => {
     setIsBannerVisible(false);
   };
 
-  const toggleDropdown = (groupLabel) => {
+  const toggleDropdown = (groupLabel, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     setActiveDropdown(activeDropdown === groupLabel ? null : groupLabel);
   };
 
@@ -470,7 +474,7 @@ const Navbar = () => {
                       ) : (
                         <div className="space-y-1">
                           <button
-                            onClick={() => toggleDropdown(group.label)}
+                            onClick={(e) => toggleDropdown(group.label, e)}
                             className={`flex items-center justify-between w-full px-4 py-3.5 rounded-lg transition-colors ${
                               activeDropdown === group.label
                                 ? 'bg-gray-700 text-green-400'
@@ -494,7 +498,11 @@ const Navbar = () => {
                                 <NavLink
                                   key={item.to}
                                   to={item.to}
-                                  onClick={closeMobileMenu}
+                                  onClick={(e) => {
+                                    // Stop event propagation to prevent the parent button from triggering
+                                    e.stopPropagation();
+                                    closeMobileMenu();
+                                  }}
                                   className={({ isActive }) =>
                                     `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                                       item.highlight
