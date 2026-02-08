@@ -36,12 +36,11 @@ const Navbar = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const dropdownRef = useRef(null);
   const userDropdownRef = useRef(null);
-  const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
 
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
 
-  // Close dropdowns when clicking outside
+  // Close desktop dropdowns when clicking outside (excluding mobile menu)
   useEffect(() => {
     const handleClickOutside = (event) => {
       // Close desktop navigation dropdowns
@@ -57,20 +56,13 @@ const Navbar = () => {
           isDropdownOpen) {
         setIsDropdownOpen(false);
       }
-      
-      // Close mobile menu when clicking outside
-      if (mobileMenuRef.current && 
-          !mobileMenuRef.current.contains(event.target) && 
-          isMobileMenuOpen) {
-        closeMobileMenu();
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [activeDropdown, isDropdownOpen, isMobileMenuOpen]);
+  }, [activeDropdown, isDropdownOpen]);
 
   const truncateWithEllipsis = (text, maxLength) => {
     if (!text) return '';
@@ -204,7 +196,7 @@ const Navbar = () => {
       )}
 
       <nav className="bg-gray-800 text-white py-4 shadow-md">
-        <div className="flex justify-between items-center px-4 md:px-8 lg:px-24 gap-6">
+        <div className="flex justify-between items-center px-4 lg:px-8 xl:px-12 gap-6">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
             <img src={Logo} alt="KleanKickx" className="w-28 object-cover" />
@@ -420,7 +412,6 @@ const Navbar = () => {
 
         {/* Mobile side drawer */}
         <div
-          ref={mobileMenuRef}
           className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 lg:hidden ${
             isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
