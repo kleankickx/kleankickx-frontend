@@ -35,34 +35,27 @@ const Navbar = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const dropdownRef = useRef(null);
-  const userDropdownRef = useRef(null);
+  const mobileDropdownRef = useRef(null);
   const navigate = useNavigate();
 
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
 
-  // Close desktop dropdowns when clicking outside (excluding mobile menu)
+  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      // Close desktop navigation dropdowns
-      if (dropdownRef.current && 
-          !dropdownRef.current.contains(event.target) && 
-          activeDropdown !== null) {
+    const handleClick = (e) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target) &&
+        mobileDropdownRef.current &&
+        !mobileDropdownRef.current.contains(e.target)
+      ) {
+        setIsDropdownOpen(false);
         setActiveDropdown(null);
       }
-      
-      // Close user dropdown
-      if (userDropdownRef.current && 
-          !userDropdownRef.current.contains(event.target) && 
-          isDropdownOpen) {
-        setIsDropdownOpen(false);
-      }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [activeDropdown, isDropdownOpen]);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const truncateWithEllipsis = (text, maxLength) => {
     if (!text) return '';
@@ -154,11 +147,7 @@ const Navbar = () => {
     setIsBannerVisible(false);
   };
 
-  const toggleDropdown = (groupLabel, e) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
+  const toggleDropdown = (groupLabel) => {
     setActiveDropdown(activeDropdown === groupLabel ? null : groupLabel);
   };
 
@@ -207,7 +196,7 @@ const Navbar = () => {
           </NavLink>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center justify-center flex-1 gap-1" ref={dropdownRef}>
+          <div className="hidden lg:flex items-center justify-center flex-1 gap-1">
             {navGroups.map((group) => {
               if (group.authOnly && !isAuthenticated) return null;
               
@@ -217,13 +206,14 @@ const Navbar = () => {
                     <NavLink
                       to={group.to}
                       className={({ isActive }) =>
-                        `flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                        `flex items-center  gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
                           isActive
                             ? 'bg-gray-700 text-green-400'
                             : 'hover:bg-gray-700 hover:text-green-300'
                         }`
                       }
                     >
+                      {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-4 h-4" />} */}
                       <span className="font-medium">{group.label}</span>
                     </NavLink>
                   </div>
@@ -231,7 +221,7 @@ const Navbar = () => {
               }
 
               return (
-                <div key={group.label} className="relative group">
+                <div key={group.label} className="relative group" ref={dropdownRef}>
                   <button
                     onClick={() => toggleDropdown(group.label)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
@@ -277,6 +267,11 @@ const Navbar = () => {
                             <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
                           )}
                           <span className="font-medium">{item.label}</span>
+                          {/* {item.highlight && (
+                            <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
+                              New
+                            </span>
+                          )} */}
                         </NavLink>
                       ))}
                     </div>
@@ -303,7 +298,7 @@ const Navbar = () => {
 
             {/* User Actions */}
             {isAuthenticated ? (
-              <div className="relative" ref={userDropdownRef}>
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen((p) => !p)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-all cursor-pointer"
@@ -469,12 +464,13 @@ const Navbar = () => {
                             }`
                           }
                         >
+                          {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-5 h-5" />} */}
                           <span className="font-medium">{group.label}</span>
                         </NavLink>
                       ) : (
                         <div className="space-y-1">
                           <button
-                            onClick={(e) => toggleDropdown(group.label, e)}
+                            onClick={() => toggleDropdown(group.label)}
                             className={`flex items-center justify-between w-full px-4 py-3.5 rounded-lg transition-colors ${
                               activeDropdown === group.label
                                 ? 'bg-gray-700 text-green-400'
@@ -498,11 +494,7 @@ const Navbar = () => {
                                 <NavLink
                                   key={item.to}
                                   to={item.to}
-                                  onClick={(e) => {
-                                    // Stop event propagation to prevent the parent button from triggering
-                                    e.stopPropagation();
-                                    closeMobileMenu();
-                                  }}
+                                  onClick={closeMobileMenu}
                                   className={({ isActive }) =>
                                     `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                                       item.highlight
@@ -513,6 +505,9 @@ const Navbar = () => {
                                     }`
                                   }
                                 >
+                                  {/* {item.icon && (
+                                    <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                                  )} */}
                                   <span>{item.label}</span>
                                   {item.highlight && (
                                     <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
