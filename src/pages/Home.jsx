@@ -16,6 +16,8 @@ import whoWeAre from '../assets/who_we_are.png';
 import KleanTips from '../components/KleanTips';
 import Footer from '../components/Footer';
 import heroImage from '../assets/home_hero.png';
+import valentineBanner from '../assets/valentine_voucher_banner.png'; 
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -425,11 +427,45 @@ const Home = () => {
       />
       
       {/* HERO */}
-      <section className="bg-[#E5FDFF] h-full lg:h-screen">
-        <section className="py-[6rem] px-4 md:px-8 lg:px-24">
+      <section className="relative bg-[#E5FDFF] overflow-hidden">
+
+        {/* PROMO BANNER STRIP */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative w-full cursor-pointer group"
+          onClick={() => navigate('/vouchers')}
+        >
+          <div className="relative h-[280px] md:h-[350px] overflow-hidden">
+            <img
+              src={valentineBanner}
+              alt="Valentine Voucher"
+              className="w-full h-full object-cover transition duration-700 group-hover:scale-105"
+            />
+
+            {/* Dark overlay for elegance */}
+            <div className="absolute inset-0 bg-black/30"></div>
+
+            {/* CTA */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center text-white">
+                <h2 className="text-3xl md:text-5xl font-bold header drop-shadow-lg">
+                  Valentine Voucher Special
+                </h2>
+                <button className="mt-6 bg-white text-black px-8 py-3 rounded-full font-semibold hover:bg-gray-200 transition">
+                  Purchase Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ORIGINAL HERO CONTENT */}
+        {/* <section className="py-[6rem] px-4 md:px-8 lg:px-24">
           <div className="flex flex-col lg:flex-row items-center justify-between h-full text-center lg:text-left">
+            
             <motion.div
-              className=""
               variants={fadeInUp}
               initial="hidden"
               animate="visible"
@@ -438,13 +474,15 @@ const Home = () => {
                 <span className="text-[#011627]">Leave Your </span> Sneakers<br />
                 <span className="text-[#011627]">In our </span> Care
               </h1>
+
               <p className="text-[#011627] text-lg mt-4 max-w-xl">
-                Getting your footwear cleaned has never been so easy. We pick up your dirty kicks, Klean them by hand, and then deliver your Kleankickx to you.
+                Getting your footwear cleaned has never been so easy. We pick up your dirty kicks, Klean them by hand, and deliver them fresh.
               </p>
+
               <motion.div variants={zoomIn} initial="hidden" animate="visible" className="mt-8">
                 <button 
                   onClick={() => navigate('/services')}
-                  className="bg-[#011627] rounded text-white px-6 py-3 inline-block hover:bg-[#011627]/90 transition font-medium"
+                  className="bg-[#011627] rounded text-white px-6 py-3 hover:bg-[#011627]/90 transition font-medium"
                 >
                   Schedule a Klean
                 </button>
@@ -457,9 +495,11 @@ const Home = () => {
             >
               <img src={heroImage} alt="Hero Sneakers" className="lg:w-[35rem]" />
             </motion.div>
+
           </div>
-        </section>
+        </section> */}
       </section>
+
 
        {/* SERVICES */}
       <section className="px-4 md:px-8 lg:px-24 py-20">
