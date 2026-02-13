@@ -15,8 +15,8 @@ import kleankickxCare from '../assets/kleankickx_care.png';
 import whoWeAre from '../assets/who_we_are.png';
 import KleanTips from '../components/KleanTips';
 import Footer from '../components/Footer';
-import heroImage from '../assets/home_hero.png';
-import valentineBanner from '../assets/valentine_voucher_banner.png'; 
+import heroImage from '../assets/home_hero.webp';
+import valentineBanner from '../assets/valentine_voucher_banner.webp'; 
 
 
 const fadeInUp = {

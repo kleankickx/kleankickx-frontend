@@ -24,7 +24,7 @@ import {
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import Logo from '../assets/klean_logo.png';
+import Logo from '../assets/klean_logo.webp';
 
 const Navbar = () => {
   const { cart } = useContext(CartContext);

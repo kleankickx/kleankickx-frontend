@@ -1,4 +1,4 @@
-import footerBg from '../assets/footer_bg.png';
+import footerBg from '../assets/footer_bg.webp';
 import { FaXTwitter } from "react-icons/fa6";
 import { FaInstagram, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
 import { motion } from "framer-motion";
