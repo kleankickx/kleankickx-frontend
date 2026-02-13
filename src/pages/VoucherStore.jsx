@@ -12,6 +12,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
 
+// Default fallback banner if campaign has no image
+import defaultBanner from '../assets/valentine_voucher_banner.webp';
+
 const VoucherStore = () => {
   const [voucherTypes, setVoucherTypes] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -21,6 +24,7 @@ const VoucherStore = () => {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [loadedImages, setLoadedImages] = useState({});
+  const [campaignImageLoaded, setCampaignImageLoaded] = useState(false);
   const [purchaseData, setPurchaseData] = useState({
     quantity: 1,
     sendToSelf: true,
@@ -178,6 +182,7 @@ const VoucherStore = () => {
     }
     
     setSelectedCampaign(campaign);
+    setCampaignImageLoaded(false);
     
     if (campaign) {
       try {
@@ -442,15 +447,52 @@ const VoucherStore = () => {
     };
   };
 
+  // Helper function to determine overlay gradient based on campaign name/theme
+  const getCampaignOverlay = (campaign) => {
+    if (!campaign) return 'bg-gradient-to-r from-black/60 to-black/40';
+    
+    const name = campaign.name?.toLowerCase() || '';
+    const themeColor = campaign.theme_color || '';
+    
+    // Custom gradients based on campaign name
+    if (name.includes('valentine') || name.includes('love') || name.includes('heart')) {
+      return 'bg-gradient-to-r from-red-900/70 via-pink-800/60 to-purple-900/70';
+    } else if (name.includes('christmas') || name.includes('xmas')) {
+      return 'bg-gradient-to-r from-green-900/70 to-red-900/70';
+    } else if (name.includes('summer')) {
+      return 'bg-gradient-to-r from-yellow-900/60 to-orange-900/60';
+    } else if (name.includes('spring')) {
+      return 'bg-gradient-to-r from-green-900/60 to-blue-900/60';
+    } else if (name.includes('birthday')) {
+      return 'bg-gradient-to-r from-purple-900/60 to-pink-900/60';
+    } else if (name.includes('black friday')) {
+      return 'bg-gradient-to-r from-black/80 to-gray-900/80';
+    } else if (name.includes('new year')) {
+      return 'bg-gradient-to-r from-blue-900/70 to-purple-900/70';
+    }
+    
+    // Use theme color if provided
+    if (themeColor) {
+      // Convert hex to rgba for gradient
+      const hex = themeColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `bg-gradient-to-r from-[rgba(${r},${g},${b},0.8)] to-[rgba(${r},${g},${b},0.6)]`;
+    }
+    
+    // Default gradient
+    return 'bg-gradient-to-r from-green-900/70 to-emerald-900/70';
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white">
+      <div className="min-h-[90vh] flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
             <FaSpinner className="animate-spin text-4xl text-green-600 mx-auto mb-4" />
-            <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 blur-xl opacity-20"></div>
           </div>
-          <p className="text-gray-600 font-medium mt-2">Loading voucher collection...</p>
+          <p className="text-gray-600 mt-2">Loading voucher collection...</p>
         </div>
       </div>
     );
@@ -502,27 +544,107 @@ const VoucherStore = () => {
         )}
       </div>
 
-      {/* Campaign Banner */}
+      {/* Campaign Banner - Now with Image */}
       {selectedCampaign && (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-7xl mx-auto mb-8 rounded-xl overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600"
+          className="max-w-7xl mx-auto mb-8 rounded-xl overflow-hidden relative cursor-pointer group"
+          onClick={() => {
+            const voucherGrid = document.querySelector('.vouchers-grid');
+            if (voucherGrid) {
+              const offsetTop = voucherGrid.offsetTop - 100;
+              window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+            }
+          }}
         >
-          <div className="p-6 text-white">
-            <div className="flex items-center gap-3 mb-2">
-              <FaStar className="text-yellow-300" />
-              <span className="font-semibold">SPECIAL OFFER</span>
+          {/* Banner Image */}
+          <div className="relative h-[180px] overflow-hidden">
+            {/* Loading placeholder */}
+            {!campaignImageLoaded && (
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
+            )}
+            
+            {/* Actual image */}
+            <img
+              src={selectedCampaign.banner_image_url || defaultBanner}
+              alt={selectedCampaign.name}
+              className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${
+                !campaignImageLoaded ? 'opacity-0' : 'opacity-100'
+              }`}
+              onLoad={() => setCampaignImageLoaded(true)}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = defaultBanner;
+              }}
+            />
+            
+            {/* Gradient Overlay */}
+            <div className={`absolute inset-0 ${getCampaignOverlay(selectedCampaign)}`}></div>
+            
+            {/* Content Overlay */}
+            <div className="absolute inset-0 ">
+              <div className="text-white max-w-3xl px-4 py-4">
+                {/* Special Offer Badge */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-white/30"
+                >
+                  <FaStar className="text-yellow-300 animate-pulse" />
+                  <span className="font-semibold text-sm uppercase tracking-wider">SPECIAL OFFER</span>
+                </motion.div>
+                
+                {/* Campaign Name */}
+                <motion.h2 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-3xl font-bold mb-2 drop-shadow-lg"
+                >
+                  {selectedCampaign.name}
+                </motion.h2>
+                
+                {/* Campaign Description */}
+                {selectedCampaign.description && (
+                  <motion.p 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-base mb-6 text-white/90 max-w-2xl"
+                  >
+                    {selectedCampaign.description}
+                  </motion.p>
+                )}
+                
+                
+                {/* Scroll Indicator */}
+                {/* <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="mt-6"
+                >
+                  <div className="animate-bounce">
+                    <FaArrowRight className="text-white text-xl rotate-90 mx-auto opacity-70" />
+                  </div>
+                </motion.div> */}
+              </div>
             </div>
-            <h2 className="text-2xl font-bold mb-2">{selectedCampaign.name}</h2>
-            <p className="text-green-100">{selectedCampaign.description}</p>
+            
+            {/* Theme Color Accent Line */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-1"
+              style={{ backgroundColor: selectedCampaign.theme_color || '#10b981' }}
+            />
           </div>
         </motion.div>
       )}
 
       {/* Results Count */}
       <div className="max-w-7xl mx-auto mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex">
           <p className="text-gray-700">
             <span className="font-semibold">{voucherTypes.length}</span> voucher{voucherTypes.length !== 1 ? 's' : ''} available
             {selectedCampaign && (
@@ -531,18 +653,13 @@ const VoucherStore = () => {
               </span>
             )}
           </p>
-          {selectedCampaign && (
-            <span className="text-sm text-gray-500 px-3 py-1 bg-gray-100 rounded-full">
-              {selectedCampaign.name}
-            </span>
-          )}
         </div>
       </div>
 
       {/* Voucher Grid */}
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto vouchers-grid">
         {voucherTypes.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <div className="text-center py-16  bg-white rounded-xl border border-gray-200">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaGift className="text-2xl text-gray-400" />
             </div>

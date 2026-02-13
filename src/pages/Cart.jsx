@@ -609,7 +609,7 @@ const Cart = () => {
             </div>
             <button
               onClick={() => navigate('/services')}
-              className="px-5 py-2.5 bg-primary border border-gray-300 rounded-lg font-medium text-white hover:bg-primary/80 transition-colors text-sm"
+              className="px-5 py-2.5 bg-primary rounded-lg font-medium text-white cursor-pointer hover:bg-primary/80 text-sm"
             >
               Continue Shopping
             </button>
@@ -1166,19 +1166,14 @@ const Cart = () => {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">Your cart is empty</h2>
               <p className="text-gray-600 mb-7">Add some sneaker cleaning services to get started</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="mt-4">
                 <button
                   onClick={() => navigate('/services')}
-                  className="px-8 py-3.5 bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-all text-base"
+                  className="px-8 cursor-pointer py-3.5 bg-primary text-white rounded-lg hover:opacity-90 transition-all text-base"
                 >
                   Browse Services
                 </button>
-                <button
-                  onClick={() => navigate('/redeem')}
-                  className="px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg font-bold hover:opacity-90 transition-all text-base" // Green gradient
-                >
-                  Redeem Voucher
-                </button>
+                
               </div>
             </div>
           </div>
