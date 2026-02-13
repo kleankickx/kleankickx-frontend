@@ -503,8 +503,8 @@ const Home = () => {
 
        {/* SERVICES */}
       <section className="px-4 md:px-8 lg:px-24 py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-center header mb-2">
-          Our Premium Services
+        <h2 className="text-3xl lg:text-5xl font-bold text-center header mb-2">
+          Our <span className="text-primary">Premium</span> Services
         </h2>
         <p className="text-center text-gray-600 mb-16 max-w-2xl mx-auto">Discover our range of premium cleaning services tailored to keep your sneakers looking fresh and clean.</p>
         
