@@ -428,41 +428,8 @@ const Home = () => {
       
       {/* HERO */}
       <section className="relative bg-[#E5FDFF] overflow-hidden">
-
-        {/* PROMO BANNER STRIP */}
-        <motion.div
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="relative w-full cursor-pointer group"
-          onClick={() => navigate('/vouchers')}
-        >
-          <div className="relative h-[280px] md:h-[350px] overflow-hidden">
-            <img
-              src={valentineBanner}
-              alt="Valentine Voucher"
-              className="w-full h-full object-cover transition duration-700 group-hover:scale-105"
-            />
-
-            {/* Dark overlay for elegance */}
-            <div className="absolute inset-0 bg-black/30"></div>
-
-            {/* CTA */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-white">
-                <h2 className="text-3xl md:text-5xl font-bold header drop-shadow-lg">
-                  Valentine Voucher Special
-                </h2>
-                <button className="mt-6 bg-white text-black px-8 py-3 rounded-full font-semibold hover:bg-gray-200 transition">
-                  Purchase Now
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
         {/* ORIGINAL HERO CONTENT */}
-        {/* <section className="py-[6rem] px-4 md:px-8 lg:px-24">
+        <section className="py-[6rem] px-4 md:px-8 lg:px-24">
           <div className="flex flex-col lg:flex-row items-center justify-between h-full text-center lg:text-left">
             
             <motion.div
@@ -497,7 +464,7 @@ const Home = () => {
             </motion.div>
 
           </div>
-        </section> */}
+        </section> 
       </section>
 
 
