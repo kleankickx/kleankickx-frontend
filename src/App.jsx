@@ -36,17 +36,14 @@ import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
 import GoogleMapsLoader from './components/GoogleMapsLoader';
 
-
-
 const AppContent = () => {
   const location = useLocation();
   const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email', '/auth/verify-email'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
 
-
   return (
     <div className="flex flex-col min-h-screen">
-      {!shouldHideNavbar && <Navbar />} {/* Conditionally render Navbar based on the current route */}
+      {!shouldHideNavbar && <Navbar />}
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -74,7 +71,7 @@ const AppContent = () => {
             path="/account/vouchers"
             element={
               <ProtectedRoute requireVerification={true}>
-                <AccountVouchers   />
+                <AccountVouchers />
               </ProtectedRoute>
             }
           />
@@ -82,7 +79,7 @@ const AppContent = () => {
             path="/vouchers/purchase/success"
             element={
               <ProtectedRoute requireVerification={true}>
-                <VoucherPurchaseSuccess   />
+                <VoucherPurchaseSuccess />
               </ProtectedRoute>
             }
           />
@@ -90,16 +87,14 @@ const AppContent = () => {
             path="/redeem"
             element={
               <ProtectedRoute requireVerification={true}>
-                <RedeemVoucher    />
+                <RedeemVoucher />
               </ProtectedRoute>
             }
           />
           <Route
             path="/referral-dashboard"
             element={
-              
-                <ReferralDashboard />
-              
+              <ReferralDashboard />
             }
           />
           <Route
@@ -160,7 +155,6 @@ const AppContent = () => {
           />
 
           <Route path="*" element={<NotFound />} />
-          
         </Routes>
       </main>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -168,64 +162,8 @@ const AppContent = () => {
   );
 };
 
-const LoadingSplash = () => (
-  // Use Tailwind classes to center the spinner over the entire viewport
-  <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
-    <div className="flex flex-col items-center">
-      {/* Example Spinner - you can use FaSpinner from react-icons */}
-      
-      <div className="relative inline-block">
-          <svg className="animate-spin -ml-1 mr-3 h-12 w-12 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <div className="absolute inset-0 bg-blue-200 rounded-full animate-ping opacity-20"></div>
-      </div>
-      <p className="mt-2 text-gray-600">Hang tight, loading...</p>
-    </div>
-  </div>
-);
-
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const [appLoading, setAppLoading] = useState(true);
-  const [hasLoaded, setHasLoaded] = useState(false);
-
-
-  // Function to transition the splash screen out
-  const finishLoading = useCallback(() => {
-    if (hasLoaded) return;
-    setHasLoaded(true);
-
-    // 1. Start the fade-out (set appLoading to false)
-    setAppLoading(false);
-
-  }, [hasLoaded]);
-
-  useEffect(() => {
-    // --- Primary Mechanism: Browser's Full Load Event ---
-    const handleLoad = () => {
-      // Ensure a minimum display time of 500ms before finishing
-      setTimeout(finishLoading, 500); 
-    };
-
-    window.addEventListener('load', handleLoad);
-
-    // --- Fallback Mechanism: Max Timeout ---
-    // If the 'load' event hasn't fired after 8 seconds, force the app to load.
-    const fallbackTimeout = setTimeout(() => {
-        console.warn('Fallback: Forcing app load after timeout.');
-        finishLoading();
-    }, 8000); // 8 seconds is usually enough for a slow mobile connection
-
-    // --- Cleanup Function ---
-    return () => {
-      window.removeEventListener('load', handleLoad);
-      clearTimeout(fallbackTimeout);
-    };
-  }, [finishLoading]);// Empty dependency array ensures this runs once after the initial render
-
-   
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
@@ -233,14 +171,8 @@ function App() {
         <AuthProvider>
           <CartProvider>
             <ScrollToTop />
-             {appLoading ? (
-              <LoadingSplash />
-            ) : (
-              <>
-              <GoogleMapsLoader />
-              <AppContent />
-              </>
-            )}
+            <GoogleMapsLoader />
+            <AppContent />
           </CartProvider>
         </AuthProvider>
       </Router>

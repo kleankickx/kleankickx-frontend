@@ -176,13 +176,36 @@ export const usePlaceOrder = (
 
             // 4. Handle Response Based on Order Type
             if (response.status === 201) {
+                // --- ORDER SUCCESSFULLY CREATED ---
+                // Clear cart and reset form states IMMEDIATELY after successful order creation
+                // This ensures cart is cleared regardless of payment status
+                
+                // Clear cart from context and localStorage
+                clearCart();
+                
+                // Reset all checkout form states
+                setDelivery(null);
+                setPickup(null);
+                setDeliveryInputValue('');
+                setPickupInputValue('');
+                setDeliveryRegion(null);
+                setPickupRegion(null);
+                setUseSame(false);
+                setAppliedPromotion(null);
+                
+                // Clear any voucher validation data from localStorage
+                localStorage.removeItem('voucher_validation');
+                
+                // Get order reference for navigation
+                const orderRef = response.data.order_reference_code;
+                
                 // 4a. Check if this is a free order (total = 0)
                 if (response.data.is_free_order) {
                     // Free order - no payment required
                     toast.success(response.data.message || "Order placed successfully!");
                     
-                    // 4b. Discount Redemption (If applicable)
-                    if (canUseRedeemedPoints) {
+                    // Discount Redemption (If applicable)
+                    if (canUseRedeemedPoints && redeemedPointsDiscount?.id) {
                         try {
                             await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
                         } catch (error) {
@@ -190,19 +213,7 @@ export const usePlaceOrder = (
                         }
                     }
                     
-                    // Clear cart and reset form states
-                    clearCart();
-                    setDelivery(null);
-                    setPickup(null);
-                    setDeliveryInputValue('');
-                    setPickupInputValue('');
-                    setDeliveryRegion(null);
-                    setPickupRegion(null);
-                    setUseSame(false);
-                    setAppliedPromotion(null);
-                    
                     // Navigate to order details
-                    const orderRef = response.data.order_reference_code;
                     setTimeout(() => {
                         navigate(`/orders/${orderRef}/`);
                     }, 1500);
@@ -210,12 +221,12 @@ export const usePlaceOrder = (
                     return; // Exit early
                 }
                 
-                // 4c. Paid order - proceed with Paystack
+                // 4b. Paid order - proceed with Paystack
                 const authUrl = response.data.paystack_auth_url;
                 
                 if (authUrl) {
-                    // 4d. Discount Redemption (If applicable)
-                    if (canUseRedeemedPoints) {
+                    // Discount Redemption (If applicable)
+                    if (canUseRedeemedPoints && redeemedPointsDiscount?.id) {
                         try {
                             await api.patch(`/api/referrals/redeem/${redeemedPointsDiscount.id}/apply/`);
                         } catch (error) {
@@ -224,15 +235,31 @@ export const usePlaceOrder = (
                     }
                     
                     toast.info("Redirecting to Paystack for secure payment...");
+                    
+                    // Store order reference in session storage for recovery after payment
+                    // sessionStorage.setItem('pending_order_ref', orderRef);
+                    // sessionStorage.setItem('order_placed_at', new Date().toISOString());
 
                     // 5. REDIRECT THE USER
                     window.location.href = authUrl;
+                    
+                    // Note: We don't reset placing state here because we're redirecting
+                    // The cart is already cleared, so even if user comes back, cart is empty
+                    
                 } else {
                     toast.error('Order placed, but failed to get payment link. Please check your order status.');
+                    // Still navigate to orders page since order was created
                     navigate('/orders/');
+                    
+                    // Reset placing state since we're not redirecting
+                    setPlacing(false);
+                    placingRef.current = false;
                 }
             } else {
                 toast.error('Failed to create order. Please try again.');
+                // Reset placing state on failure
+                setPlacing(false);
+                placingRef.current = false;
             }
             
         } catch (error) {
@@ -241,6 +268,7 @@ export const usePlaceOrder = (
             // --- Error Handling ---
             if (error.response?.status === 401 || error.message === 'No refresh token') {
                 // Handled in checkAndRefreshTokens, usually leads to logout/redirect
+                // Don't reset placing here as logout will redirect
             } else {
                 // General API errors
                 const errorMessage = error.response?.data?.detail || 
@@ -248,11 +276,8 @@ export const usePlaceOrder = (
                                 'An unexpected error occurred. Please try again.';
                                 
                 toast.error(errorMessage);
-            }
-
-        } finally {
-            // Only reset placing state if we did not successfully redirect
-            if (placingRef.current && !window.location.href.includes('paystack')) {
+                
+                // Reset placing state on error
                 setPlacing(false);
                 placingRef.current = false;
             }

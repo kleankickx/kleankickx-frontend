@@ -24,9 +24,11 @@ import {
   FaExpand,
   FaCamera,
   FaTimes,
-  FaHandsHelping, // New icon for self-handled
-  FaShippingFast, // For regular delivery
-  FaUserCheck // For self-service
+  FaHandsHelping,
+  FaShippingFast,
+  FaUserCheck,
+  FaTrashAlt,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
@@ -34,9 +36,96 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '../components/Footer';
 
-// Helper Components
+// Delete Confirmation Modal Component
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
+    if (!isOpen) return null;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="p-3 bg-red-100 rounded-full">
+                            {isDeleting ? (
+                                <FaSpinner className="animate-spin text-red-600 text-2xl" />
+                            ) : (
+                                <FaExclamationTriangle className="text-red-600 text-2xl" />
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">
+                                {isDeleting ? 'Cancelling Order...' : 'Cancel Order'}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">Order #{orderRef}</p>
+                        </div>
+                    </div>
+                    
+                    {!isDeleting ? (
+                        <>
+                            <p className="text-gray-700 mb-6">
+                                Are you sure you want to cancel this order? This action cannot be undone.
+                            </p>
+                            
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                                    disabled={isDeleting}
+                                >
+                                    Keep Order
+                                </button>
+                                <button
+                                    onClick={onConfirm}
+                                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                    disabled={isDeleting}
+                                >
+                                    <FaTrashAlt className="w-4 h-4" />
+                                    Yes, Cancel Order
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="py-8 flex flex-col items-center justify-center">
+                            <div className="relative mb-4">
+                                <div className="w-16 h-16 border-4 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <FaTrashAlt className="w-6 h-6 text-red-400 animate-pulse" />
+                                </div>
+                            </div>
+                            <p className="text-gray-600 text-center">
+                                Please wait while we cancel your order...
+                            </p>
+                            <p className="text-xs text-gray-400 mt-2">
+                                This will only take a moment
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+// Payment Status Banner
 const PaymentStatusBanner = ({ order, onRetryPayment }) => {
-    const paymentStatus = order.payment_status.toUpperCase();
+    const paymentStatus = order.payment_status?.toUpperCase();
+    
+    // Don't show for cancelled orders
+    if (order.status === 'CANCELLED') {
+        return null;
+    }
 
     if (paymentStatus === 'SUCCESS' || paymentStatus === 'REFUNDED' || paymentStatus === 'PARTIAL_REFUND') {
         return null;
@@ -84,7 +173,7 @@ const PaymentStatusBanner = ({ order, onRetryPayment }) => {
     );
 };
 
-// Image Modal Component (remains the same)
+// Image Modal Component
 const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
     if (!isOpen) return null;
 
@@ -117,7 +206,7 @@ const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
     );
 };
 
-// Order Item Card with Image Support (remains the same)
+// Order Item Card
 const OrderItemCard = ({ item, onImageClick }) => {
     const hasPhoto = item.image_url || item.photo;
 
@@ -191,7 +280,7 @@ const OrderItemCard = ({ item, onImageClick }) => {
     );
 };
 
-// Order Items Gallery (remains the same)
+// Order Items Gallery
 const OrderItemsGallery = ({ items }) => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
@@ -297,7 +386,7 @@ const OrderItemsGallery = ({ items }) => {
     );
 };
 
-// New Self-Handled Address Card Component
+// Self-Handled Address Card Component
 const SelfHandledAddressCard = () => (
     <div className="p-5 rounded-lg border border-amber-200 bg-amber-50">
         <div className="flex items-center gap-3 mb-4">
@@ -388,6 +477,8 @@ const GetOrder = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [searchParams] = useSearchParams();
     const { api } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -402,13 +493,67 @@ const GetOrder = () => {
         }
     };
 
+    const handleDeleteOrder = async () => {
+        if (!order || deleting) return;
+        
+        setDeleting(true);
+        
+        try {
+            const response = await api.delete(`/api/orders/${order.reference_code}/`);
+            
+            toast.success(
+                <div className="flex items-center gap-2">
+                    <span>Order cancelled successfully!</span>
+                </div>,
+                { autoClose: 3000 }
+            );
+            
+            setShowDeleteModal(false);
+            
+            // Update the local order state to show it's cancelled
+            setOrder(prevOrder => ({
+                ...prevOrder,
+                status: 'CANCELLED',
+                cancelled_at: new Date().toISOString()
+            }));
+            
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            
+            const errorMessage = error.response?.data?.error || 
+                               error.response?.data?.detail || 
+                               'Failed to cancel order. Please try again or contact support.';
+            
+            toast.error(
+                <div className="flex items-center gap-2">
+                    <FaExclamationCircle className="text-red-500" />
+                    <span>{errorMessage}</span>
+                </div>,
+                { autoClose: 5000 }
+            );
+            
+            setShowDeleteModal(false);
+            
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const canDeleteOrder = () => {
+        const paymentStatus = order?.payment_status?.toUpperCase();
+        const orderStatus = order?.status?.toUpperCase();
+        // Only allow deletion for pending or failed payments AND if order is not already cancelled
+        return (paymentStatus === 'PENDING' || paymentStatus === 'FAILED') && 
+               orderStatus !== 'CANCELLED';
+    };
+
     useEffect(() => {
         const paymentStatus = searchParams.get('payment');
         
         if (paymentStatus === 'success') {
             toast.success('Payment completed successfully!');
-            localStorage.removeItem('pending_order_ref');
-            localStorage.removeItem('paystack_ref');
+            sessionStorage.removeItem('pending_order_ref');
+            sessionStorage.removeItem('paystack_ref');
         } else if (paymentStatus === 'failed') {
             toast.error('Payment was not completed');
         }
@@ -627,6 +772,15 @@ const GetOrder = () => {
 
     return (
         <div className="bg-gray-50 min-h-screen">
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => !deleting && setShowDeleteModal(false)}
+                onConfirm={handleDeleteOrder}
+                orderRef={orderReferenceCode}
+                isDeleting={deleting}
+            />
+
             <div className="px-4 lg:px-24 py-8">
                 {/* Header Section */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -648,19 +802,75 @@ const GetOrder = () => {
                                     Self-Handled
                                 </span>
                             )}
+                            {order?.status === 'CANCELLED' && (
+                                <span className="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                    <FaTimesCircle className="mr-1" />
+                                    Cancelled
+                                </span>
+                            )}
                         </div>
                         <p className="text-gray-500 text-sm mt-1">
                             {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
                         </p>
+                        {order?.cancelled_at && order.status === 'CANCELLED' && (
+                            <p className="text-red-500 text-xs mt-1">
+                                Cancelled on: {formatDate(order.cancelled_at)}
+                            </p>
+                        )}
                     </div>
+
+                    {/* Delete Order Button - Only show for cancellable orders */}
+                    {order && canDeleteOrder() && (
+                        <button
+                            onClick={() => setShowDeleteModal(true)}
+                            disabled={deleting}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                            {deleting ? (
+                                <>
+                                    <FaSpinner className="animate-spin w-4 h-4" />
+                                    Cancelling...
+                                </>
+                            ) : (
+                                <>
+                                    <FaTrashAlt className="w-4 h-4" />
+                                    Cancel Order
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
 
-                {/* PAYMENT STATUS BANNER */}
-                {order && (
+                {/* PAYMENT STATUS BANNER - Hidden for cancelled orders */}
+                {order && order.status !== 'CANCELLED' && (
                     <PaymentStatusBanner
                         order={order}
                         onRetryPayment={handlePaymentRetry}
                     />
+                )}
+
+                {/* Show cancelled message if order is cancelled */}
+                {order?.status === 'CANCELLED' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-5 mb-8 rounded-xl shadow-lg border-b-4 border-red-800 bg-red-600 text-white"
+                    >
+                        <div className="flex items-start gap-4">
+                            <FaTimesCircle className="text-white text-2xl flex-shrink-0" />
+                            <div>
+                                <h2 className="text-xl font-bold">Order Cancelled</h2>
+                                <p className="mt-1 text-sm opacity-90">
+                                    This order has been cancelled. If you believe this is a mistake, please contact support.
+                                </p>
+                                {order.cancelled_at && (
+                                    <p className="mt-2 text-xs opacity-75">
+                                        Cancelled on: {formatDate(order.cancelled_at)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
                 )}
 
                 {/* Loading State */}
@@ -801,15 +1011,17 @@ const GetOrder = () => {
                                             Service Information
                                         </h2>
                                         <SelfHandledAddressCard />
-                                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                            <p className="text-sm text-blue-700 flex items-start">
-                                                <FaInfoCircle className="mr-2 mt-0.5 flex-shrink-0" />
-                                                <span>
-                                                    <strong>Important:</strong> After payment, please bring your items to our facility 
-                                                    for cleaning. We'll notify you when they're ready for collection.
-                                                </span>
-                                            </p>
-                                        </div>
+                                        {order.status !== 'CANCELLED' && (
+                                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <p className="text-sm text-blue-700 flex items-start">
+                                                    <FaInfoCircle className="mr-2 mt-0.5 flex-shrink-0" />
+                                                    <span>
+                                                        <strong>Important:</strong> After payment, please bring your items to our facility 
+                                                        for cleaning. We'll notify you when they're ready for collection.
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (order.delivery_address || order.pickup_address) && (
                                     <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
@@ -902,7 +1114,7 @@ const GetOrder = () => {
                                         </div>
                                         
                                         {/* Self-Handled Note */}
-                                        {order.is_self_handled && (
+                                        {order.is_self_handled && order.status !== 'CANCELLED' && (
                                             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                                 <p className="text-xs text-amber-700">
                                                     <FaInfoCircle className="inline mr-1" />
@@ -912,8 +1124,6 @@ const GetOrder = () => {
                                         )}
                                     </div>
                                 </div>
-
-                                
 
                                 {/* Photo Summary */}
                                 {order.items && order.items.some(item => item.image_url || item.photo) && (
@@ -984,7 +1194,7 @@ const GetOrder = () => {
                                                 </a>
                                             </div>
                                         </div>
-                                        {order.is_self_handled && (
+                                        {order.is_self_handled && order.status !== 'CANCELLED' && (
                                             <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                                 <p className="text-xs text-amber-700 flex items-center">
                                                     <FaInfoCircle className="inline mr-1" />

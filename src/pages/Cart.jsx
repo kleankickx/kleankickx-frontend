@@ -22,6 +22,7 @@ import { FaSpinner, FaGift, FaTag } from 'react-icons/fa6';
 import { FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import heic2any from 'heic2any';
+import Footer from '../components/Footer';
 
 const Cart = () => {
   const { 
@@ -54,7 +55,7 @@ const Cart = () => {
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
   const [availablePromotions, setAvailablePromotions] = useState([]);
   const [appliedPromotion, setAppliedPromotion] = useState(null);
-  const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState({});
+  const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState(null); // Changed from {} to null
 
   // Fetch voucher details for items in cart
   useEffect(() => {
@@ -315,6 +316,7 @@ const Cart = () => {
           try {
             const signupStatus = await api.get('/api/discounts/signup/status/');
             setSignupDiscountUsed(signupStatus.data);
+            console.log("Signup discount status:", signupStatus.data);
           } catch (error) {
             console.log("Error fetching signup discount status:", error);
           }
@@ -322,6 +324,7 @@ const Cart = () => {
           try {
             const referralStatus = await api.get('/api/discounts/referral/status/');
             setReferralDiscountUsed(referralStatus.data);
+            console.log("Referral discount status:", referralStatus.data);
           } catch (error) {
             console.log("Error fetching referral discount status:", error);
           }
@@ -342,10 +345,13 @@ const Cart = () => {
             console.log("Error fetching promotions:", error);
           }
 
+          // Fixed: Fetch redeemed points discount
           try {
-            const pointsDiscount = await api.get('/api/referrals/active-discount/');
-            if (Object.keys(pointsDiscount.data).length !== 0) {
-              setRedeemedPointsDiscount(pointsDiscount.data);
+            const response = await api.get('/api/referrals/active-discount/');
+            // Check if response has data and it's not empty
+            if (response.data && Object.keys(response.data).length > 0) {
+              console.log("Redeemed points discount:", response.data);
+              setRedeemedPointsDiscount(response.data);
             } else {
               setRedeemedPointsDiscount(null);
             }
@@ -354,6 +360,7 @@ const Cart = () => {
               setRedeemedPointsDiscount(null);
             } else {
               console.log("Error fetching redeemed points discount:", error);
+              setRedeemedPointsDiscount(null);
             }
           }
         }
@@ -539,7 +546,13 @@ const Cart = () => {
 
   const canUseSignup = user && !signupDiscountUsed?.signup_discount_used && signupDiscount && signupDiscount.is_active;
   const canUseReferral = user && referralDiscountUsed?.first_order_completed === false && referralDiscount;
-  const canUseRedeemedPoints = user && redeemedPointsDiscount && !redeemedPointsDiscount.is_applied;
+  
+  // Fixed: Check if redeemedPointsDiscount exists and has data
+  const canUseRedeemedPoints = user && 
+    redeemedPointsDiscount && 
+    typeof redeemedPointsDiscount === 'object' && 
+    Object.keys(redeemedPointsDiscount).length > 0 && 
+    redeemedPointsDiscount.is_applied === false;
 
   const signupDiscountAmount = canUseSignup
     ? ((parseFloat(subtotal) * parseFloat(signupDiscount.percentage)) / 100)
@@ -553,11 +566,14 @@ const Cart = () => {
     ? (parseFloat(subtotal) * parseFloat(appliedPromotion.discount_percentage)) / 100
     : 0;
 
+  // Fixed: Safely access percentage
   const redeemedPointsDiscountAmount = canUseRedeemedPoints
-    ? ((parseFloat(subtotal) * parseFloat(redeemedPointsDiscount.percentage)) / 100)
+    ? ((parseFloat(subtotal) * parseFloat(redeemedPointsDiscount?.percentage || 0)) / 100)
     : 0;
 
   const total = (parseFloat(subtotal) - (promoDiscountAmount + signupDiscountAmount + referralDiscountAmount + redeemedPointsDiscountAmount)).toFixed(2);
+
+  console.log("canUseRedeemedPoints:", user, canUseRedeemedPoints, redeemedPointsDiscount);
 
   // Render functions
   const CameraModal = () => !showCameraModal ? null : (
@@ -590,7 +606,8 @@ const Cart = () => {
   };
 
   return (
-    <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8">
+    <>
+    <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8 mb-8">
       <CameraModal />
       
       {previewImage && (
@@ -637,11 +654,11 @@ const Cart = () => {
 
                 return (
                   <div key={item.service_id} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${
-                    isVoucher ? 'border-emerald-300 border-2' : 'border-gray-200' // Emerald border
+                    isVoucher ? 'border-emerald-300 border-2' : 'border-gray-200'
                   }`}>
                     {/* Service Type Badge */}
                     <div className={`px-5 py-2.5 ${
-                      isVoucher ? 'bg-gradient-to-r from-emerald-600 to-green-600' : // Green only gradient
+                      isVoucher ? 'bg-gradient-to-r from-emerald-600 to-green-600' :
                       isFree ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 
                       pkgInfo?.color || 'bg-gray-100'
                     }`}>
@@ -682,7 +699,7 @@ const Cart = () => {
                     <div className="p-5">
                       {isLoading ? (
                         <div className="flex items-center justify-center py-8">
-                          <FaSpinner className="animate-spin text-emerald-600 mr-3" /> {/* Emerald color */}
+                          <FaSpinner className="animate-spin text-emerald-600 mr-3" />
                           <span className="text-gray-600">Loading service details...</span>
                         </div>
                       ) : (
@@ -696,7 +713,7 @@ const Cart = () => {
                                 className="w-full h-full object-cover"
                               />
                               {isVoucher && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-green-500/20 flex items-center justify-center"> {/* Green gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-green-500/20 flex items-center justify-center">
                                   <FaGift className="text-white text-2xl" />
                                 </div>
                               )}
@@ -717,23 +734,23 @@ const Cart = () => {
                                 
                                 {/* Voucher Details */}
                                 {isVoucher && item.voucher_code && (
-                                  <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200"> {/* Green gradient */}
+                                  <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <FaTag className="text-emerald-600" /> {/* Emerald color */}
-                                        <span className="text-sm font-medium text-emerald-800">Voucher Code:</span> {/* Emerald color */}
-                                        <code className="font-mono font-bold text-emerald-900 bg-white px-2 py-1 rounded text-sm"> {/* Emerald color */}
+                                        <FaTag className="text-emerald-600" />
+                                        <span className="text-sm font-medium text-emerald-800">Voucher Code:</span>
+                                        <code className="font-mono font-bold text-emerald-900 bg-white px-2 py-1 rounded text-sm">
                                           {item.voucher_code}
                                         </code>
                                       </div>
                                       {voucher?.valid_until && (
-                                        <div className="text-xs text-emerald-600"> {/* Emerald color */}
+                                        <div className="text-xs text-emerald-600">
                                           Expires: {formatDate(voucher.valid_until)}
                                         </div>
                                       )}
                                     </div>
                                     {item.voucher_value && (
-                                      <div className="mt-2 text-sm text-emerald-700"> {/* Emerald color */}
+                                      <div className="mt-2 text-sm text-emerald-700">
                                         <span className="font-medium">Original Value:</span> ₵{item.voucher_value}
                                       </div>
                                     )}
@@ -770,11 +787,11 @@ const Cart = () => {
                                 )}
                                 {(isFree || isVoucher) && (
                                   <div className={`px-3 py-1.5 rounded-lg border ${
-                                    isVoucher ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200' : // Green gradient
+                                    isVoucher ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200' :
                                     'bg-gradient-to-r from-green-100 to-emerald-100 border-green-200'
                                   }`}>
                                     <span className={`font-medium text-sm ${
-                                      isVoucher ? 'text-emerald-700' : 'text-green-700' // Emerald color
+                                      isVoucher ? 'text-emerald-700' : 'text-green-700'
                                     }`}>
                                       {isVoucher ? 'Voucher Applied' : 'Free Service'}
                                     </span>
@@ -784,7 +801,7 @@ const Cart = () => {
                               
                               <div className="text-right">
                                 <div className={`font-bold ${
-                                  isVoucher ? 'text-emerald-600' : // Emerald color
+                                  isVoucher ? 'text-emerald-600' :
                                   isFree ? 'text-green-600' : 
                                   'text-gray-900'
                                 } text-lg`}>
@@ -793,7 +810,7 @@ const Cart = () => {
                                       <span className="line-through text-gray-400 text-sm mr-2">
                                         ₵{service.price}
                                       </span>
-                                      <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent"> {/* Green gradient */}
+                                      <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
                                         FREE
                                       </span>
                                     </>
@@ -814,7 +831,7 @@ const Cart = () => {
                                   </div>
                                 )}
                                 {isVoucher && item.voucher_value && (
-                                  <div className="text-sm text-emerald-600 font-medium"> {/* Emerald color */}
+                                  <div className="text-sm text-emerald-600 font-medium">
                                     {service.included_quantity || 1}-pair bundle
                                   </div>
                                 )}
@@ -980,21 +997,21 @@ const Cart = () => {
               })}
 
               {/* Photo Requirements Card */}
-              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-5"> {/* Updated to green gradient */}
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-5">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg"> {/* Updated to green gradient */}
-                    <PhotoIcon className="w-6 h-6 text-emerald-600" /> {/* Emerald color */}
+                  <div className="p-3 bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg">
+                    <PhotoIcon className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h4 className="font-medium text-emerald-900 mb-2">Why add shoe photos?</h4> {/* Emerald color */}
-                    <ul className="text-sm text-emerald-800 space-y-1"> {/* Emerald color */}
+                    <h4 className="font-medium text-emerald-900 mb-2">Why add shoe photos?</h4>
+                    <ul className="text-sm text-emerald-800 space-y-1">
                       <li>• Ensures accurate cleaning service</li>
                       <li>• Helps identify your specific shoes</li>
                       <li>• Documents any pre-existing conditions</li>
                       <li>• Improves service quality</li>
                       <li>• Required for ALL cleaning services (including voucher redemptions)</li>
                     </ul>
-                    <p className="text-xs text-emerald-600 mt-3"> {/* Emerald color */}
+                    <p className="text-xs text-emerald-600 mt-3">
                       📸 Supports: JPEG, PNG, WebP, and HEIC formats
                     </p>
                   </div>
@@ -1021,7 +1038,7 @@ const Cart = () => {
                             <span className="text-gray-700 text-sm truncate">{service.name}</span>
                             <span className="text-gray-500 text-xs">×{item.quantity}</span>
                             {isVoucher && (
-                              <span className="text-xs bg-gradient-to-r from-emerald-500 to-green-500 text-white px-2 py-0.5 rounded"> {/* Green gradient */}
+                              <span className="text-xs bg-gradient-to-r from-emerald-500 to-green-500 text-white px-2 py-0.5 rounded">
                                 Voucher
                               </span>
                             )}
@@ -1032,7 +1049,7 @@ const Cart = () => {
                             )}
                           </div>
                           <span className={`font-medium ${
-                            isVoucher ? 'text-emerald-600' : // Emerald color
+                            isVoucher ? 'text-emerald-600' :
                             isFree ? 'text-green-600' : ''
                           } text-sm`}>
                             {isVoucher || isFree ? 'FREE' : `₵${(service.price * item.quantity).toFixed(2)}`}
@@ -1044,12 +1061,12 @@ const Cart = () => {
 
                   {/* Voucher Summary (if any) */}
                   {cart.some(item => item.is_voucher_redeem) && (
-                    <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg"> {/* Green gradient */}
-                      <div className="flex items-center gap-2 text-emerald-700 mb-2"> {/* Emerald color */}
-                        <FaGift className="text-emerald-600" /> {/* Emerald color */}
+                    <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-emerald-700 mb-2">
+                        <FaGift className="text-emerald-600" />
                         <span className="font-medium text-sm">Voucher Savings</span>
                       </div>
-                      <p className="text-xs text-emerald-600"> {/* Emerald color */}
+                      <p className="text-xs text-emerald-600">
                         Your voucher covers the full cost of {cart.filter(item => item.is_voucher_redeem).length} service(s)
                       </p>
                     </div>
@@ -1074,7 +1091,7 @@ const Cart = () => {
                     )}
 
                     {canUseReferral && referralDiscountAmount > 0 && (
-                      <div className="flex justify-between text-emerald-600 bg-emerald-50 rounded-lg p-2.5"> {/* Emerald color */}
+                      <div className="flex justify-between text-emerald-600 bg-emerald-50 rounded-lg p-2.5">
                         <div className="flex items-center gap-1.5">
                           <GiftIcon className="w-4 h-4" />
                           <span className="text-sm font-medium">Referral Bonus</span>
@@ -1144,8 +1161,8 @@ const Cart = () => {
 
                   {/* Discount Info */}
                   {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
-                    <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100"> {/* Emerald color */}
-                      <p className="text-emerald-700 text-xs"> {/* Emerald color */}
+                    <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                      <p className="text-emerald-700 text-xs">
                         {canUseSignup && "🎉 Welcome discount applied! "}
                         {canUseReferral && "🎁 Referral bonus applied! "}
                         {canUseRedeemedPoints && "⭐ Points discount applied! "}
@@ -1173,13 +1190,14 @@ const Cart = () => {
                 >
                   Browse Services
                 </button>
-                
               </div>
             </div>
           </div>
         )}
       </div>
     </section>
+    <Footer />
+    </>
   );
 };
 

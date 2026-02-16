@@ -49,7 +49,6 @@ const Checkout = () => {
   const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
   const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
-  // const MAP_CONTAINER_STYLE = { width: '100%', height: '300px', borderRadius: '12px' };
 
   // State for locations and inputs
   const getLocationFromStorage = (key) => {
@@ -60,14 +59,6 @@ const Checkout = () => {
       return null;
     }
   };
-
-  // const [delivery, setDelivery] = useState(() => getLocationFromStorage('deliveryLocation'));
-  // const [pickup, setPickup] = useState(() => getLocationFromStorage('pickupLocation'));
-  // const [useSame, setUseSame] = useState(true);
-  // const [deliveryInputValue, setDeliveryInputValue] = useState(() => localStorage.getItem('deliveryInputValue') || '');
-  // const [pickupInputValue, setPickupInputValue] = useState(() => localStorage.getItem('pickupInputValue') || '');
-  // const [deliveryRegion, setDeliveryRegion] = useState(() => localStorage.getItem('deliveryRegion') || 'Greater Accra');
-  // const [pickupRegion, setPickupRegion] = useState(() => localStorage.getItem('pickupRegion') || 'Greater Accra');
 
   const { 
         delivery, setDelivery, 
@@ -90,12 +81,72 @@ const Checkout = () => {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [activeInput, setActiveInput] = useState(null);
   const [isSelfHandled, setIsSelfHandled] = useState(false);
-  
-
+  const [checkingPendingOrder, setCheckingPendingOrder] = useState(false);
 
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   
+  // --- RECOVERY MECHANISM: Check for pending orders from Paystack return ---
+  // useEffect(() => {
+  //   const checkPendingOrder = async () => {
+  //     const pendingOrderRef = sessionStorage.getItem('pending_order_ref');
+  //     const orderPlacedAt = sessionStorage.getItem('order_placed_at');
+      
+  //     if (pendingOrderRef && orderPlacedAt) {
+  //       setCheckingPendingOrder(true);
+        
+  //       // Check if order was placed within the last 30 minutes
+  //       const placedTime = new Date(orderPlacedAt).getTime();
+  //       const currentTime = new Date().getTime();
+  //       const thirtyMinutes = 30 * 60 * 1000;
+        
+  //       if (currentTime - placedTime < thirtyMinutes) {
+  //         // Still within valid timeframe - check payment status with backend
+  //         try {
+  //           const response = await api.get(`/api/orders/${pendingOrderRef}/payment-status/`);
+            
+  //           if (response.data.payment_status === 'success') {
+  //             toast.success(`✅ Payment successful! Order #${pendingOrderRef} has been confirmed.`);
+  //             // Navigate to order details
+  //             navigate(`/orders/${pendingOrderRef}/`);
+  //           } else if (response.data.payment_status === 'pending') {
+  //             toast.info(
+  //               <div>
+  //                 <p>Your order #{pendingOrderRef} is pending payment.</p>
+  //                 <p className="text-sm mt-1">You can complete payment or check status later.</p>
+  //               </div>,
+  //               { autoClose: 8000 }
+  //             );
+  //             // Optionally navigate to orders page
+  //             navigate('/orders/');
+  //           } else if (response.data.payment_status === 'failed') {
+  //             toast.warning(
+  //               <div>
+  //                 <p>Payment for order #{pendingOrderRef} was not successful.</p>
+  //                 <p className="text-sm mt-1">Please try again or contact support.</p>
+  //               </div>,
+  //               { autoClose: 8000 }
+  //             );
+  //           }
+  //         } catch (error) {
+  //           console.error("Error checking pending order status:", error);
+  //           toast.info(`You have a pending order #${pendingOrderRef}. Please check your orders page for status.`);
+  //         }
+  //       } else {
+  //         // Clear expired session data
+  //         toast.info("Your previous order session has expired.");
+  //       }
+        
+  //       // Clear the session storage regardless
+  //       sessionStorage.removeItem('pending_order_ref');
+  //       sessionStorage.removeItem('order_placed_at');
+  //       setCheckingPendingOrder(false);
+  //     }
+  //   };
+
+  //   checkPendingOrder();
+  // }, [api, navigate]);
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -352,73 +403,6 @@ const Checkout = () => {
     };
   }, [handlePlaceSelect]);
 
-
-  // Handle use current location
-  // const handleUseCurrentLocation = async () => {
-  //   if (!navigator.geolocation) {
-  //     toast.error("Geolocation not supported by your browser");
-  //     return;
-  //   }
-  //   setLocationLoading(true);
-  //   try {
-  //     const position = await new Promise((resolve, reject) => {
-  //       navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-  //     });
-  //     const userLocation = {
-  //       lat: position.coords.latitude,
-  //       lng: position.coords.longitude
-  //     };
-  //     const geocoder = new window.google.maps.Geocoder();
-  //     const { results } = await new Promise((resolve, reject) => {
-  //       geocoder.geocode({ location: userLocation }, (results, status) => {
-  //         if (status === 'OK' && results && results.length > 0) {
-  //           resolve({ results });
-  //         } else {
-  //           reject(new Error(status));
-  //         }
-  //       });
-  //     });
-  //     const place = results[0];
-  //     let detectedRegion = deliveryRegion;
-  //     const administrativeAreaLevel1 = place.address_components.find(comp =>
-  //       comp.types.includes('administrative_area_level_1')
-  //     )?.long_name;
-  //     if (administrativeAreaLevel1) {
-  //       const matchedRegion = AVAILABLE_REGIONS.find(r => administrativeAreaLevel1.includes(r));
-  //       if (matchedRegion) {
-  //         detectedRegion = matchedRegion;
-  //         setDeliveryRegion(detectedRegion);
-  //       }
-  //     }
-  //     const regionData = REGION_CONFIG[detectedRegion];
-  //     let locality = place.address_components.find(comp =>
-  //       comp.types.includes('locality') || comp.types.includes('sublocality')
-  //     )?.long_name.toLowerCase() || '';
-  //     let area = regionData.availableAreas[regionData.defaultArea];
-  //     for (const [areaKey, areaInfo] of Object.entries(regionData.availableAreas)) {
-  //       if (locality.includes(areaKey)) {
-  //         area = areaInfo;
-  //         break;
-  //       }
-  //     }
-  //     const locationInfo = {
-  //       address: place.formatted_address,
-  //       name: 'Your Current Location',
-  //       region: detectedRegion,
-  //       areaName: area.name,
-  //       cost: area.fee,
-  //       lat: userLocation.lat,
-  //       lng: userLocation.lng
-  //     };
-  //     handlePlaceSelect(locationInfo, 'delivery');
-  //   } catch (error) {
-  //     console.error("Error getting current location:", error);
-  //     toast.error("Could not get current location. Please try searching instead.");
-  //   } finally {
-  //     setLocationLoading(false);
-  //   }
-  // };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -442,8 +426,39 @@ const Checkout = () => {
     setShowAlert(false);
   };
 
-  // Handle payment with Paystack
+  // Handle payment with Paystack - with additional safeguards
   const onPayment = async() => {
+    // Safeguard: Check if cart is empty
+    if (!cart || cart.length === 0) {
+      toast.error('Your cart is empty. Please add items before placing an order.');
+      return;
+    }
+
+    // Safeguard: Check if user is logged in
+    if (!user) {
+      toast.error('Please log in to complete your order.');
+      navigate('/login?continuePath=/checkout');
+      return;
+    }
+
+    // Safeguard: Check if phone number is valid
+    if (!isPhoneValid) {
+      toast.error('Please enter a valid Ghana phone number');
+      return;
+    }
+
+    // Safeguard: Check if locations are set based on order type
+    if (!isSelfHandled) {
+      if (!pickup) {
+        toast.error('Please select a pickup location');
+        return;
+      }
+      if (!delivery && !useSame) {
+        toast.error('Please select a delivery location');
+        return;
+      }
+    }
+
     // The hook handles token checks, Paystack initialization, and order submission
     await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime, isSelfHandled);
   };
@@ -460,7 +475,6 @@ const Checkout = () => {
   }, []);
 
   useEffect(() => {
-
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
@@ -468,7 +482,17 @@ const Checkout = () => {
     setShowAlert(true); // Reset alert visibility on payment view change
   }, [paymentView]);
 
- 
+  // Show loading state while checking pending order
+  if (checkingPendingOrder) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-primary mx-auto mb-4" />
+          <p className="text-gray-600">Checking your order status...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     
@@ -685,6 +709,3 @@ const Checkout = () => {
 };
 
 export default Checkout;
-
-
-
