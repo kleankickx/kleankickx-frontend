@@ -166,14 +166,14 @@ const Services = () => {
         
         console.log('Services with savings:', servicesWithSavings);
         
-        // Sort services: free services first, then others
+        // Sort services: free services first (price 0), then others by price from lowest to highest
         const sorted = [...servicesWithSavings].sort((a, b) => {
-          // Free services first (highest priority)
+          // Free services (price 0) come first
           if (a.is_free_signup_service && !b.is_free_signup_service) return -1;
           if (!a.is_free_signup_service && b.is_free_signup_service) return 1;
           
-          // For non-free services, maintain original order
-          return 0;
+          // Then sort by price from lowest to highest
+          return a.price - b.price;
         });
         
         console.log('Sorted services:', sorted);
@@ -211,9 +211,22 @@ const Services = () => {
             const publicResponse = await axios.get(`${backendUrl}/api/services/public/`, {
               signal: controller.signal
             });
+            
             if (mounted) {
-              setServices(publicResponse.data);
-              setSortedServices(publicResponse.data);
+              const publicServices = publicResponse.data;
+              
+              // Sort the public services by price from lowest to highest
+              const sortedPublicServices = [...publicServices].sort((a, b) => {
+                // Free services (price 0) come first
+                if (a.is_free_signup_service && !b.is_free_signup_service) return -1;
+                if (!a.is_free_signup_service && b.is_free_signup_service) return 1;
+                
+                // Then sort by price from lowest to highest
+                return a.price - b.price;
+              });
+              
+              setServices(publicServices);
+              setSortedServices(sortedPublicServices);
             }
           } catch (fallbackErr) {
             if (mounted && !axios.isCancel(fallbackErr)) {
@@ -310,7 +323,7 @@ const Services = () => {
           state: { 
             from: '/services',
             message: `Sign in to claim your FREE ${name}!`,
-            highlightServiceId: id
+            highlightServiceId: id 
           } 
         });
         return;
