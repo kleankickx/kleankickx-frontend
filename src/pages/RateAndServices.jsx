@@ -36,21 +36,39 @@ const stagger = {
 
 const RateAndServices = () => {
   const [services, setServices] = useState([]);
+  const [featuredServices, setFeaturedServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredDescriptionId, setHoveredDescriptionId] = useState(null);
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
-  const { discounts } = useContext(AuthContext);
+  const { discounts, user, isAuthenticated } = useContext(AuthContext);
   
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
+
+  // Define the services we want to display
+  const featuredServiceNames = ['Standard Klean', 'Deep Klean', 'Triple Threat'];
 
   useEffect(() => {
     const fetchServices = async () => {
       setLoading(true);
       try {
         const response = await axios.get(`${backendUrl}/api/services/public/`);
-        setServices(response.data);
+        const allServices = response.data;
+        setServices(allServices);
+        
+        // Check if user has claimed free service
+        const hasClaimedFreeService = isAuthenticated && user?.free_signup_service_used;
+        
+        // Filter and sort to get only the featured services in the correct order
+        const featured = featuredServiceNames
+          .map(name => allServices.find(service => 
+            service.name.toLowerCase().includes(name.toLowerCase())
+          ))
+          .filter(service => service !== undefined); // Remove any not found
+        
+        setFeaturedServices(featured);
+        
       } catch (err) {
         setError('Failed to load services.');
         console.error('Error fetching services:', err);
@@ -59,8 +77,7 @@ const RateAndServices = () => {
       }
     };
     fetchServices();
-  }, []);
-
+  }, [isAuthenticated, user]); // Add dependencies to re-run when auth state changes
 
   // Function to get service status for banner
   const getServiceStatus = (serviceName) => {
@@ -80,9 +97,6 @@ const RateAndServices = () => {
       [serviceId]: !prev[serviceId]
     }));
   };
-
-  // Get first 3 services for display
-  const displayServices = services.slice(0, 3);
 
   return (
     <div className="bg-white">
@@ -152,9 +166,10 @@ const RateAndServices = () => {
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
           >
-            {displayServices.map((service, i) => {
+            {featuredServices.map((service, i) => {
               const status = getServiceStatus(service.name);
               const isExpanded = expandedDescriptions[service.id];
+              const hasClaimedFreeService = isAuthenticated && user?.free_signup_service_used;
               
               return (
                 <motion.div key={service.id} className="border shadow-lg border-gray-300 rounded-lg hover:border-primary hover:shadow-xl transition overflow-hidden relative group" variants={fadeInUp}>
@@ -166,8 +181,15 @@ const RateAndServices = () => {
                     </div>
                   </div>
 
-                  {/* Discount Badge */}
-                  {signupDiscount && (
+                  {/* Free Service Badge - only show if this service is the free one AND user hasn't claimed it */}
+                  {service.is_free_signup_service && !hasClaimedFreeService && (
+                    <div className="absolute top-4 left-0 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-r-full shadow-lg z-10 flex items-center gap-1">
+                      FREE
+                    </div>
+                  )}
+
+                  {/* Discount Badge - only show if not a free service or if free service is claimed */}
+                  {signupDiscount && !service.is_free_signup_service && (
                     <div className="absolute top-4 left-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-r-full shadow-lg z-10">
                       {parseInt(signupDiscount.percentage)}% OFF
                     </div>
@@ -264,7 +286,9 @@ const RateAndServices = () => {
                         <div className="mt-4 bg-primary text-white inline-flex items-center px-4 py-2 tracking-widest w-fit">
                           <span className="font-medium">PRICE </span>
                           <span className="mx-2">|</span>
-                          <span>GH₵{service.price}</span>
+                          <span className={service.is_free_signup_service && !hasClaimedFreeService ? 'text-yellow-300' : ''}>
+                            {service.is_free_signup_service && !hasClaimedFreeService ? 'FREE' : `GH₵${service.price}`}
+                          </span>
                         </div>
                         
                         

@@ -297,6 +297,7 @@ const FreeServiceModal = ({ isOpen, onClose, onClaim, userStatus, freeService })
 
 const Home = () => {
   const [services, setServices] = useState([]);
+  const [featuredServices, setFeaturedServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredDescriptionId, setHoveredDescriptionId] = useState(null);
@@ -316,10 +317,28 @@ const Home = () => {
       setLoading(true);
       try {
         const response = await axios.get(`${backendUrl}/api/services/public/`);
-        setServices(response.data);
+        const allServices = response.data;
+        setServices(allServices);
+        
+        // Define the services we want to display (in order)
+        // If user has claimed free service, show Standard Clean instead
+        const hasClaimedFreeService = isAuthenticated && user?.free_signup_service_used;
+        
+        const serviceNames = hasClaimedFreeService
+          ? ['Standard Klean', 'Deep Klean', 'Triple Threat'] // Replace free service with Standard Clean
+          : ['Standard Clean', 'Deep Klean', 'Triple Threat']; // Keep free service in the list if it's one of these
+        
+        // Filter and sort to get only the featured services in the correct order
+        const featured = serviceNames
+          .map(name => allServices.find(service => 
+            service.name.toLowerCase().includes(name.toLowerCase())
+          ))
+          .filter(service => service !== undefined); // Remove any not found
+        
+        setFeaturedServices(featured);
         
         // Check for free service in the response
-        const freeService = response.data.find(service => service.is_free_signup_service);
+        const freeService = allServices.find(service => service.is_free_signup_service);
         
         // Show modal after 3 seconds if conditions are met
         if (!modalShownRef.current) {
@@ -353,7 +372,7 @@ const Home = () => {
         clearTimeout(modalTimerRef.current);
       }
     };
-  }, []);
+  }, [isAuthenticated, user]); // Add dependencies to re-run when auth state changes
 
   // Get user's free service status
   const getUserFreeServiceStatus = () => {
@@ -498,16 +517,17 @@ const Home = () => {
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
           >
-            {services.slice(0, 3).map((service, i) => {
+            {featuredServices.map((service, i) => {
               const status = getServiceStatus(service.name);
               const isExpanded = expandedDescriptions[service.id];
+              const hasClaimedFreeService = isAuthenticated && user?.free_signup_service_used;
               
               return (
                <div key={service.id}>
                   <motion.div variants={fadeIn} custom={i} className="group">
                     <div className="bg-white border border-gray-200 rounded-lg shadow-lg hover:shadow-2xl transition duration-300 hover:border-primary overflow-hidden h-full flex flex-col relative">
-                      {/* Free Service Badge */}
-                      {service.is_free_signup_service && (
+                      {/* Free Service Badge - only show if this service is the free one AND user hasn't claimed it */}
+                      {service.is_free_signup_service && !hasClaimedFreeService && (
                         <div className="absolute top-4 left-0 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-r-full shadow-lg z-10 flex items-center gap-1">
                           <FaGift className="w-3 h-3" />
                           FREE
@@ -611,8 +631,8 @@ const Home = () => {
 
                         <div className="border-t border-gray-200 pt-4 mt-auto">
                           <div className="flex gap-4 items-center">
-                            <p className={`font-bold text-lg ${service.is_free_signup_service ? 'text-green-600' : 'text-primary'}`}>
-                              {service.is_free_signup_service ? 'FREE' : `GH₵${service.price}`}
+                            <p className={`font-bold text-lg ${service.is_free_signup_service && !hasClaimedFreeService ? 'text-green-600' : 'text-primary'}`}>
+                              {service.is_free_signup_service && !hasClaimedFreeService ? 'FREE' : `GH₵${service.price}`}
                             </p>
                           </div>
                         </div>
@@ -733,41 +753,6 @@ const Home = () => {
           </div>
         </motion.div>
       </section>
-
-      {/* CARE */}
-      {/* <section className="relative h-[30rem] bg-cover bg-center" style={{ backgroundImage: `url(${kleankickxCare})` }}>
-        <motion.div
-          className="relative z-10 h-full pt-[4rem] px-4 md:px-8 lg:px-24 text-center flex flex-col items-center text-white"
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <h2 className="text-3xl md:text-5xl font-bold text-[#9CDD9D] header mb-6">KleanKickx Sneaker Care</h2>
-          <p className="text-white max-w-2xl text-center text-lg">
-             We're your one-stop shop for reviving your beloved sneakers. Whether athlete, collector, or casual wearer, we bring them back to life.
-          </p>
-        </motion.div>
-      </section> */}
-
-      {/* WHO WE ARE */}
-      {/* <section className="bg-cover bg-no-repeat" style={{ backgroundImage: `url(${whoWeAre})` }}>
-        <motion.div
-          className="px-4 md:px-8 lg:px-24 py-16 lg:py-[8rem] max-w-4xl"
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <h2 className="text-3xl md:text-5xl font-bold text-[#1C7C76] header mb-6">Who We Are</h2>
-          <p className="text-[#011627] mb-6 text-lg">
-            At Kleankickx Sneaker Care, we combine a love for sneakers with the power of technology to create a platform that drives sustainability and community impact. As a tech-driven company, we're building innovative solutions to extend the life of footwear, reduce waste, and empower communities. Through initiatives, like KleanFam,KleanKids, and Kickx CTRL, we promote proper sneaker care, support underprivileged children with school essentials, and recycle worn-out sneakers into valuable products, making a lasting impact, one sneaker at a time.
-          </p>
-          <Link to="/about-us" className="bg-[#1C7C76] text-white px-6 py-3 inline-block hover:bg-[#1C7C76]/90 rounded transition font-medium">
-            Learn More
-          </Link>
-        </motion.div>
-      </section> */}
 
       {/* TIPS & FOOTER */}
       <KleanTips />
