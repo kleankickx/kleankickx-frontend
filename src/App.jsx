@@ -38,7 +38,7 @@ import GoogleMapsLoader from './components/GoogleMapsLoader';
 
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email', '/auth/verify-email'];
+  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email/', '/auth/verify-email'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
 
   return (
