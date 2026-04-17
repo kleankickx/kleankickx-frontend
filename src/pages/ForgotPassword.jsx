@@ -4,13 +4,14 @@ import { Link } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthContext } from '../context/AuthContext';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import api from '../api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const { api } = useContext(AuthContext);
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();

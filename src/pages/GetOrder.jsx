@@ -35,6 +35,7 @@ import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '../components/Footer';
+import api from '../api';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
@@ -480,7 +481,6 @@ const GetOrder = () => {
     const [deleting, setDeleting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [searchParams] = useSearchParams();
-    const { api } = useContext(AuthContext);
     const navigate = useNavigate();
     const { orderReferenceCode } = useParams();
 

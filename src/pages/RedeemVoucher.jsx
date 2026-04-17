@@ -11,6 +11,7 @@ import {
   FaKey, FaTag, FaClock
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../api';
 
 const RedeemVoucher = () => {
   const [code, setCode] = useState('');
@@ -21,7 +22,7 @@ const RedeemVoucher = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { api, isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated } = useContext(AuthContext);
   const { addToCart, cart } = useContext(CartContext);
 
   // Check for code in URL params

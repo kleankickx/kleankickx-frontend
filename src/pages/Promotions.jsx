@@ -9,13 +9,13 @@ import {
     FaSpinner,
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import api from '../api';
 
 const Promotion = () => {
     const [promotions, setPromotions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [copiedCode, setCopiedCode] = useState(null);
-    const { api } = useContext(AuthContext);
 
     const handleCopy = (code) => {
         navigator.clipboard.writeText(code).then(() => {

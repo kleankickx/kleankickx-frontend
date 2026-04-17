@@ -14,5 +14,17 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(env.VITE_GOOGLE_MAPS_API_KEY),
       'import.meta.env.VITE_PAYSTACK_PUBLIC_KEY': JSON.stringify(env.VITE_PAYSTACK_PUBLIC_KEY),
     },
+    server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:10000',
+        changeOrigin: true,
+        secure: false,
+        // Important: Don't rewrite the path
+        rewrite: (path) => path,
+      }
+    }
+  }
   };
 });

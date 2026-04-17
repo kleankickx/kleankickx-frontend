@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { FaSpinner } from 'react-icons/fa6';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
+import api from '../api';
 
 
 const FailedOrders = () => {
@@ -11,7 +12,6 @@ const FailedOrders = () => {
     const [loading, setLoading] = useState(true);
     const [retrying, setRetrying] = useState(false);
     const navigate = useNavigate();
-    const { api } = useContext(AuthContext)
     const { clearCart } = useContext(CartContext)
 
     useEffect(() => {

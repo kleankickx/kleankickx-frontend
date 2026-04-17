@@ -13,6 +13,7 @@ import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api';
 
 const PaymentRetry = () => {
     const [order, setOrder] = useState(null);
@@ -22,7 +23,7 @@ const PaymentRetry = () => {
 
     const { orderReferenceCode } = useParams();
     const navigate = useNavigate();
-    const { api } = useContext(AuthContext);
+
 
     // Payment status configuration
     const paymentStatusConfig = {

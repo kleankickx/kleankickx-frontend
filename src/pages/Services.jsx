@@ -10,6 +10,7 @@ import Footer from '../components/Footer';
 import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import { FaCheckCircle, FaExclamationTriangle, FaGift, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -26,9 +27,11 @@ const Services = () => {
   const [sortedServices, setSortedServices] = useState([]);
   const [error, setError] = useState('');
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
-  const [redeemingFreeService, setRedeemingFreeService] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(null);
   const [highlightedService, setHighlightedService] = useState(null);
   const [showAlreadyClaimedModal, setShowAlreadyClaimedModal] = useState(false);
+  
+  // Get cart from context
   const { cart, addToCart } = useContext(CartContext);
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, refreshUserData } = useContext(AuthContext);
@@ -40,13 +43,17 @@ const Services = () => {
   const servicesSectionRef = useRef(null);
   const serviceCardRefs = useRef({});
 
+  // Debug: Log cart to ensure it's available
+  useEffect(() => {
+    console.log('[Services] Cart from context:', cart);
+  }, [cart]);
+
   // Check if there's a service ID to highlight from location state
   useEffect(() => {
     if (location.state?.highlightServiceId) {
       const serviceId = location.state.highlightServiceId;
       setHighlightedService(serviceId);
       
-      // Scroll to the services section
       setTimeout(() => {
         if (servicesSectionRef.current) {
           servicesSectionRef.current.scrollIntoView({ 
@@ -55,7 +62,6 @@ const Services = () => {
           });
         }
         
-        // Highlight animation
         setTimeout(() => {
           const cardElement = serviceCardRefs.current[serviceId];
           if (cardElement) {
@@ -68,7 +74,6 @@ const Services = () => {
         }, 500);
       }, 300);
       
-      // Show success message if available
       if (location.state?.showSuccessMessage) {
         toast.success(location.state.showSuccessMessage, {
           position: 'top-right',
@@ -76,10 +81,8 @@ const Services = () => {
         });
       }
       
-      // Remove highlight after animation
       setTimeout(() => {
         setHighlightedService(null);
-        // Clear the location state
         navigate(location.pathname, { replace: true, state: {} });
       }, 5000);
     }
@@ -89,8 +92,6 @@ const Services = () => {
   useEffect(() => {
     const checkFreeServiceStatus = () => {
       if (isAuthenticated && user && user.free_signup_service_used && location.state?.highlightServiceId) {
-        // User just returned from login and has already claimed their free service
-        // Show modal after a short delay
         setTimeout(() => {
           setShowAlreadyClaimedModal(true);
         }, 1000);
@@ -100,7 +101,7 @@ const Services = () => {
     checkFreeServiceStatus();
   }, [isAuthenticated, user, location.state]);
 
-  // Replace the useEffect that fetches services with this:
+  // Fetch services
   useEffect(() => {
     const controller = new AbortController();
     let mounted = true;
@@ -110,31 +111,21 @@ const Services = () => {
       
       setLoading(true);
       try {
-        // Get the token from localStorage
         const token = localStorage.getItem('access_token');
         
-        // Determine which endpoint to use based on authentication
-        let endpoint = `${backendUrl}/api/services/public/`;
-        let headers = {};
+        let endpoint = `/api/services/public/`;
+        
         
         if (isAuthenticated && token) {
-          // User is authenticated, use authenticated endpoint
-          endpoint = `${backendUrl}/api/services/authenticated/`;
-          headers = {
-            'Authorization': `Bearer ${token}`
-          };
+          endpoint = `/api/services/authenticated/`;
         }
         
         console.log(`Fetching from: ${endpoint}`);
         console.log(`User authenticated: ${isAuthenticated}`);
         
-        const response = await axios.get(endpoint, { 
-          headers,
-          signal: controller.signal 
-        });
+        const response = await api.get(endpoint)
         const servicesData = response.data;
         
-        // DEBUG: Log the services to see what we're getting
         console.log('Services received:', servicesData);
         
         // Find the standard clean price for savings calculation
@@ -166,13 +157,10 @@ const Services = () => {
         
         console.log('Services with savings:', servicesWithSavings);
         
-        // Sort services: free services first (price 0), then others by price from lowest to highest
+        // Sort services: free services first, then by price
         const sorted = [...servicesWithSavings].sort((a, b) => {
-          // Free services (price 0) come first
           if (a.is_free_signup_service && !b.is_free_signup_service) return -1;
           if (!a.is_free_signup_service && b.is_free_signup_service) return 1;
-          
-          // Then sort by price from lowest to highest
           return a.price - b.price;
         });
         
@@ -183,8 +171,6 @@ const Services = () => {
           setSortedServices(sorted);
         }
         
-        // Only refresh user data if we're authenticated AND user doesn't have free service info
-        // But check if we already have the data from token first
         if (mounted && isAuthenticated && !user?.free_signup_service_used) {
           console.log('Refreshing user data to get free service info...');
           try {
@@ -202,26 +188,19 @@ const Services = () => {
         
         console.error('Error fetching services:', err);
         
-        // Check if it's an authentication error
         if (err.response?.status === 401) {
           console.log('Authentication failed, falling back to public endpoint');
           
-          // Try public endpoint as fallback
           try {
-            const publicResponse = await axios.get(`${backendUrl}/api/services/public/`, {
+            const publicResponse = await api.get(`/api/services/public/`, {
               signal: controller.signal
             });
             
             if (mounted) {
               const publicServices = publicResponse.data;
-              
-              // Sort the public services by price from lowest to highest
               const sortedPublicServices = [...publicServices].sort((a, b) => {
-                // Free services (price 0) come first
                 if (a.is_free_signup_service && !b.is_free_signup_service) return -1;
                 if (!a.is_free_signup_service && b.is_free_signup_service) return 1;
-                
-                // Then sort by price from lowest to highest
                 return a.price - b.price;
               });
               
@@ -247,12 +226,11 @@ const Services = () => {
     
     fetchServices();
     
-    // Cleanup function
     return () => {
       mounted = false;
       controller.abort();
     };
-  }, [isAuthenticated]); // Only depend on isAuthenticated, not user or refreshUserData
+  }, [isAuthenticated]);
 
   const getServiceStatus = (serviceName) => {
     const name = serviceName.toLowerCase();
@@ -265,17 +243,14 @@ const Services = () => {
     };
   };
 
-  // Check if service is a bundle package
   const isBundleService = (service) => {
     return service?.service_type?.startsWith('PACKAGE_');
   };
 
-  // Check if user is eligible for free service
   const isEligibleForFreeService = () => {
     return isAuthenticated && user && !user.free_signup_service_used;
   };
 
-  // Get user's free service status
   const getUserFreeServiceStatus = () => {
     if (!isAuthenticated || !user) {
       return { 
@@ -294,7 +269,6 @@ const Services = () => {
   // Handle free service button click for unauthenticated users
   const handleFreeServiceClick = (service) => {
     if (!isAuthenticated) {
-      // Navigate to login with return URL and service info
       navigate('/auth/login', { 
         state: { 
           from: '/services',
@@ -304,20 +278,16 @@ const Services = () => {
       });
       return;
     }
-    
-    // If authenticated, proceed with adding to cart
     handleAddToCart(service);
   };
 
-  // Handle adding to cart with free service logic
+  // Handle adding to cart with free service logic - FIXED with safety checks
   const handleAddToCart = async (service) => {
-    const { id, name, price, is_free_signup_service, service_type, included_quantity } = service;
+    const { id, name, price, is_free_signup_service } = service;
     
-    // Check if this is a free service
+    // Free service handling
     if (is_free_signup_service) {
       if (!isAuthenticated) {
-        // This should not happen as we handle it in handleFreeServiceClick,
-        // but keep as fallback
         toast.info('Please sign in to claim your free service!');
         navigate('/auth/login', { 
           state: { 
@@ -329,46 +299,53 @@ const Services = () => {
         return;
       }
       
-      // Check if user has already used free service
       if (user?.free_signup_service_used) {
-        // Show the already claimed modal
         setShowAlreadyClaimedModal(true);
         return;
       }
       
-      // Check if user is eligible
       if (!isEligibleForFreeService()) {
         toast.error('You are not eligible for a free service.');
         return;
       }
       
-      // Add free service to cart with service data
-      addToCart(id, name, price, 1, {
-        is_free_signup_service: true,
-        service_type: service_type,
-        included_quantity: included_quantity,
-        original_price: service.original_price // If available
-      });
-      toast.success(`Free ${name} added to cart! You can checkout to claim it.`);
+      setAddingToCart(id);
+      toast.success(`Adding ${name} to cart...`);
       navigate('/cart');
+      
+      try {
+        await addToCart(id, 1, { name, price });
+        toast.success(`Free ${name} added to cart!`);
+      } catch (error) {
+        console.error('Error adding free service:', error);
+        toast.error('Failed to add free service. Please try again.');
+      } finally {
+        setAddingToCart(null);
+      }
       return;
     }
     
-    // Regular service handling
-    const isInCart = cart.some(item => item.service_id === id);
+    // Regular service handling - FIXED: Safe check for cart
+    const isInCart = cart && Array.isArray(cart) && cart.some(item => item.service_id === id);
     
     if (isInCart) {
       toast.info(`${name} is already in your cart!`);
+      navigate('/cart');
     } else {
-      // Add service with all data
-      addToCart(id, name, price, 1, {
-        is_free_signup_service: false,
-        service_type: service_type,
-        included_quantity: included_quantity
-      });
-      toast.success(`${name} added to cart!`);
+      setAddingToCart(id);
+      toast.success(`Adding ${name} to cart...`);
+      navigate('/cart');
+      
+      try {
+        await addToCart(id, 1, { name, price });
+        toast.success(`${name} added to cart!`);
+      } catch (error) {
+        console.error('Error adding service:', error);
+        toast.error('Failed to add service to cart. Please try again.');
+      } finally {
+        setAddingToCart(null);
+      }
     }
-    navigate('/cart');
   };
 
   const toggleDescription = (serviceId) => {
@@ -378,7 +355,6 @@ const Services = () => {
     }));
   };
 
-  // Function to scroll to services section
   const scrollToServices = () => {
     if (servicesSectionRef.current) {
       servicesSectionRef.current.scrollIntoView({ 
@@ -388,10 +364,8 @@ const Services = () => {
     }
   };
 
-  // Close the already claimed modal
   const closeAlreadyClaimedModal = () => {
     setShowAlreadyClaimedModal(false);
-    // Clear the location state
     navigate(location.pathname, { replace: true, state: {} });
   };
 
@@ -410,7 +384,6 @@ const Services = () => {
           transition={{ duration: 0.3 }}
           className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
         >
-          {/* Modal Header */}
           <div className="bg-gradient-to-r from-primary to-green-500 p-4 relative">
             <button
               onClick={closeAlreadyClaimedModal}
@@ -429,7 +402,6 @@ const Services = () => {
             </div>
           </div>
           
-          {/* Modal Body */}
           <div className="p-6">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-100 to-red-100 rounded-full mb-4">
@@ -478,7 +450,6 @@ const Services = () => {
               </button>
             </div>
           </div>
-          
         </motion.div>
       </div>
     );
@@ -537,7 +508,6 @@ const Services = () => {
       }
     }
     
-    // For non-authenticated users
     const freeService = services.find(s => s.is_free_signup_service);
     if (freeService) {
       return (
@@ -567,11 +537,9 @@ const Services = () => {
     const isBundle = isBundleService(service);
     const isFreeService = service.is_free_signup_service;
     const isHighlighted = highlightedService === service.id;
+    const isAdding = addingToCart === service.id;
     
-    // Check if user can claim free service
     const canClaimFreeService = isFreeService && isAuthenticated && user && !user.free_signup_service_used;
-    
-    // Check if user has already claimed free service
     const showAlreadyClaimed = isFreeService && isAuthenticated && user && user.free_signup_service_used;
     
     return (
@@ -603,7 +571,6 @@ const Services = () => {
           }
         } : {}}
       >
-        {/* Free Service Badge */}
         {isFreeService && (
           <div className="absolute top-3 left-3 z-20">
             <div className={`text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm ${
@@ -620,7 +587,6 @@ const Services = () => {
           </div>
         )}
 
-        {/* Bundle Savings Badge */}
         {isBundle && !isFreeService && service.savingsAmount && (
           <div className="absolute top-3 left-3 z-20">
             <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
@@ -629,7 +595,6 @@ const Services = () => {
           </div>
         )}
 
-        {/* Delivery Ribbon */}
         <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-10 pointer-events-none">
           <div className={`absolute top-0 right-0 w-[140%] h-6 flex items-center justify-center text-[10px] font-semibold text-white transform translate-x-[30%] translate-y-[90%] rotate-45 
             ${status.isPriority ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-green-500 to-emerald-500'}`}>
@@ -654,7 +619,6 @@ const Services = () => {
             <h3 className="text-lg font-semibold text-gray-800">
               {service.name}
             </h3>
-            {/* Show "Already claimed" badge */}
             {showAlreadyClaimed && (
               <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded">
                 Already claimed
@@ -662,7 +626,6 @@ const Services = () => {
             )}
           </div>
 
-          {/* Delivery Time Badge */}
           <div className={`inline-flex items-center gap-1 w-fit px-3 py-1.5 rounded-full text-xs font-medium mb-3 
             ${status.isPriority ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -671,7 +634,6 @@ const Services = () => {
             {status.badgeText}
           </div>
 
-          {/* Description */}
           <div className="relative mb-4">
             <div className="hidden md:block">
               <p className="text-gray-600 text-sm line-clamp-2">
@@ -703,7 +665,6 @@ const Services = () => {
             </div>
           </div>
 
-          {/* Price and Add to Cart */}
           <div className="mt-auto border-t border-gray-100 pt-4">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -738,7 +699,7 @@ const Services = () => {
 
             <button
               onClick={() => isFreeService ? handleFreeServiceClick(service) : handleAddToCart(service)}
-              disabled={redeemingFreeService || (isFreeService && !canClaimFreeService && isAuthenticated)}
+              disabled={isAdding || (isFreeService && !canClaimFreeService && isAuthenticated)}
               className={`w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
                 isFreeService
                   ? canClaimFreeService
@@ -751,7 +712,7 @@ const Services = () => {
                   : 'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-md hover:shadow-lg'
               }`}
             >
-              {redeemingFreeService && isFreeService ? (
+              {isAdding ? (
                 <>
                   <FaSpinner className="animate-spin h-4 w-4" />
                   Adding...
@@ -801,7 +762,6 @@ const Services = () => {
 
   return (
     <>
-      {/* Already Claimed Modal */}
       {renderAlreadyClaimedModal()}
       
       <section className="bg-cover bg-center h-[18rem] relative" style={{ backgroundImage: `url(${bgImage})` }}>
@@ -855,7 +815,6 @@ const Services = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-primary mb-1">Our Services</h2>
             <p className="text-gray-600 mb-4">Premium sneakers cleaning and restoration services.</p>
             
-            {/* Free Service Banner */}
             {renderFreeServiceBanner()}
           </div>
 

@@ -14,6 +14,7 @@ import { AuthContext } from '../context/AuthContext';
 
 // Default fallback banner if campaign has no image
 import defaultBanner from '../assets/valentine_voucher_banner.webp';
+import api from '../api';
 
 const VoucherStore = () => {
   const [voucherTypes, setVoucherTypes] = useState([]);
@@ -33,7 +34,7 @@ const VoucherStore = () => {
     step: 1
   });
   
-  const { api, isAuthenticated, user } = useContext(AuthContext);
+  const { isAuthenticated, user } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 

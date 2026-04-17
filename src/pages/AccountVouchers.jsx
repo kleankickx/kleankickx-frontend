@@ -9,6 +9,7 @@ import {
   FaArrowRight, FaShoppingBag, FaTag
 } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api';
 
 const AccountVouchers = () => {
     const [vouchers, setVouchers] = useState([]);
@@ -16,7 +17,6 @@ const AccountVouchers = () => {
     const [copiedCode, setCopiedCode] = useState(null);
     const location = useLocation();
     const navigate = useNavigate();
-    const { api } = useContext(AuthContext);
   
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 

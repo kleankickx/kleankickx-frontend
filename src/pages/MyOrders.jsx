@@ -24,12 +24,13 @@ import {
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '../components/Footer';
+import api from '../api';
 
 // --- Constants ---
 const PAGE_SIZE = 10;
 
 const MyOrders = () => {
-  const { isAuthenticated, user, api } = useContext(AuthContext);
+  const { isAuthenticated, user } = useContext(AuthContext);
   const navigate = useNavigate();
   const ordersContainerRef = useRef(null);
   const ordersGridRef = useRef(null);

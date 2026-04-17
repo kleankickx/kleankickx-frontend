@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FaSpinner } from 'react-icons/fa';
 import logo from "../assets/logo2.png"
+import api from '../api';
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const VerifyEmail = () => {
   const key = searchParams.get('key');
   const userEmail = searchParams.get('email');
   const nextRedirectPath = searchParams.get('next') || '/';
-  const { api, refreshToken, updateTokens,  } = useContext(AuthContext);
+  const { refreshToken, updateTokens,  } = useContext(AuthContext);
 
   useEffect(() => {
 		// If verification already ran or key is missing, stop.

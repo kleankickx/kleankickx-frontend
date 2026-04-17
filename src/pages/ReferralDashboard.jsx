@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
 import JSConfetti from 'js-confetti';
+import api from '../api';
 
 const jsConfetti = new JSConfetti();
 
@@ -127,7 +128,7 @@ export default function ReferralDashboard() {
     redeeming: false,
     history: true,
   });
-  const { api } = useContext(AuthContext);
+
 
   useEffect(() => {
     fetchReferralCode();

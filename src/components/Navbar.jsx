@@ -1,3 +1,4 @@
+// src/components/Navbar.jsx
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -15,11 +16,9 @@ import {
   faGift,
   faTicket,
   faHome,
-  faTag,
   faInfoCircle,
   faClipboardList,
   faFire,
-  faCaretDown,
 } from '@fortawesome/free-solid-svg-icons';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
@@ -27,7 +26,8 @@ import { toast } from 'react-toastify';
 import Logo from '../assets/klean_logo.webp';
 
 const Navbar = () => {
-  const { cart } = useContext(CartContext);
+  // Get cart data from context
+  const { getCartItemCount, cartMeta, loading: cartLoading } = useContext(CartContext);
   const { isAuthenticated, user, logout, discounts } = useContext(AuthContext);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -35,19 +35,19 @@ const Navbar = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const dropdownRef = useRef(null);
-  const mobileDropdownRef = useRef(null);
   const navigate = useNavigate();
 
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
+
+  // Get cart item count - this will update as soon as cart loads
+  const cartItemCount = getCartItemCount();
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(e.target) &&
-        mobileDropdownRef.current &&
-        !mobileDropdownRef.current.contains(e.target)
+        !dropdownRef.current.contains(e.target)
       ) {
         setIsDropdownOpen(false);
         setActiveDropdown(null);
@@ -66,7 +66,6 @@ const Navbar = () => {
     document.body.classList.toggle('overflow-hidden', isMobileMenuOpen);
   }, [isMobileMenuOpen]);
 
-  const cartItemCount = cart.reduce((t, i) => t + (i.quantity || 0), 0);
   const userDisplayName =
     user && (user.first_name?.trim() ? user.first_name : truncateWithEllipsis(user.email, 8));
 
@@ -75,10 +74,10 @@ const Navbar = () => {
     setActiveDropdown(null);
   };
 
-  const handleLogout = (e) => {
+  const handleLogout = async (e) => {
     e.stopPropagation();
     try {
-      logout();
+      await logout();
       toast.success('Logged out successfully!');
       closeMobileMenu();
       setIsDropdownOpen(false);
@@ -206,14 +205,13 @@ const Navbar = () => {
                     <NavLink
                       to={group.to}
                       className={({ isActive }) =>
-                        `flex items-center  gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                        `flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
                           isActive
                             ? 'bg-gray-700 text-green-400'
                             : 'hover:bg-gray-700 hover:text-green-300'
                         }`
                       }
                     >
-                      {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-4 h-4" />} */}
                       <span className="font-medium">{group.label}</span>
                     </NavLink>
                   </div>
@@ -221,7 +219,7 @@ const Navbar = () => {
               }
 
               return (
-                <div key={group.label} className="relative group" ref={dropdownRef}>
+                <div key={group.label} className="relative">
                   <button
                     onClick={() => toggleDropdown(group.label)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
@@ -240,14 +238,11 @@ const Navbar = () => {
                   </button>
 
                   {/* Dropdown Menu */}
-                  <div
-                    className={`absolute left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 transition-all duration-200 origin-top ${
-                      activeDropdown === group.label
-                        ? 'opacity-100 scale-100 visible'
-                        : 'opacity-0 scale-95 invisible'
-                    }`}
-                  >
-                    <div className="py-2">
+                  {activeDropdown === group.label && (
+                    <div 
+                      className="absolute left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 py-2"
+                      ref={dropdownRef}
+                    >
                       {group.items.map((item) => (
                         <NavLink
                           key={item.to}
@@ -267,15 +262,10 @@ const Navbar = () => {
                             <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
                           )}
                           <span className="font-medium">{item.label}</span>
-                          {/* {item.highlight && (
-                            <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
-                              New
-                            </span>
-                          )} */}
                         </NavLink>
                       ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -283,22 +273,37 @@ const Navbar = () => {
 
           {/* Right Side Actions */}
           <div className="hidden lg:flex items-center gap-4">
-            {/* Cart */}
+            {/* Cart - Smooth display without disappearing */}
             <button
               onClick={() => navigate('/cart')}
               className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItemCount}
+              
+              {/* Show loading spinner only on initial load */}
+              {cartLoading ? (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
+                  <svg 
+                    className="animate-spin h-3 w-3 text-white" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </span>
+              ) : cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold shadow-lg">
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
                 </span>
               )}
             </button>
 
             {/* User Actions */}
             {isAuthenticated ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen((p) => !p)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-all cursor-pointer"
@@ -316,8 +321,12 @@ const Navbar = () => {
                     }`}
                   />
                 </button>
+                
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2">
+                  <div 
+                    className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2"
+                    ref={dropdownRef}
+                  >
                     <div className="space-y-1">
                       <button
                         onClick={(e) => {
@@ -380,14 +389,29 @@ const Navbar = () => {
 
           {/* Mobile menu toggle */}
           <div className="lg:hidden flex gap-4 items-center">
+            {/* Cart for mobile */}
             <button
               onClick={() => navigate('/cart')}
               className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItemCount}
+              
+              {cartLoading ? (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
+                  <svg 
+                    className="animate-spin h-3 w-3 text-white" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </span>
+              ) : cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold shadow-lg">
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
                 </span>
               )}
             </button>
@@ -395,6 +419,7 @@ const Navbar = () => {
             <button
               className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
               onClick={() => setIsMobileMenuOpen((p) => !p)}
+              aria-label="Menu"
             >
               <FontAwesomeIcon icon={isMobileMenuOpen ? faTimes : faBars} />
             </button>
@@ -411,7 +436,7 @@ const Navbar = () => {
 
         {/* Mobile side drawer */}
         <div
-          className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 lg:hidden ${
+          className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
             isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
@@ -424,6 +449,7 @@ const Navbar = () => {
               <button
                 className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
                 onClick={closeMobileMenu}
+                aria-label="Close menu"
               >
                 <FontAwesomeIcon icon={faTimes} />
               </button>
@@ -431,6 +457,30 @@ const Navbar = () => {
 
             {/* Navigation Content */}
             <div className="flex-1 overflow-y-auto space-y-6">
+              {/* Cart Summary in Mobile Menu - Only show when cart has items */}
+              {!cartLoading && cartItemCount > 0 && (
+                <div 
+                  onClick={() => {
+                    navigate('/cart');
+                    closeMobileMenu();
+                  }}
+                  className="p-4 bg-gradient-to-r from-green-600/20 to-primary/20 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FontAwesomeIcon icon={faShoppingCart} className="text-xl text-green-400" />
+                      <div>
+                        <p className="font-semibold">{cartItemCount} item(s) in cart</p>
+                        <p className="text-sm text-gray-400">
+                          Total: ₵{cartMeta?.total?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                    </div>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
+                  </div>
+                </div>
+              )}
+
               {/* User Info */}
               {isAuthenticated && (
                 <div className="p-4 bg-gray-700/50 rounded-lg">
@@ -440,7 +490,9 @@ const Navbar = () => {
                     </div>
                     <div>
                       <p className="font-semibold">{userDisplayName}</p>
-                      <p className="text-sm text-gray-400">{user?.email}</p>
+                      <p className="text-sm text-gray-400 truncate max-w-[200px]">
+                        {user?.email}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -464,7 +516,6 @@ const Navbar = () => {
                             }`
                           }
                         >
-                          {/* {group.icon && <FontAwesomeIcon icon={group.icon} className="w-5 h-5" />} */}
                           <span className="font-medium">{group.label}</span>
                         </NavLink>
                       ) : (
@@ -505,9 +556,6 @@ const Navbar = () => {
                                     }`
                                   }
                                 >
-                                  {/* {item.icon && (
-                                    <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
-                                  )} */}
                                   <span>{item.label}</span>
                                   {item.highlight && (
                                     <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">

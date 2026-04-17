@@ -5,9 +5,9 @@ import { FaSpinner, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaArrow
 import { useCheckoutState } from '../hooks/useCheckoutState';
 import { CartContext } from "../context/CartContext"; 
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../api';
 
 const PaymentStatus = () => {
-    const { api } = useContext(AuthContext);
     const { reference, status } = useParams(); 
     const { clearCart } = useContext(CartContext);
     const { resetCheckoutState } = useCheckoutState(); 

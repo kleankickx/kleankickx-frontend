@@ -9,10 +9,11 @@ import { AuthContext } from '../context/AuthContext';
 import logo from "../assets/logo2.png"
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import api from '../api';
 
 const UserVerifyEmail = () => {
     const location = useLocation();
-    const { api, refreshToken, updateTokens, isAuthenticated } = useContext(AuthContext);
+    const { refreshToken, updateTokens, isAuthenticated } = useContext(AuthContext);
    
 
     // Get parameters from URL

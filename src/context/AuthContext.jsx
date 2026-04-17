@@ -3,8 +3,8 @@ import React, { createContext, useState, useEffect,useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-toastify';
-import { createApiClient } from '../api';
 import axios from 'axios';
+import api from '../api';
 
 export const AuthContext = createContext();
 
@@ -126,8 +126,6 @@ const AuthProvider = ({ children }) => {
     },
   };
 
-  const api = createApiClient(authMethods);
-
   // Function to refresh user data from backend
   const refreshUserData = useCallback(async () => {
     if (!accessToken) return;
@@ -225,9 +223,9 @@ const AuthProvider = ({ children }) => {
         googleLogin,
         setAccessToken: authMethods.setAccessToken,
         setRefreshToken: authMethods.setRefreshToken,
-        api,
         updateTokens,
         discounts,
+        api,
         refreshUserData, // Export this function so Services can use it
       }}
     >

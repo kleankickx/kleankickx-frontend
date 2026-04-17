@@ -11,6 +11,7 @@ import {
   ExclamationCircleIcon, // Added for error icon
 } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api';
 
 const ResetPassword = () => {
   // Update useParams to capture both uid and token (assuming your route is configured as /reset-password/:uid/:token)
@@ -22,7 +23,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { api } = useContext(AuthContext);
+
 
   // Check if UID or token are missing on load
   useEffect(() => {

@@ -1,120 +1,168 @@
 // src/api.js
-import axios from 'axios';
+import axios from "axios";
 
-// Base URL for backend API
-const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
+// =========================
+// BASE CONFIG
+// =========================
+const baseURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 
-// Factory function that creates an API client using provided auth methods/state
-export const createApiClient = (auth) => {
-  // Create a preconfigured Axios instance
-  const api = axios.create({
-    baseURL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+const api = axios.create({
+  baseURL,
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-  // Flags and queue to handle simultaneous refresh token attempts
-  let isRefreshing = false;
-  let failedQueue = [];
+// =========================
+// 🔐 SESSION GATE
+// =========================
+let sessionPromise = null;
+let sessionReady = false;
 
-  // Handles resolving or rejecting all queued requests after refresh attempt
-  const processQueue = (error, token = null) => {
-    failedQueue.forEach(p => {
-      if (error) p.reject(error);
-      else p.resolve(token);
-    });
-    failedQueue = [];
-  };
+const initSession = async () => {
+  if (sessionReady) return;
 
-  // Function to refresh the access token using the refresh token
-  const refreshAccessToken = async () => {
-    const refresh = auth.refreshToken;
-    if (!refresh) throw new Error('No refresh token available');
+  if (!sessionPromise) {
+    console.log("%c[SESSION] Initializing session...", "color: purple;");
 
-    const res = await axios.post(`${baseURL}/api/users/token/refresh/`, { refresh });
-    const { access, refresh: newRefresh } = res.data;
+    sessionPromise = api
+      .get("/api/cart/") // This creates the session
+      .then(() => {
+        sessionReady = true;
+        console.log("%c[SESSION] Ready ✅", "color: green;");
+      })
+      .catch((err) => {
+        console.error("[SESSION] Failed ❌", err);
+        // Don't set sessionReady to true on error
+      })
+      .finally(() => {
+        sessionPromise = null;
+      });
+  }
 
-    // Update tokens using provided auth methods
-    auth.setAccessToken(access);
-    if (newRefresh) auth.setRefreshToken(newRefresh);
-
-    return access;
-  };
-
-  // Wrapper around axios.request to handle token and automatic retry after 401
-  const request = async (config) => {
-    const token = auth.accessToken;
-
-    // Inject Authorization header if token exists
-    if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
-    }
-
-    try {
-      // Make the API call
-      return await api.request(config);
-    } catch (error) {
-      const originalRequest = config;
-
-      // Determine whether to attempt token refresh
-      const shouldRetry =
-        error.response?.status === 401 &&
-        !originalRequest._retry &&
-        auth.refreshToken &&
-        !originalRequest.url.includes('/token/');
-
-      if (!shouldRetry) throw error;
-
-      // Handle multiple concurrent refresh attempts
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(newToken => {
-          // Retry the original request with new token
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: `Bearer ${newToken}`,
-          };
-          return api.request(originalRequest);
-        });
-      }
-
-      // Mark request to prevent infinite retry loops
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // Attempt to refresh the access token
-        const newToken = await refreshAccessToken();
-        processQueue(null, newToken);
-
-        // Retry the original request with the new token
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          Authorization: `Bearer ${newToken}`,
-        };
-        return api.request(originalRequest);
-      } catch (refreshErr) {
-        // On failure, reject all queued requests and optionally logout
-        processQueue(refreshErr);
-        auth.logout?.();
-        throw refreshErr;
-      } finally {
-        isRefreshing = false;
-      }
-    }
-  };
-
-  // Return an API object with Axios-style methods and automatic refresh handling
-  return {
-    get: (url, config = {}) => request({ method: 'GET', url, ...config }),
-    post: (url, data, config = {}) => request({ method: 'POST', url, data, ...config }),
-    put: (url, data, config = {}) => request({ method: 'PUT', url, data, ...config }),
-    delete: (url, config = {}) => request({ method: 'DELETE', url, ...config }),
-    request, // also expose the low-level request function
-  };
+  return sessionPromise;
 };
+
+// Reset session when user logs in/out
+export const resetSession = () => {
+  sessionReady = false;
+  sessionPromise = null;
+  console.log("%c[SESSION] Reset", "color: purple;");
+};
+
+export const ensureSessionReady = async () => {
+  await initSession();
+};
+
+// =========================
+// REQUEST INTERCEPTOR
+// =========================
+api.interceptors.request.use(
+  async (config) => {
+    // 🚫 Skip session init for these endpoints
+    const skipSessionUrls = [
+      "/api/cart/",
+      "/api/token/refresh/",
+      "/api/users/login/",
+      "/api/users/google-login/",
+      "/api/users/register/",
+    ];
+
+    const shouldSkip = skipSessionUrls.some((url) =>
+      config.url?.includes(url)
+    );
+
+    // Attach token FIRST - before any session initialization
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log(`%c[TOKEN] Attached to ${config.url}`, "color: cyan;");
+    }
+
+    // THEN initialize session (but only if not skipping)
+    if (!shouldSkip && !sessionReady) {
+      await initSession();
+    }
+
+    // Debug logs
+    console.log(
+      `%c[REQ] ${config.method?.toUpperCase()} ${config.url}`,
+      "color: blue;",
+      {
+        hasToken: !!token,
+        sessionReady,
+        url: config.url
+      }
+    );
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// =========================
+// RESPONSE INTERCEPTOR
+// =========================
+api.interceptors.response.use(
+  (response) => {
+    console.log(
+      `%c[RES] ${response.status} ${response.config.url}`,
+      "color: green;"
+    );
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+
+    console.error(
+      `[ERR] ${originalRequest?.url}`,
+      error.response?.status,
+      error.message
+    );
+
+    // =========================
+    // 🔁 TOKEN REFRESH
+    // =========================
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const refreshToken = localStorage.getItem("refresh_token");
+
+      if (refreshToken) {
+        try {
+          console.log("%c[AUTH] Refreshing token...", "color: orange;");
+
+          const res = await axios.post(
+            `${baseURL}/api/users/token/refresh/`,
+            { refresh: refreshToken },
+            { withCredentials: true }
+          );
+
+          const { access } = res.data;
+          localStorage.setItem("access_token", access);
+
+          originalRequest.headers.Authorization = `Bearer ${access}`;
+
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error("[AUTH] Refresh failed ❌");
+
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          resetSession(); // Reset session on auth failure
+
+          // Don't redirect if it's the refresh endpoint itself
+          if (!originalRequest.url?.includes("/token/refresh/")) {
+            window.location.href = "/auth/login";
+          }
+          return Promise.reject(refreshError);
+        }
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;

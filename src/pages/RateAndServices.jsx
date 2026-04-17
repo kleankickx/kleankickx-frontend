@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import { AuthContext } from '../context/AuthContext';
 
+
 // assets
 import bgImage from '../assets/hero_sec_rate_service.png';
 import shoe1 from '../assets/shoes1.png';

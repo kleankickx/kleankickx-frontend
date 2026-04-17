@@ -37,10 +37,11 @@ import { calculateOrderSummary } from '../utils/calculateOrderSummary'
 import { usePlaceOrder } from '../hooks/usePlaceOrder'; // The new hook
 import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
+import api from '../api';
 
 
 const Checkout = () => {
-  const { refreshToken, setAccessToken, setRefreshToken, logout, api, user, discounts } = useContext(AuthContext);
+  const { refreshToken, setAccessToken, setRefreshToken, logout, user, discounts } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);

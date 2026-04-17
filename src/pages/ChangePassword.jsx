@@ -3,10 +3,10 @@ import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-
+import api from '../api';
 
 const ChangePassword = () => {
-  const { accessToken, api } = useContext(AuthContext);
+  const { accessToken } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [oldPassword, setOldPassword] = useState('');
