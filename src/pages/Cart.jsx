@@ -1,4 +1,4 @@
-// src/components/Cart.jsx
+// src/pages/Cart.jsx
 import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
@@ -10,17 +10,14 @@ import {
   PlusIcon,
   PhotoIcon,
   XMarkIcon,
-  FolderIcon,
   ShoppingBagIcon,
   CameraIcon,
   GiftIcon,
   SparklesIcon,
   TicketIcon,
-  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import { FaSpinner, FaGift, FaTag, FaCamera, FaImage, FaCheckCircle } from 'react-icons/fa';
+import { FaSpinner, FaGift, FaTag, FaCamera, FaImage } from 'react-icons/fa';
 import { FaTimes } from 'react-icons/fa';
-import axios from 'axios';
 import heic2any from 'heic2any';
 import Footer from '../components/Footer';
 import api from '../api';
@@ -115,13 +112,8 @@ const Cart = () => {
   const [uploadingImages, setUploadingImages] = useState({});
   const [imageUploadProgress, setImageUploadProgress] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
-
-  // Recovery state - using simple alert
   const [isRecovering, setIsRecovering] = useState(false);
-
-  // Store image previews as data URIs
   const [imagePreviews, setImagePreviews] = useState({});
-
   const [cameraMode, setCameraMode] = useState(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [isFrontCamera, setIsFrontCamera] = useState(false);
@@ -132,7 +124,6 @@ const Cart = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const navigate = useNavigate();
-  const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 
   const [signupDiscountUsed, setSignupDiscountUsed] = useState(false);
   const [referralDiscountUsed, setReferralDiscountUsed] = useState(false);
@@ -140,7 +131,7 @@ const Cart = () => {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [redeemedPointsDiscount, setRedeemedPointsDiscount] = useState(null);
 
-  // ─── Force refresh on mount ───────────────────────────────────────────────
+  // Force refresh on mount
   useEffect(() => {
     const loadData = async () => {
       setIsPageLoading(true);
@@ -150,7 +141,7 @@ const Cart = () => {
     loadData();
   }, [refreshCart]);
 
-  // Check for recovery parameter - using simple alert
+  // Check for recovery parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const recoverCartId = urlParams.get('recover');
@@ -174,12 +165,11 @@ const Cart = () => {
           });
       }
       
-      // Clean URL
       window.history.replaceState({}, '', '/cart');
     }
   }, [cart, refreshCart]);
 
-  // ─── FIX: Load image previews from cart context ───────────────────────────
+  // Load image previews from cart context
   useEffect(() => {
     if (!cart) return;
 
@@ -190,10 +180,16 @@ const Cart = () => {
         if (item.id && hasImage(item.id)) {
           const base64 = getImageBase64(item.id);
           if (base64) {
-            // Ensure it's a valid data URL
-            const dataUrl = base64.startsWith('data:') 
-              ? base64 
-              : `data:image/jpeg;base64,${base64}`;
+            let dataUrl = base64;
+            if (!base64.startsWith('data:')) {
+              if (base64.startsWith('/9j/')) {
+                dataUrl = `data:image/jpeg;base64,${base64}`;
+              } else if (base64.startsWith('iVBOR')) {
+                dataUrl = `data:image/png;base64,${base64}`;
+              } else {
+                dataUrl = `data:image/jpeg;base64,${base64}`;
+              }
+            }
             previews[item.id] = dataUrl;
           }
         }
@@ -205,7 +201,39 @@ const Cart = () => {
     loadImagePreviews();
   }, [cart, hasImage, getImageBase64]);
 
-  // ─── Quantity / Remove handlers ───────────────────────────────────────────
+  // Refresh previews when cart changes
+  useEffect(() => {
+    if (cart && cart.length > 0) {
+      const previews = { ...imagePreviews };
+      let hasChanges = false;
+      
+      for (const item of cart) {
+        if (item.id && hasImage(item.id) && !previews[item.id]) {
+          const base64 = getImageBase64(item.id);
+          if (base64) {
+            let dataUrl = base64;
+            if (!base64.startsWith('data:')) {
+              if (base64.startsWith('/9j/')) {
+                dataUrl = `data:image/jpeg;base64,${base64}`;
+              } else if (base64.startsWith('iVBOR')) {
+                dataUrl = `data:image/png;base64,${base64}`;
+              } else {
+                dataUrl = `data:image/jpeg;base64,${base64}`;
+              }
+            }
+            previews[item.id] = dataUrl;
+            hasChanges = true;
+          }
+        }
+      }
+      
+      if (hasChanges) {
+        setImagePreviews(previews);
+      }
+    }
+  }, [cart, hasImage, getImageBase64, imagePreviews]);
+
+  // Quantity / Remove handlers
   const handleQuantityChange = useCallback(
     async (itemId, currentQuantity, delta) => {
       const newQuantity = currentQuantity + delta;
@@ -218,15 +246,19 @@ const Cart = () => {
   const handleRemoveFromCart = useCallback(
     async (itemId) => {
       await removeFromCart(itemId);
+      setImagePreviews(prev => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
     },
     [removeFromCart]
   );
 
-  // ─── Image removal ────────────────────────────────────────────────────────
+  // Image removal
   const handleImageRemove = useCallback(async (itemId) => {
     setRemovingImageId(itemId);
     
-    // Remove from local preview immediately
     setImagePreviews((prev) => {
       const next = { ...prev };
       delete next[itemId];
@@ -245,7 +277,7 @@ const Cart = () => {
     }
   }, [removeImageFromCartItem, refreshCart]);
 
-  // ─── Fetch service details ────────────────────────────────────────────────
+  // Fetch service details
   useEffect(() => {
     const fetchServiceDetails = async () => {
       if (!cart || cart.length === 0) {
@@ -296,130 +328,7 @@ const Cart = () => {
     fetchServiceDetails();
   }, [cart]);
 
-  // ─── Fetch voucher details ────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchVoucherDetails = async () => {
-      if (!user || !cart) return;
-
-      const voucherItems = cart.filter((item) => item.is_voucher_redeem);
-
-      for (const item of voucherItems) {
-        if (item.voucher_code && !voucherDetails[item.service_id]) {
-          try {
-            const response = await api.post('/api/vouchers/redeem/', {
-              voucher_code: item.voucher_code,
-            });
-
-            if (response.data.voucher) {
-              setVoucherDetails((prev) => ({
-                ...prev,
-                [item.service_id]: response.data.voucher,
-              }));
-            }
-          } catch (error) {
-            console.error('Error fetching voucher details:', error);
-          }
-        }
-      }
-    };
-
-    if (user && cart && cart.some((item) => item.is_voucher_redeem)) {
-      fetchVoucherDetails();
-    }
-  }, [cart, user]);
-
-  // ─── Check voucher status ─────────────────────────────────────────────────
-  useEffect(() => {
-    const checkVoucherStatus = async () => {
-      if (!user || !cart) return;
-
-      const voucherItems = cart.filter((item) => item.is_voucher_redeem);
-
-      for (const item of voucherItems) {
-        if (item.voucher_code) {
-          try {
-            const response = await api.post('/api/vouchers/redeem/', {
-              voucher_code: item.voucher_code,
-            });
-
-            if (response.data.voucher?.status === 'REDEEMED') {
-              toast.error(`Voucher ${item.voucher_code} has already been redeemed!`);
-              await removeFromCart(item.id || item.service_id);
-            }
-
-            if (response.data.voucher?.valid_until) {
-              const expiryDate = new Date(response.data.voucher.valid_until);
-              const today = new Date();
-              if (expiryDate < today) {
-                toast.error(`Voucher ${item.voucher_code} has expired!`);
-                await removeFromCart(item.id || item.service_id);
-              }
-            }
-          } catch (error) {
-            if (error.response?.status === 404) {
-              toast.error(`Voucher ${item.voucher_code} is invalid or expired!`);
-              await removeFromCart(item.id || item.service_id);
-            }
-          }
-        }
-      }
-    };
-
-    if (user && cart && cart.some((item) => item.is_voucher_redeem)) {
-      checkVoucherStatus();
-    }
-  }, [cart, user, removeFromCart]);
-
-  // ─── Fetch discount statuses ──────────────────────────────────────────────
-  useEffect(() => {
-    const fetchDiscounts = async () => {
-      if (!user) return;
-
-      try {
-        const signupStatus = await api.get('/api/discounts/signup/status/');
-        setSignupDiscountUsed(signupStatus.data);
-      } catch (error) {
-        console.log('Error fetching signup discount status:', error);
-      }
-
-      try {
-        const referralStatus = await api.get('/api/discounts/referral/status/');
-        setReferralDiscountUsed(referralStatus.data);
-      } catch (error) {
-        console.log('Error fetching referral discount status:', error);
-      }
-
-      try {
-        const promotions = await api.get('/api/promotions/today');
-        setAvailablePromotions(promotions.data);
-        const validPromotion = promotions.data.find(
-          (promo) => new Date(promo.end_date) > new Date() && promo.is_active === true
-        );
-        if (validPromotion) {
-          setAppliedPromotion(validPromotion);
-        }
-      } catch (error) {
-        console.log('Error fetching promotions:', error);
-      }
-
-      try {
-        const response = await api.get('/api/referrals/active-discount/');
-        if (response.data && Object.keys(response.data).length > 0) {
-          setRedeemedPointsDiscount(response.data);
-        } else {
-          setRedeemedPointsDiscount(null);
-        }
-      } catch (error) {
-        if (error.response && error.response.status !== 404) {
-          console.log('Error fetching redeemed points discount:', error);
-        }
-        setRedeemedPointsDiscount(null);
-      }
-    };
-
-    fetchDiscounts();
-  }, [user]);
-
+  // File to Base64 conversion
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -436,7 +345,6 @@ const Cart = () => {
         toType: 'image/jpeg',
         quality: 0.8,
       });
-
       return new File([result], file.name.replace(/\.heic$/i, '.jpg'), {
         type: 'image/jpeg',
         lastModified: Date.now(),
@@ -534,7 +442,7 @@ const Cart = () => {
     return { valid: true };
   };
 
-  // ─── Camera functions ─────────────────────────────────────────────────────
+  // Camera functions
   const startCamera = async () => {
     try {
       stopCamera();
@@ -593,17 +501,28 @@ const Cart = () => {
     setTimeout(startCamera, 100);
   };
 
-  // ─── Image upload handler - FIXED to show preview immediately ─────────────
+  // Image upload handler
   const handleImageUpload = async (itemId, file) => {
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      return toast.error(validation.message);
+      toast.error(validation.message);
+      return;
     }
 
     setUploadingImages((prev) => ({ ...prev, [itemId]: true }));
     setImageUploadProgress((prev) => ({ ...prev, [itemId]: 0 }));
 
     try {
+      // Show immediate local preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreviews((prev) => ({
+          ...prev,
+          [itemId]: e.target.result,
+        }));
+      };
+      reader.readAsDataURL(file);
+
       const progressInterval = setInterval(() => {
         setImageUploadProgress((prev) => {
           const current = prev[itemId] || 0;
@@ -614,11 +533,10 @@ const Cart = () => {
         });
       }, 200);
 
-      const isHeic =
-        file.type === 'image/heic' ||
-        file.type === 'image/heif' ||
-        file.name.toLowerCase().endsWith('.heic') ||
-        file.name.toLowerCase().endsWith('.heif');
+      const isHeic = file.type === 'image/heic' || 
+                     file.type === 'image/heif' ||
+                     file.name.toLowerCase().endsWith('.heic') ||
+                     file.name.toLowerCase().endsWith('.heif');
 
       if (isHeic) {
         toast.info('Processing HEIC image... This may take a moment.');
@@ -631,29 +549,24 @@ const Cart = () => {
       clearInterval(progressInterval);
       setImageUploadProgress((prev) => ({ ...prev, [itemId]: 95 }));
 
-      // Convert to base64
       const base64String = await fileToBase64(processedFile);
+      
+      let rawBase64 = base64String;
+      if (base64String.includes(',')) {
+        rawBase64 = base64String.split(',')[1];
+      }
 
-      if (!base64String || typeof base64String !== 'string') {
+      if (!rawBase64) {
         throw new Error('Failed to convert file to base64');
       }
 
-      // Show preview immediately
-      const dataUrl = base64String.startsWith('data:') 
-        ? base64String 
-        : `data:image/jpeg;base64,${base64String}`;
-      
-      setImagePreviews((prev) => ({
-        ...prev,
-        [itemId]: dataUrl,
-      }));
-
-      // Save to backend
-      await addImageToCartItem(itemId, base64String);
+      await addImageToCartItem(itemId, rawBase64);
 
       setImageUploadProgress((prev) => ({ ...prev, [itemId]: 100 }));
 
       toast.success('Photo added successfully!', { autoClose: 3000 });
+
+      await refreshCart();
 
       setTimeout(() => {
         setImageUploadProgress((prev) => {
@@ -665,7 +578,6 @@ const Cart = () => {
     } catch (error) {
       console.error('Image upload failed:', error);
       toast.error(error.message || 'Failed to upload image');
-      // Remove preview on error
       setImagePreviews((prev) => {
         const next = { ...prev };
         delete next[itemId];
@@ -689,7 +601,7 @@ const Cart = () => {
     input.click();
   };
 
-  // ─── Service helpers ──────────────────────────────────────────────────────
+  // Service helpers
   const getService = (item) => {
     const serviceId = item.service || item.service_id;
     const service = services[serviceId];
@@ -757,7 +669,7 @@ const Cart = () => {
     );
   };
 
-  // ─── Calculations ─────────────────────────────────────────────────────────
+  // Calculations
   const subtotal = cartMeta?.total || 0;
   const signupDiscount = discounts?.find((d) => d.discount_type === 'signup');
   const referralDiscount = discounts?.find((d) => d.discount_type === 'referral');
@@ -794,7 +706,7 @@ const Cart = () => {
       redeemedPointsDiscountAmount)
   ).toFixed(2);
 
-  // ─── Camera Modal ─────────────────────────────────────────────────────────
+  // Camera Modal Component
   const CameraModalComponent = () =>
     !showCameraModal ? null : (
       <div className="fixed inset-0 bg-black z-50 flex flex-col">
@@ -860,7 +772,7 @@ const Cart = () => {
     );
   }
 
-  // ─── Show loading skeletons while page is loading ─────────────────────────
+  // Show loading skeletons while page is loading
   if (isPageLoading || (cartLoading && (!cart || cart.length === 0))) {
     return (
       <>
@@ -892,7 +804,7 @@ const Cart = () => {
     );
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // Main render
   return (
     <>
       <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8 mb-8">
@@ -1187,7 +1099,7 @@ const Cart = () => {
                               </div>
                             </div>
 
-                            {/* Photo Upload Section - FIXED to show images */}
+                            {/* Photo Upload Section */}
                             <div className="border-t border-gray-100 mt-4 pt-4">
                               <div className="hidden sm:flex flex-row items-center justify-between gap-3">
                                 <div>
@@ -1345,32 +1257,6 @@ const Cart = () => {
                     </div>
                   );
                 })}
-
-                {/* Photo Requirements Card */}
-                <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg">
-                      <PhotoIcon className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-emerald-900 mb-2">
-                        Why add shoe photos?
-                      </h4>
-                      <ul className="text-sm text-emerald-800 space-y-1">
-                        <li>• Ensures accurate cleaning service</li>
-                        <li>• Helps identify your specific shoes</li>
-                        <li>• Documents any pre-existing conditions</li>
-                        <li>• Improves service quality</li>
-                        <li>
-                          • Required for ALL cleaning services (including voucher redemptions)
-                        </li>
-                      </ul>
-                      <p className="text-xs text-emerald-600 mt-3">
-                        📸 Supports: JPEG, PNG, WebP, and HEIC formats
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column - Order Summary */}
@@ -1425,20 +1311,6 @@ const Cart = () => {
                       })}
                     </div>
 
-                    {/* Voucher Summary */}
-                    {cart.some((item) => item.is_voucher_redeem) && (
-                      <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg">
-                        <div className="flex items-center gap-2 text-emerald-700 mb-2">
-                          <FaGift className="text-emerald-600" />
-                          <span className="font-medium text-sm">Voucher Savings</span>
-                        </div>
-                        <p className="text-xs text-emerald-600">
-                          Your voucher covers the full cost of{' '}
-                          {cart.filter((item) => item.is_voucher_redeem).length} service(s)
-                        </p>
-                      </div>
-                    )}
-
                     {/* Totals */}
                     <div className="space-y-3 pt-4 border-t border-gray-200">
                       <div className="flex justify-between text-gray-700">
@@ -1446,25 +1318,13 @@ const Cart = () => {
                         <span className="font-medium">₵{subtotal.toFixed(2)}</span>
                       </div>
 
-                      {canUseSignup && signupDiscountAmount > 0 && (
+                      {(canUseSignup && signupDiscountAmount > 0) && (
                         <div className="flex justify-between text-green-600 bg-green-50 rounded-lg p-2.5">
                           <div className="flex items-center gap-1.5">
                             <SparklesIcon className="w-4 h-4" />
                             <span className="text-sm font-medium">Welcome Discount</span>
                           </div>
                           <span className="font-medium">-₵{signupDiscountAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-
-                      {canUseReferral && referralDiscountAmount > 0 && (
-                        <div className="flex justify-between text-emerald-600 bg-emerald-50 rounded-lg p-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <GiftIcon className="w-4 h-4" />
-                            <span className="text-sm font-medium">Referral Bonus</span>
-                          </div>
-                          <span className="font-medium">
-                            -₵{referralDiscountAmount.toFixed(2)}
-                          </span>
                         </div>
                       )}
 
@@ -1475,30 +1335,6 @@ const Cart = () => {
                             <span className="text-sm font-medium">Promotion</span>
                           </div>
                           <span className="font-medium">-₵{promoDiscountAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-
-                      {canUseRedeemedPoints && redeemedPointsDiscountAmount > 0 && (
-                        <div className="flex justify-between text-amber-600 bg-amber-50 rounded-lg p-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                            <span className="text-sm font-medium">Points Discount</span>
-                          </div>
-                          <span className="font-medium">
-                            -₵{redeemedPointsDiscountAmount.toFixed(2)}
-                          </span>
                         </div>
                       )}
 
@@ -1555,18 +1391,6 @@ const Cart = () => {
                         'Proceed to Checkout'
                       )}
                     </button>
-
-                    {/* Discount Info */}
-                    {(canUseSignup || canUseReferral || canUseRedeemedPoints) && (
-                      <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                        <p className="text-emerald-700 text-xs">
-                          {canUseSignup && '🎉 Welcome discount applied! '}
-                          {canUseReferral && '🎁 Referral bonus applied! '}
-                          {canUseRedeemedPoints && '⭐ Points discount applied! '}
-                          Discounts will be applied at checkout.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

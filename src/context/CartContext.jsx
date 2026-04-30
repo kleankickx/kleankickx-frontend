@@ -1,4 +1,4 @@
-// src/context/CartContext.jsx
+// src/context/CartContext.jsx - Simplified
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { AuthContext } from './AuthContext';
 import api from '../api';
@@ -11,78 +11,67 @@ export const CartProvider = ({ children }) => {
   const { user, isAuthenticated } = useContext(AuthContext);
   const [cartData, setCartData] = useState(emptyCart);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
-  const cartRef = useRef(cartData);           // For quick read in callbacks
-  const isMounted = useRef(true);
-  const loadPromiseRef = useRef(null);
+  const cartRef = useRef(cartData);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     cartRef.current = cartData;
   }, [cartData]);
 
   const loadCart = useCallback(async () => {
-    if (!isMounted.current) return;
-
-    if (loadPromiseRef.current) return loadPromiseRef.current;
-
-    setLoading(true);
-    loadPromiseRef.current = (async () => {
-      try {
-        const response = await api.get('/api/cart/');
-        if (isMounted.current) {
-          setCartData(response.data);
-        }
-        return response.data;
-      } catch (err) {
-        console.error('Cart load error:', err);
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
-          loadPromiseRef.current = null;
-        }
+    try {
+      const response = await api.get('/api/cart/');
+      if (response.data) {
+        setCartData(response.data);
       }
-    })();
+      return response.data;
+    } catch (err) {
+      console.error('Cart load error:', err);
+      return null;
+    }
+  }, []);
 
-    return loadPromiseRef.current;
-  }, [api]);
-
-  // Initial load + auth change
+  // Single initial load
   useEffect(() => {
-    isMounted.current = true;
-    loadCart();
-    return () => { isMounted.current = false; };
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      setLoading(true);
+      loadCart().finally(() => {
+        setLoading(false);
+        setInitialized(true);
+      });
+    }
   }, [loadCart]);
 
+  // Only reload on auth change (login/logout)
   useEffect(() => {
-    if (user !== undefined) loadCart();
-  }, [isAuthenticated, user, loadCart]);
+    if (initialized) {
+      loadCart();
+    }
+  }, [isAuthenticated, user, loadCart, initialized]);
 
-  // ==================== OPTIMISTIC QUANTITY UPDATE ====================
   const updateQuantity = useCallback(async (itemId, newQuantity) => {
     const currentCart = cartRef.current;
     const itemIndex = currentCart.items.findIndex(item => item.id === itemId);
-
     if (itemIndex === -1) return;
 
     const oldItem = currentCart.items[itemIndex];
     const oldQuantity = oldItem.quantity;
     const oldTotal = currentCart.total;
-
-    // Calculate optimistic new total
     const pricePerItem = oldItem.unit_price || (oldItem.total / oldItem.quantity);
     const quantityDiff = newQuantity - oldQuantity;
     const newTotal = Math.max(0, oldTotal + (quantityDiff * pricePerItem));
 
-    // 1. Optimistically update UI immediately
+    // Optimistic update
     setCartData(prev => {
       const updatedItems = [...prev.items];
       if (newQuantity <= 0) {
-        // Remove item
         updatedItems.splice(itemIndex, 1);
       } else {
         updatedItems[itemIndex] = { ...oldItem, quantity: newQuantity };
       }
-
       return {
         ...prev,
         items: updatedItems,
@@ -92,29 +81,21 @@ export const CartProvider = ({ children }) => {
     });
 
     try {
-      // 2. Call the backend
       if (newQuantity <= 0) {
         await api.delete(`/api/cart/items/${itemId}/`);
       } else {
         await api.put(`/api/cart/items/${itemId}/`, { quantity: newQuantity });
       }
-
-      // Optional: light refresh to sync any server-side changes (e.g. sync_token)
-      // await loadCart();   // Uncomment if you want full server sync after success
-
     } catch (error) {
       console.error('Quantity update failed:', error);
-
-      // 3. Rollback on error
+      // Rollback
       setCartData(prev => {
         const revertedItems = [...prev.items];
         if (oldQuantity <= 0) {
-          // Re-add the item if it was removed
           revertedItems.splice(itemIndex, 0, oldItem);
         } else {
           revertedItems[itemIndex] = { ...oldItem, quantity: oldQuantity };
         }
-
         return {
           ...prev,
           items: revertedItems,
@@ -122,22 +103,17 @@ export const CartProvider = ({ children }) => {
           item_count: revertedItems.reduce((sum, item) => sum + item.quantity, 0),
         };
       });
-
-      // Optional: show toast/notification to user
-      if (typeof toast !== 'undefined') {
-        toast.error("Failed to update quantity. Please try again.");
-      }
+      await loadCart(); // Force refresh on error
     }
-  }, [api]);
+  }, [api, loadCart]);
 
-  // Other operations remain mostly the same (you can make addToCart optimistic too later)
   const addToCart = useCallback(async (serviceId, quantity = 1) => {
     await api.post('/api/cart/add/', { service_id: serviceId, quantity });
     await loadCart();
   }, [api, loadCart]);
 
   const removeFromCart = useCallback(async (itemId) => {
-    await api.delete(`/api/cart/items/${itemId}/`);  // ← Fixed: backticks
+    await api.delete(`/api/cart/items/${itemId}/`);
     await loadCart();
   }, [api, loadCart]);
 
@@ -147,31 +123,27 @@ export const CartProvider = ({ children }) => {
   }, [api]);
 
   const addImageToCartItem = useCallback(async (itemId, imageBase64) => {
-    await api.post(`/api/cart/items/${itemId}/add-image/`, { image_base64: imageBase64 });  // ← Fixed: backticks
+    await api.post(`/api/cart/items/${itemId}/add-image/`, { image_base64: imageBase64 });
     await loadCart();
   }, [api, loadCart]);
 
   const removeImageFromCartItem = useCallback(async (itemId) => {
-    await api.delete(`/api/cart/items/${itemId}/remove-image/`);  // ← Fixed: backticks
+    await api.delete(`/api/cart/items/${itemId}/remove-image/`);
     await loadCart();
   }, [api, loadCart]);
 
   const mergeGuestCart = useCallback(async (guestCartId = null) => {
     if (!isAuthenticated) return null;
-
-    // ← NEW: Send explicit guest cart ID when available (most reliable)
     const payload = guestCartId ? { guest_cart_id: guestCartId } : {};
-
     const response = await api.post('/api/cart/merge-guest/', payload);
-    await loadCart();           // Refresh UI with merged cart
+    await loadCart();
     return response.data;
   }, [api, loadCart, isAuthenticated]);
 
   const refreshCart = useCallback(() => loadCart(), [loadCart]);
-
   const getCartItemCount = useCallback(() => cartData.item_count || 0, [cartData]);
   const getCartTotal = useCallback(() => cartData.total || 0, [cartData]);
-
+  
   const hasImage = useCallback((itemId) =>
     !!cartRef.current.items.find(i => i.id === itemId)?.image_base64, []
   );
@@ -187,7 +159,7 @@ export const CartProvider = ({ children }) => {
     getCartItemCount,
     getCartTotal,
     addToCart,
-    updateQuantity,        // ← Now super fast with optimistic update
+    updateQuantity,
     removeFromCart,
     clearCart,
     addImageToCartItem,
