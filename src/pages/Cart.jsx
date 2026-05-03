@@ -141,33 +141,33 @@ const Cart = () => {
     loadData();
   }, [refreshCart]);
 
-  // Check for recovery parameter
+  // Auto-recover cart from URL param — no confirmation prompt
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const recoverCartId = urlParams.get('recover');
 
-    if (recoverCartId && (!cart || cart.length === 0)) {
-      const shouldRecover = window.confirm('We noticed you had items in your cart. Would you like to restore them?');
-      
-      if (shouldRecover) {
-        setIsRecovering(true);
-        api.post('/api/cart/recover/', { cart_id: recoverCartId })
-          .then(() => {
-            refreshCart();
-            alert('Your cart has been restored successfully!');
-          })
-          .catch((err) => {
-            console.error('Failed to recover cart:', err);
-            alert('Could not restore your cart. Please try again.');
-          })
-          .finally(() => {
-            setIsRecovering(false);
-          });
-      }
-      
+    if (recoverCartId) {
+      setIsRecovering(true);
+      // Clean up the URL immediately so a refresh doesn't re-trigger recovery
       window.history.replaceState({}, '', '/cart');
+
+      api
+        .post('/api/cart/recover/', { cart_id: recoverCartId })
+        .then(() => {
+          return refreshCart();
+        })
+        .then(() => {
+          toast.success('Your cart has been restored successfully!', { autoClose: 3000 });
+        })
+        .catch((err) => {
+          console.error('Failed to recover cart:', err);
+          toast.error('Could not restore your cart. Please try again.');
+        })
+        .finally(() => {
+          setIsRecovering(false);
+        });
     }
-  }, [cart, refreshCart]);
+  }, []); // run once on mount — intentionally no deps
 
   // Load image previews from cart context
   useEffect(() => {
@@ -760,18 +760,6 @@ const Cart = () => {
     </div>
   );
 
-  // Loading overlay for recovery
-  if (isRecovering) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4">
-          <FaSpinner className="animate-spin w-12 h-12 text-primary" />
-          <p className="text-gray-700 font-medium">Restoring your cart...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Show loading skeletons while page is loading
   if (isPageLoading || (cartLoading && (!cart || cart.length === 0))) {
     return (
@@ -809,6 +797,16 @@ const Cart = () => {
     <>
       <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8 mb-8">
         <CameraModalComponent />
+
+        {/* Cart recovery loading overlay — rendered inside the page, not as an early return */}
+        {isRecovering && (
+          <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
+            <div className="bg-white rounded-xl px-10 py-8 flex flex-col items-center gap-4 shadow-2xl">
+              <FaSpinner className="animate-spin w-10 h-10 text-primary" />
+              <p className="text-gray-700 font-semibold text-base">Restoring your cart...</p>
+            </div>
+          </div>
+        )}
 
         {/* Full-screen image preview */}
         {previewImage && (
