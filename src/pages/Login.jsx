@@ -1,4 +1,4 @@
-// src/components/Login.jsx
+// src/pages/Login.jsx
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -18,8 +18,8 @@ const Login = () => {
   const [isMerging, setIsMerging] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { mergeGuestCart, refreshCart, cartMeta, clearGuestCart } = useContext(CartContext);
-  const { login, googleLogin, isAuthenticated } = useContext(AuthContext);
+  const { mergeGuestCart, refreshCart } = useContext(CartContext);
+  const { login, googleLogin, user } = useContext(AuthContext);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,42 +29,55 @@ const Login = () => {
   const from = location.state?.from || '/';
   const message = location.state?.message;
   const highlightServiceId = location.state?.highlightServiceId;
+  const pendingRecovery = location.state?.pendingRecovery;
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // Shared post-login logic
+  // Check for pending cart recovery after login
+  useEffect(() => {
+    if (user) {
+      // Check sessionStorage for pending recovery
+      const pendingRecoveryId = sessionStorage.getItem('pending_recovery_cart_id');
+      
+      if (pendingRecoveryId) {
+        // Clear it immediately to avoid loops
+        sessionStorage.removeItem('pending_recovery_cart_id');
+        
+        // Show success message
+        toast.success('Welcome back! Restoring your cart...');
+        
+        // Navigate to cart with recovery parameter
+        navigate(`/cart?recover=${pendingRecoveryId}`, { replace: true });
+      } else if (pendingRecovery) {
+        // Navigate to cart with recovery parameter from state
+        navigate(`/cart?recover=${pendingRecovery}`, { replace: true });
+      }
+    }
+  }, [user, navigate, pendingRecovery]);
+
   const handlePostLogin = async () => {
+    console.log('[Login] Starting post-login actions...');
     setIsMerging(true);
     
     try {
-      console.log('[Login] Starting post-login process...');
+      // Wait a moment for the session to be properly established
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // CRITICAL: Wait for authentication to be fully established
-      // Give the backend time to process the JWT and update the session
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      // Refresh cart to get authenticated state
       console.log('[Login] Refreshing cart after login...');
+      await refreshCart();
       
-      // Force refresh the cart to get authenticated state
-      // This will trigger the cart middleware to merge carts
-      const refreshedCart = await refreshCart();
+      // Merge guest cart
+      console.log('[Login] Merging guest cart...');
+      const mergedCart = await mergeGuestCart();
+      console.log('[Login] Merge result:', mergedCart);
       
-      console.log('[Login] Cart refreshed:', refreshedCart);
-      
-      // Check if cart was merged successfully
-      if (refreshedCart && refreshedCart.items && refreshedCart.items.length > 0) {
-        toast.success('Your cart has been synced with your account!', { 
-          autoClose: 3000,
-          icon: '🛒'
-        });
+      if (mergedCart) {
+        toast.success('Cart synced with your account!', { autoClose: 3000 });
       }
-      
-      // Clear any guest cart reference from localStorage
-      localStorage.removeItem('guest_cart_id');
-      
     } catch (err) {
       console.error('[Login] Post-login error:', err);
-      toast.warning('Login successful, but there was an issue syncing your cart.', {
+      toast.warning('Login successful, but cart sync encountered an issue.', {
         autoClose: 4000,
       });
     } finally {
@@ -73,7 +86,20 @@ const Login = () => {
 
     toast.success('Logged in successfully!', { autoClose: 2000 });
     
-    // Navigate based on where user came from
+    // Check for pending recovery from sessionStorage again
+    const pendingRecoveryId = sessionStorage.getItem('pending_recovery_cart_id');
+    if (pendingRecoveryId) {
+      sessionStorage.removeItem('pending_recovery_cart_id');
+      navigate(`/cart?recover=${pendingRecoveryId}`, { replace: true });
+      return;
+    }
+    
+    if (pendingRecovery) {
+      navigate(`/cart?recover=${pendingRecovery}`, { replace: true });
+      return;
+    }
+    
+    // Navigation priority
     if (continueUrl) {
       navigate(continueUrl, { replace: true });
     } else if (highlightServiceId) {
@@ -82,11 +108,10 @@ const Login = () => {
         replace: true,
       });
     } else {
-      navigate('/', { replace: true });
+      navigate(from, { replace: true });
     }
   };
 
-  // Email login
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -102,16 +127,10 @@ const Login = () => {
 
     setLoading(true);
     try {
-      console.log('[Login] Email login starting...');
-      
-      // Store guest cart ID before login if exists
-      const guestCartId = localStorage.getItem('guest_cart_id');
-      
+      console.log('[Login] Email login...');
       await login(email, password);
       console.log('[Login] Email login successful');
-      
       await handlePostLogin();
-      
     } catch (err) {
       console.error('[Login] Email login error:', err);
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
@@ -121,22 +140,15 @@ const Login = () => {
     }
   };
 
-  // Google login
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setLoading(true);
     setError('');
     
     try {
       console.log('[Login] Google login initiated...');
-      
-      // Store guest cart ID before login if exists
-      const guestCartId = localStorage.getItem('guest_cart_id');
-      
       await googleLogin(credentialResponse);
       console.log('[Login] Google login successful');
-      
       await handlePostLogin();
-      
     } catch (err) {
       console.error('[Login] Google login error:', err);
       setError('Google login failed. Please try again.');
@@ -154,7 +166,7 @@ const Login = () => {
         transition={{ duration: 0.6 }}
       >
         <Link to="/">
-          <img src={logo} className="w-[10rem]" alt="Kleankickx Logo" />
+          <img src={logo} className="w-[10rem]" alt="KleanKickx Logo" />
         </Link>
       </motion.div>
 
@@ -180,14 +192,15 @@ const Login = () => {
           </div>
         )}
 
+
         {(isMerging || loading) && (
-          <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <p className="text-purple-800 text-sm font-medium">
+              <p className="text-green-700 text-sm font-medium">
                 {loading ? 'Logging in...' : 'Syncing your cart...'}
               </p>
             </div>

@@ -282,71 +282,65 @@ const Services = () => {
   };
 
   // Handle adding to cart with free service logic - FIXED with safety checks
-  const handleAddToCart = async (service) => {
-    const { id, name, price, is_free_signup_service } = service;
-    
-    // Free service handling
-    if (is_free_signup_service) {
-      if (!isAuthenticated) {
-        toast.info('Please sign in to claim your free service!');
-        navigate('/auth/login', { 
-          state: { 
-            from: '/services',
-            message: `Sign in to claim your FREE ${name}!`,
-            highlightServiceId: id 
-          } 
-        });
-        return;
-      }
-      
-      if (user?.free_signup_service_used) {
-        setShowAlreadyClaimedModal(true);
-        return;
-      }
-      
-      if (!isEligibleForFreeService()) {
-        toast.error('You are not eligible for a free service.');
-        return;
-      }
-      
-      setAddingToCart(id);
-      toast.success(`Adding ${name} to cart...`);
-      navigate('/cart');
-      
-      try {
-        await addToCart(id, 1, { name, price });
-        toast.success(`Free ${name} added to cart!`);
-      } catch (error) {
-        console.error('Error adding free service:', error);
-        toast.error('Failed to add free service. Please try again.');
-      } finally {
-        setAddingToCart(null);
-      }
+
+const handleAddToCart = async (service) => {
+  const { id, name, price, is_free_signup_service } = service;
+  
+  // Free service handling
+  if (is_free_signup_service) {
+    if (!isAuthenticated) {
+      toast.info('Please sign in to claim your free service!');
+      navigate('/auth/login', { 
+        state: { 
+          from: '/services',
+          message: `Sign in to claim your FREE ${name}!`,
+          highlightServiceId: id 
+        } 
+      });
       return;
     }
     
-    // Regular service handling - FIXED: Safe check for cart
-    const isInCart = cart && Array.isArray(cart) && cart.some(item => item.service_id === id);
-    
-    if (isInCart) {
-      toast.info(`${name} is already in your cart!`);
-      navigate('/cart');
-    } else {
-      setAddingToCart(id);
-      toast.success(`Adding ${name} to cart...`);
-      navigate('/cart');
-      
-      try {
-        await addToCart(id, 1, { name, price });
-        toast.success(`${name} added to cart!`);
-      } catch (error) {
-        console.error('Error adding service:', error);
-        toast.error('Failed to add service to cart. Please try again.');
-      } finally {
-        setAddingToCart(null);
-      }
+    if (user?.free_signup_service_used) {
+      setShowAlreadyClaimedModal(true);
+      return;
     }
-  };
+    
+    if (!isEligibleForFreeService()) {
+      toast.error('You are not eligible for a free service.');
+      return;
+    }
+    
+    setAddingToCart(id);
+    
+    try {
+      // Add to cart first
+      await addToCart(id, 1, { name, price });
+      toast.success(`Free ${name} added to cart!`);
+      // Then navigate to cart
+      navigate('/cart');
+    } catch (error) {
+      console.error('Error adding free service:', error);
+      toast.error('Failed to add free service. Please try again.');
+    } finally {
+      setAddingToCart(null);
+    }
+    return;
+  }
+  
+  // Regular service handling
+  setAddingToCart(id);
+  
+  try {
+    await addToCart(id, 1, { name, price });
+    toast.success(`${name} added to cart!`);
+    navigate('/cart');
+  } catch (error) {
+    console.error('Error adding service:', error);
+    toast.error('Failed to add service to cart. Please try again.');
+  } finally {
+    setAddingToCart(null);
+  }
+};
 
   const toggleDescription = (serviceId) => {
     setExpandedDescriptions(prev => ({
