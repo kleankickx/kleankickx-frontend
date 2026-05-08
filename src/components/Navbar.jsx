@@ -35,6 +35,7 @@ const Navbar = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const dropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
 
   const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
@@ -56,6 +57,23 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        isMobileMenuOpen &&
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target) &&
+        !e.target.closest('.mobile-menu-trigger')
+      ) {
+        setIsMobileMenuOpen(false);
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMobileMenuOpen]);
 
   const truncateWithEllipsis = (text, maxLength) => {
     if (!text) return '';
@@ -387,7 +405,7 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile menu toggle */}
+          {/* Mobile menu toggle - moved to left side */}
           <div className="lg:hidden flex gap-4 items-center">
             {/* Cart for mobile */}
             <button
@@ -417,16 +435,16 @@ const Navbar = () => {
             </button>
 
             <button
-              className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+              className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer mobile-menu-trigger"
               onClick={() => setIsMobileMenuOpen((p) => !p)}
               aria-label="Menu"
             >
-              <FontAwesomeIcon icon={isMobileMenuOpen ? faTimes : faBars} />
+              <FontAwesomeIcon icon={faBars} />
             </button>
           </div>
         </div>
 
-        {/* Mobile menu overlay */}
+        {/* Mobile menu overlay - full screen backdrop */}
         <div
           className={`fixed inset-0 bg-black/60 transition-opacity duration-300 lg:hidden ${
             isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -434,10 +452,11 @@ const Navbar = () => {
           onClick={closeMobileMenu}
         />
 
-        {/* Mobile side drawer */}
+        {/* Mobile side drawer - NOW SLIDING FROM LEFT */}
         <div
-          className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
-            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          ref={mobileMenuRef}
+          className={`fixed top-0 left-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
+            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
           <div className="flex flex-col h-full p-5">
