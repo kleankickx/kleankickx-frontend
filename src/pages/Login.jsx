@@ -9,7 +9,358 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
 import { motion } from 'framer-motion';
 import logo from "../assets/logo2.png";
+import api from '../api';
 
+// Forgot Password Modal Component
+const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await api.post('/api/users/password/reset/', { email });
+      
+      if (response.data.success || response.status === 200) {
+        setSubmitted(true);
+        onSuccess?.(email);
+        toast.success('Password reset email sent! Check your inbox.');
+        
+        setTimeout(() => {
+          onClose();
+          setSubmitted(false);
+          setEmail('');
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('Password reset error:', err);
+      setSubmitted(true);
+      toast.info('If an account exists with this email, you will receive a password reset link.');
+      
+      setTimeout(() => {
+        onClose();
+        setSubmitted(false);
+        setEmail('');
+      }, 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+      >
+        <div className="bg-gradient-to-r from-primary to-primary/90 p-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-bold text-white">Reset Password</h3>
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {!submitted ? (
+            <>
+              <p className="text-gray-600 mb-4">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+              
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    disabled={loading}
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-gray-800 mb-2">Check Your Email</h4>
+              <p className="text-gray-600">
+                We've sent a password reset link to <strong>{email}</strong>
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                Didn't receive it? Check your spam folder or try again.
+              </p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Reset Password Component (for the reset page)
+export const ResetPassword = () => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const token = searchParams.get('token');
+  const uid = searchParams.get('uid');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (!token || !uid) {
+      setError('Invalid reset link. Please request a new one.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await api.post('/api/auth/password-reset-confirm/', {
+        uid,
+        token,
+        new_password: password
+      });
+
+      if (response.data.success || response.status === 200) {
+        setSuccess(true);
+        toast.success('Password reset successful! Please login with your new password.');
+        
+        setTimeout(() => {
+          navigate('/auth/login');
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('Password reset error:', err);
+      setError(
+        err.response?.data?.error || 
+        'Failed to reset password. The link may be expired or invalid.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!token || !uid) {
+    return (
+      <div className="bg-[#edf1f4] min-h-screen flex justify-center items-center px-4">
+        <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Invalid Reset Link</h2>
+          <p className="text-gray-600 mb-4">
+            This password reset link is invalid or has expired.
+          </p>
+          <Link
+            to="/auth/login"
+            className="inline-block bg-primary hover:bg-primary/90 text-white py-2 px-6 rounded-lg transition"
+          >
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#edf1f4] min-h-screen flex justify-center items-center px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-white rounded-lg shadow-md p-6 w-full max-w-md"
+      >
+        <div className="text-center mb-6">
+          <Link to="/">
+            <img src={logo} className="w-[8rem] mx-auto" alt="KleanKickx Logo" />
+          </Link>
+          <h2 className="text-2xl font-bold text-gray-800 mt-4">Create New Password</h2>
+          <p className="text-gray-600 text-sm mt-1">Enter your new password below</p>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+
+        {success ? (
+          <div className="text-center py-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Password Reset Successfully!</h3>
+            <p className="text-gray-600">Redirecting you to login...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full pr-10 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary"
+                >
+                  {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your new password"
+                  className="w-full pr-10 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Resetting Password...
+                </>
+              ) : (
+                'Reset Password'
+              )}
+            </button>
+
+            <div className="text-center">
+              <Link to="/auth/login" className="text-primary hover:underline text-sm">
+                Back to Login
+              </Link>
+            </div>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+};
+
+// Spinner Component for reuse
+const LoadingSpinner = ({ size = "h-5 w-5" }) => (
+  <svg className={`animate-spin ${size} text-white`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+  </svg>
+);
+
+// Main Login Component
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,9 +368,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const { mergeGuestCart, refreshCart } = useContext(CartContext);
-  const { login, googleLogin, user } = useContext(AuthContext);
+  const { login, googleLogin, user, refreshUserData } = useContext(AuthContext);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,24 +384,18 @@ const Login = () => {
   const pendingRecovery = location.state?.pendingRecovery;
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+ 
 
   // Check for pending cart recovery after login
   useEffect(() => {
     if (user) {
-      // Check sessionStorage for pending recovery
       const pendingRecoveryId = sessionStorage.getItem('pending_recovery_cart_id');
       
       if (pendingRecoveryId) {
-        // Clear it immediately to avoid loops
         sessionStorage.removeItem('pending_recovery_cart_id');
-        
-        // Show success message
         toast.success('Welcome back! Restoring your cart...');
-        
-        // Navigate to cart with recovery parameter
         navigate(`/cart?recover=${pendingRecoveryId}`, { replace: true });
       } else if (pendingRecovery) {
-        // Navigate to cart with recovery parameter from state
         navigate(`/cart?recover=${pendingRecovery}`, { replace: true });
       }
     }
@@ -60,14 +406,14 @@ const Login = () => {
     setIsMerging(true);
     
     try {
-      // Wait a moment for the session to be properly established
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Refresh cart to get authenticated state
+      console.log('[Login] Refreshing user data...');
+      await refreshUserData();
+      
       console.log('[Login] Refreshing cart after login...');
       await refreshCart();
       
-      // Merge guest cart
       console.log('[Login] Merging guest cart...');
       const mergedCart = await mergeGuestCart();
       console.log('[Login] Merge result:', mergedCart);
@@ -86,7 +432,6 @@ const Login = () => {
 
     toast.success('Logged in successfully!', { autoClose: 2000 });
     
-    // Check for pending recovery from sessionStorage again
     const pendingRecoveryId = sessionStorage.getItem('pending_recovery_cart_id');
     if (pendingRecoveryId) {
       sessionStorage.removeItem('pending_recovery_cart_id');
@@ -99,7 +444,6 @@ const Login = () => {
       return;
     }
     
-    // Navigation priority
     if (continueUrl) {
       navigate(continueUrl, { replace: true });
     } else if (highlightServiceId) {
@@ -114,8 +458,11 @@ const Login = () => {
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    
+    // Reset error on each attempt
     setError('');
-
+    
+    // Validation
     if (!email || !password) {
       setError('Please fill in all fields.');
       return;
@@ -126,6 +473,7 @@ const Login = () => {
     }
 
     setLoading(true);
+    
     try {
       console.log('[Login] Email login...');
       await login(email, password);
@@ -133,8 +481,35 @@ const Login = () => {
       await handlePostLogin();
     } catch (err) {
       console.error('[Login] Email login error:', err);
-      setError(err.response?.data?.detail || 'Login failed. Please try again.');
-      toast.error('Login failed. Please check your credentials.');
+      
+      // Handle different error types
+      if (err.response) {
+        // Server responded with error
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 401) {
+          setError('Invalid email or password. Please try again.');
+          toast.error('Invalid email or password.');
+        } else if (status === 400) {
+          setError(data.detail || data.error || 'Please check your credentials.');
+          toast.error(data.detail || 'Login failed. Please check your input.');
+        } else if (status === 429) {
+          setError('Too many login attempts. Please try again later.');
+          toast.error('Too many attempts. Please wait a moment.');
+        } else {
+          setError('Login failed. Please try again.');
+          toast.error('Login failed. Please try again later.');
+        }
+      } else if (err.request) {
+        // Request made but no response
+        setError('Network error. Please check your connection.');
+        toast.error('Network error. Please try again.');
+      } else {
+        // Something else happened
+        setError('An unexpected error occurred. Please try again.');
+        toast.error('Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -151,139 +526,181 @@ const Login = () => {
       await handlePostLogin();
     } catch (err) {
       console.error('[Login] Google login error:', err);
-      setError('Google login failed. Please try again.');
-      toast.error('Google login failed. Please try again.');
+      
+      if (err.response?.status === 401) {
+        setError('Google login failed. Please try again.');
+        toast.error('Google authentication failed.');
+      } else {
+        setError('Google login failed. Please try again.');
+        toast.error('Google login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex justify-center items-center flex-col">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <Link to="/">
-          <img src={logo} className="w-[10rem]" alt="KleanKickx Logo" />
-        </Link>
-      </motion.div>
+    <>
+      <ForgotPasswordModal 
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onSuccess={(email) => console.log('Reset email sent to:', email)}
+      />
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="bg-white rounded-lg shadow-md p-6 lg:w-[30rem] w-full"
-      >
-        <h2 className="text-2xl font-bold text-black mb-2">Login</h2>
+      <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex justify-center items-center flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Link to="/">
+            <img src={logo} className="w-[10rem]" alt="KleanKickx Logo" />
+          </Link>
+        </motion.div>
 
-        {message && (
-          <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm font-medium">{message}</p>
-          </div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white rounded-lg shadow-md p-6 lg:w-[30rem] w-full"
+        >
+          <h2 className="text-2xl font-bold text-black mb-2">Login</h2>
 
-        {continueUrl?.includes('/vouchers') && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-800 text-sm font-medium">
-              After login, you'll be redirected to complete your voucher purchase.
-            </p>
-          </div>
-        )}
+          {message && (
+            <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 text-sm font-medium">{message}</p>
+            </div>
+          )}
 
-
-        {(isMerging || loading) && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-green-700 text-sm font-medium">
-                {loading ? 'Logging in...' : 'Syncing your cart...'}
+          {continueUrl?.includes('/vouchers') && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 text-sm font-medium">
+                After login, you'll be redirected to complete your voucher purchase.
               </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded mb-4">{error}</div>
-        )}
+          {/* Show loading indicator only when syncing cart, not during login */}
+          {isMerging && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <LoadingSpinner size="h-5 w-5" />
+                <p className="text-green-700 text-sm font-medium">
+                  Syncing your cart...
+                </p>
+              </div>
+            </div>
+          )}
 
-        <form onSubmit={handleEmailLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email address"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-0 text-gray-700"
-              disabled={loading || isMerging}
-            />
-          </div>
+          {error && (
+            <div className="bg-red-100 text-red-700 p-4 rounded mb-4 text-sm">
+              {error}
+            </div>
+          )}
 
-          <div className="relative">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading || isMerging}
-              className="w-full pr-10 p-2 text-gray-700 border border-gray-300 rounded-md focus:ring-0 focus:outline-none"
-            />
+          <form onSubmit={handleEmailLogin} className="space-y-4" noValidate>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="Enter your email address"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-0 text-gray-700 disabled:bg-gray-100"
+                disabled={loading || isMerging}
+              />
+            </div>
+
+            <div className="relative">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading || isMerging}
+                className="w-full pr-10 p-2 text-gray-700 border border-gray-300 rounded-md focus:outline-none focus:ring-0 disabled:bg-gray-100"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[2.7rem] text-gray-500 hover:text-primary transition-colors"
+                disabled={loading || isMerging}
+              >
+                {showPassword ? <EyeSlashIcon className="w-6 h-6" /> : <EyeIcon className="w-6 h-6" />}
+              </button>
+            </div>
+
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-primary hover:text-primary/80 hover:underline transition"
+                disabled={loading || isMerging}
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[2.7rem] text-gray-500 hover:text-primary"
+              type="submit"
+              disabled={loading || isMerging}
+              className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {showPassword ? <EyeSlashIcon className="w-6 h-6" /> : <EyeIcon className="w-6 h-6" />}
+              {loading ? (
+                <>
+                  <LoadingSpinner size="h-5 w-5" />
+                  <span>Logging in...</span>
+                </>
+              ) : isMerging ? (
+                <>
+                  <LoadingSpinner size="h-5 w-5" />
+                  <span>Syncing cart...</span>
+                </>
+              ) : (
+                'Login'
+              )}
             </button>
+          </form>
+
+          <div className="my-6 flex items-center">
+            <hr className="flex-grow border-gray-300" />
+            <span className="mx-4 text-gray-500">or</span>
+            <hr className="flex-grow border-gray-300" />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || isMerging}
-            className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50"
-          >
-            {loading ? 'Logging in...' : isMerging ? 'Syncing cart...' : 'Login'}
-          </button>
-        </form>
+          <div className="w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleLoginSuccess}
+              onError={() => {
+                setError('Google login failed. Please try again.');
+                toast.error('Google login failed.');
+              }}
+              width="100%"
+              text="signin_with"
+              shape="rectangular"
+              theme="filled_black"
+              disabled={loading || isMerging}
+            />
+          </div>
 
-        <div className="my-6 flex items-center">
-          <hr className="flex-grow border-gray-300" />
-          <span className="mx-4 text-gray-500">or</span>
-          <hr className="flex-grow border-gray-300" />
-        </div>
-
-        <GoogleLogin
-          onSuccess={handleGoogleLoginSuccess}
-          onError={() => toast.error('Google login failed.')}
-          width="100%"
-          text="signin_with"
-          shape="rectangular"
-          theme="filled_black"
-          disabled={loading || isMerging}
-        />
-
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
-          <Link to="/auth/register" className="text-primary hover:underline">
-            Register
-          </Link>
-        </p>
-      </motion.div>
-    </div>
+          <p className="mt-4 text-center text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link to="/auth/register" className="text-primary hover:underline">
+              Register
+            </Link>
+          </p>
+        </motion.div>
+      </div>
+    </>
   );
 };
 
