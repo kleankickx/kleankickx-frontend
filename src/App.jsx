@@ -35,11 +35,14 @@ import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
 import GoogleMapsLoader from './components/GoogleMapsLoader';
+import { sessionManager } from './utils/sessionManager';
 
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email/', '/auth/verify-email', '/forgot-password',];
+  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email/', '/auth/verify-email', '/forgot-password'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
+
+ 
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -164,6 +167,18 @@ const AppContent = () => {
 
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+   useEffect(() => {
+    // Initialize session when app starts
+    sessionManager.initialize().catch(console.error);
+    
+    // Optional: Periodically sync session (every 5 minutes)
+    const interval = setInterval(() => {
+      sessionManager.syncSession().catch(console.error);
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>

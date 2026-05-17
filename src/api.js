@@ -1,5 +1,6 @@
 // src/api.js
 import axios from "axios";
+import { sessionManager } from "./utils/sessionManager";
 
 // =========================
 // BASE CONFIG
@@ -15,12 +16,10 @@ const api = axios.create({
 });
 
 // =========================
-// TOKEN MANAGEMENT
+// TOKEN MANAGEMENT (keep your existing code)
 // =========================
 let isRefreshing = false;
 let refreshSubscribers = [];
-
-// Event for auth expiration (components can listen to this)
 let authExpirationCallbacks = [];
 
 export const onAuthExpiration = (callback) => {
@@ -34,26 +33,18 @@ const notifyAuthExpiration = () => {
   authExpirationCallbacks.forEach(cb => cb());
 };
 
-// =========================
-// TOKEN VALIDATION
-// =========================
 const isTokenExpired = (token) => {
   if (!token) return true;
-
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     const exp = payload.exp * 1000;
     const now = Date.now();
-    // 30-second buffer to refresh before actual expiry
     return exp < now + 30000;
   } catch (e) {
     return true;
   }
 };
 
-// =========================
-// CHECK IF ERROR IS FROM LOGIN ENDPOINT
-// =========================
 const isLoginEndpoint = (url) => {
   return url?.includes("/api/users/login/") || 
          url?.includes("/api/users/google-login/") ||
@@ -71,34 +62,24 @@ const refreshAccessToken = async () => {
 
   try {
     console.log("%c[AUTH] Refreshing token...", "color: orange;");
-
     const response = await axios.post(
       `${baseURL}/api/users/token/refresh/`,
       { refresh: storedRefresh },
       { withCredentials: true }
     );
-
     const { access } = response.data;
     localStorage.setItem("access_token", access);
-
     console.log("%c[AUTH] Token refreshed ✅", "color: green;");
     return access;
   } catch (error) {
     console.error("[AUTH] Refresh failed ❌", error);
-    
-    // Check if refresh token is expired or invalid
     if (error.response?.status === 401 || error.response?.status === 400) {
       console.log("%c[AUTH] Refresh token expired or invalid - clearing auth", "color: red;");
-      // Clear all tokens
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
-      
-      // Notify components that auth has expired
       notifyAuthExpiration();
-      
       return null;
     }
-    
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     return null;
@@ -114,17 +95,11 @@ const addRefreshSubscriber = (cb) => {
   refreshSubscribers.push(cb);
 };
 
-// =========================
-// ENSURE VALID TOKEN
-// =========================
 const ensureValidToken = async () => {
   let token = localStorage.getItem("access_token");
-
   if (!token) return null;
-
   if (!isTokenExpired(token)) return token;
 
-  // Token is expired — refresh it (deduplicated)
   if (isRefreshing) {
     return new Promise((resolve) => {
       addRefreshSubscriber((newToken) => resolve(newToken));
@@ -145,7 +120,7 @@ const ensureValidToken = async () => {
 };
 
 // =========================
-// ENDPOINTS THAT SKIP AUTH
+// PUBLIC ENDPOINTS
 // =========================
 const PUBLIC_ENDPOINTS = [
   "/api/users/login/",
@@ -155,19 +130,30 @@ const PUBLIC_ENDPOINTS = [
   "/api/token/refresh/",
   "/api/services/public/",
   "/api/promotions/",
+  "/api/cart/session/check/",  // Add session endpoints as public
+  "/api/cart/session/init/",    // Add session endpoints as public
 ];
 
 const isPublicEndpoint = (url = "") =>
   PUBLIC_ENDPOINTS.some((pub) => url.includes(pub));
 
 // =========================
-// REQUEST INTERCEPTOR
+// REQUEST INTERCEPTOR - UPDATED WITH SESSION
 // =========================
 api.interceptors.request.use(
   async (config) => {
+    // Initialize session manager if not done
+    if (!sessionManager.initialized) {
+      await sessionManager.initialize();
+    }
+    
+    // Add session header for non-cookie fallback
+    const sessionHeaders = sessionManager.getSessionHeader();
+    Object.assign(config.headers, sessionHeaders);
+    
+    // Add auth token for non-public endpoints
     if (!isPublicEndpoint(config.url)) {
       const validToken = await ensureValidToken();
-
       if (validToken) {
         config.headers.Authorization = `Bearer ${validToken}`;
       }
@@ -176,7 +162,10 @@ api.interceptors.request.use(
     console.log(
       `%c[REQ] ${config.method?.toUpperCase()} ${config.url}`,
       "color: blue;",
-      { hasToken: !!config.headers.Authorization }
+      { 
+        hasToken: !!config.headers.Authorization,
+        hasSessionHeader: !!config.headers['X-Session-Id']
+      }
     );
 
     return config;
@@ -185,10 +174,18 @@ api.interceptors.request.use(
 );
 
 // =========================
-// RESPONSE INTERCEPTOR - FIXED
+// RESPONSE INTERCEPTOR - UPDATED WITH SESSION
 // =========================
 api.interceptors.response.use(
   (response) => {
+    // Capture session ID from response headers
+    const sessionId = response.headers['x-session-id'];
+    if (sessionId && sessionId !== sessionManager.manualSessionId) {
+      sessionManager.manualSessionId = sessionId;
+      localStorage.setItem('manual_session_id', sessionId);
+      console.log('[Session] Updated session ID from header:', sessionId.substring(0, 8) + '...');
+    }
+    
     console.log(
       `%c[RES] ${response.status} ${response.config.url}`,
       "color: green;"
@@ -198,19 +195,15 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // IMPORTANT: Don't handle 401s from login endpoints - let the component handle them
     if (isLoginEndpoint(originalRequest?.url)) {
       console.log("%c[AUTH] Login failed - passing to component", "color: orange;");
       return Promise.reject(error);
     }
 
-    // Handle 401 Unauthorized for non-login endpoints
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // Never retry the refresh endpoint itself
       if (isRefreshEndpoint(originalRequest?.url)) {
-        // Refresh token is invalid - clear everything
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         notifyAuthExpiration();
@@ -224,7 +217,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       }
 
-      // No new token - auth is expired
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       notifyAuthExpiration();
