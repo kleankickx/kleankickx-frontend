@@ -15,23 +15,48 @@ const api = axios.create({
 });
 
 // =========================
+// SESSION PERSISTENCE
+// Uses localStorage (survives page reloads, navigation, new tabs) rather than
+// sessionStorage which is cleared on hard navigations and tab duplication.
+// This is the fallback for when cross-origin cookies are blocked (SameSite,
+// Safari ITP, etc.).
+// =========================
+const SESSION_STORAGE_KEY = "x_session_id";
+
+export const getStoredSessionId = () => localStorage.getItem(SESSION_STORAGE_KEY);
+
+export const storeSessionId = (sessionId) => {
+  if (!sessionId) return;
+  if (sessionId === getStoredSessionId()) return;
+  localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  console.log("%c[SESSION] Persisted session ID", "color: teal;", sessionId.slice(0, 8) + "…");
+};
+
+export const clearStoredSessionId = () => {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+};
+
+const buildSessionHeader = () => {
+  const sid = getStoredSessionId();
+  return sid ? { "X-Session-Id": sid } : {};
+};
+
+// =========================
 // TOKEN MANAGEMENT
 // =========================
 let isRefreshing = false;
 let refreshSubscribers = [];
-
-// Event for auth expiration (components can listen to this)
 let authExpirationCallbacks = [];
 
 export const onAuthExpiration = (callback) => {
   authExpirationCallbacks.push(callback);
   return () => {
-    authExpirationCallbacks = authExpirationCallbacks.filter(cb => cb !== callback);
+    authExpirationCallbacks = authExpirationCallbacks.filter((cb) => cb !== callback);
   };
 };
 
 const notifyAuthExpiration = () => {
-  authExpirationCallbacks.forEach(cb => cb());
+  authExpirationCallbacks.forEach((cb) => cb());
 };
 
 // =========================
@@ -39,66 +64,65 @@ const notifyAuthExpiration = () => {
 // =========================
 const isTokenExpired = (token) => {
   if (!token) return true;
-
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
-    const exp = payload.exp * 1000;
-    const now = Date.now();
-    // 30-second buffer to refresh before actual expiry
-    return exp < now + 30000;
-  } catch (e) {
+    return payload.exp * 1000 < Date.now() + 30000; // 30s buffer
+  } catch {
     return true;
   }
 };
 
 // =========================
-// CHECK IF ERROR IS FROM LOGIN ENDPOINT
+// ENDPOINT CLASSIFIERS
 // =========================
-const isLoginEndpoint = (url) => {
-  return url?.includes("/api/users/login/") || 
-         url?.includes("/api/users/google-login/") ||
-         url?.includes("/api/users/register/");
-};
+const isLoginEndpoint = (url) =>
+  url?.includes("/api/users/login/") ||
+  url?.includes("/api/users/google-login/") ||
+  url?.includes("/api/users/register/");
 
-const isRefreshEndpoint = (url) => {
-  return url?.includes("/token/refresh/") || 
-         url?.includes("/users/token/refresh/");
-};
+const isRefreshEndpoint = (url) =>
+  url?.includes("/token/refresh/") || url?.includes("/users/token/refresh/");
 
+const PUBLIC_ENDPOINTS = [
+  "/api/users/login/",
+  "/api/users/google-login/",
+  "/api/users/register/",
+  "/api/users/token/refresh/",
+  "/api/token/refresh/",
+  "/api/services/public/",
+  "/api/promotions/",
+];
+
+const isPublicEndpoint = (url = "") =>
+  PUBLIC_ENDPOINTS.some((pub) => url.includes(pub));
+
+// =========================
+// TOKEN REFRESH
+// =========================
 const refreshAccessToken = async () => {
   const storedRefresh = localStorage.getItem("refresh_token");
   if (!storedRefresh) return null;
 
   try {
-    console.log("%c[AUTH] Refreshing token...", "color: orange;");
-
+    console.log("%c[AUTH] Refreshing token…", "color: orange;");
     const response = await axios.post(
       `${baseURL}/api/users/token/refresh/`,
       { refresh: storedRefresh },
       { withCredentials: true }
     );
-
     const { access } = response.data;
     localStorage.setItem("access_token", access);
-
     console.log("%c[AUTH] Token refreshed ✅", "color: green;");
     return access;
   } catch (error) {
     console.error("[AUTH] Refresh failed ❌", error);
-    
-    // Check if refresh token is expired or invalid
     if (error.response?.status === 401 || error.response?.status === 400) {
-      console.log("%c[AUTH] Refresh token expired or invalid - clearing auth", "color: red;");
-      // Clear all tokens
+      console.log("%c[AUTH] Refresh token expired — clearing auth", "color: red;");
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
-      
-      // Notify components that auth has expired
       notifyAuthExpiration();
-      
       return null;
     }
-    
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     return null;
@@ -118,65 +142,81 @@ const addRefreshSubscriber = (cb) => {
 // ENSURE VALID TOKEN
 // =========================
 const ensureValidToken = async () => {
-  let token = localStorage.getItem("access_token");
-
+  const token = localStorage.getItem("access_token");
   if (!token) return null;
-
   if (!isTokenExpired(token)) return token;
 
-  // Token is expired — refresh it (deduplicated)
   if (isRefreshing) {
-    return new Promise((resolve) => {
-      addRefreshSubscriber((newToken) => resolve(newToken));
-    });
+    return new Promise((resolve) => addRefreshSubscriber(resolve));
   }
 
   isRefreshing = true;
   const newToken = await refreshAccessToken();
   isRefreshing = false;
-
-  if (newToken) {
-    onRefreshed(newToken);
-    return newToken;
-  }
-
-  onRefreshed(null);
-  return null;
+  onRefreshed(newToken);
+  return newToken;
 };
 
 // =========================
-// ENDPOINTS THAT SKIP AUTH
+// SESSION INIT QUEUE
+// Ensures only one "warm-up" request fires at a time so parallel page-load
+// requests don't each create their own session before we have a session ID.
 // =========================
-const PUBLIC_ENDPOINTS = [
-  "/api/users/login/",
-  "/api/users/google-login/",
-  "/api/users/register/",
-  "/api/users/token/refresh/",
-  "/api/token/refresh/",
-  "/api/services/public/",
-  "/api/promotions/",
-];
+let sessionInitPromise = null;
 
-const isPublicEndpoint = (url = "") =>
-  PUBLIC_ENDPOINTS.some((pub) => url.includes(pub));
+const ensureSessionId = async () => {
+  if (getStoredSessionId()) return getStoredSessionId();
+  if (sessionInitPromise) return sessionInitPromise;
+
+  sessionInitPromise = axios
+    .get(`${baseURL}/api/services/public/`, {
+      withCredentials: true,
+      headers: buildSessionHeader(),
+    })
+    .then((res) => {
+      const sid = res.headers["x-session-id"];
+      if (sid) storeSessionId(sid);
+      return sid ?? null;
+    })
+    .catch(() => null)
+    .finally(() => {
+      sessionInitPromise = null;
+    });
+
+  return sessionInitPromise;
+};
 
 // =========================
 // REQUEST INTERCEPTOR
 // =========================
 api.interceptors.request.use(
   async (config) => {
+    // 1. Auth token for protected endpoints
     if (!isPublicEndpoint(config.url)) {
       const validToken = await ensureValidToken();
-
       if (validToken) {
         config.headers.Authorization = `Bearer ${validToken}`;
       }
     }
 
+    // 2. Session header — pre-warm if not available yet for cart/service calls
+    const needsSession =
+      config.url?.includes("/api/cart/") ||
+      config.url?.includes("/api/services/");
+
+    if (needsSession && !getStoredSessionId()) {
+      await ensureSessionId();
+    }
+
+    Object.assign(config.headers, buildSessionHeader());
+
     console.log(
       `%c[REQ] ${config.method?.toUpperCase()} ${config.url}`,
       "color: blue;",
-      { hasToken: !!config.headers.Authorization }
+      {
+        hasToken: !!config.headers.Authorization,
+        sessionId: getStoredSessionId()?.slice(0, 8),
+      }
     );
 
     return config;
@@ -185,10 +225,14 @@ api.interceptors.request.use(
 );
 
 // =========================
-// RESPONSE INTERCEPTOR - FIXED
+// RESPONSE INTERCEPTOR
 // =========================
 api.interceptors.response.use(
   (response) => {
+    // Persist session ID from every successful response
+    const sid = response.headers["x-session-id"];
+    if (sid) storeSessionId(sid);
+
     console.log(
       `%c[RES] ${response.status} ${response.config.url}`,
       "color: green;"
@@ -197,20 +241,22 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
-    // IMPORTANT: Don't handle 401s from login endpoints - let the component handle them
+
+    // Persist session ID even from error responses (middleware still sets it)
+    const sid = error.response?.headers?.["x-session-id"];
+    if (sid) storeSessionId(sid);
+
+    // Let login failures pass through to the component
     if (isLoginEndpoint(originalRequest?.url)) {
-      console.log("%c[AUTH] Login failed - passing to component", "color: orange;");
+      console.log("%c[AUTH] Login failed — passing to component", "color: orange;");
       return Promise.reject(error);
     }
 
-    // Handle 401 Unauthorized for non-login endpoints
+    // 401 handling for non-login, non-refresh endpoints
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // Never retry the refresh endpoint itself
       if (isRefreshEndpoint(originalRequest?.url)) {
-        // Refresh token is invalid - clear everything
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         notifyAuthExpiration();
@@ -218,13 +264,12 @@ api.interceptors.response.use(
       }
 
       const newToken = await refreshAccessToken();
-
       if (newToken) {
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        Object.assign(originalRequest.headers, buildSessionHeader());
         return api(originalRequest);
       }
 
-      // No new token - auth is expired
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       notifyAuthExpiration();
