@@ -16,7 +16,34 @@ const api = axios.create({
 });
 
 // =========================
-// TOKEN MANAGEMENT (keep your existing code)
+// SESSION PERSISTENCE
+// Uses localStorage (survives page reloads, navigation, new tabs) rather than
+// sessionStorage which is cleared on hard navigations and tab duplication.
+// This is the fallback for when cross-origin cookies are blocked (SameSite,
+// Safari ITP, etc.).
+// =========================
+const SESSION_STORAGE_KEY = "x_session_id";
+
+export const getStoredSessionId = () => localStorage.getItem(SESSION_STORAGE_KEY);
+
+export const storeSessionId = (sessionId) => {
+  if (!sessionId) return;
+  if (sessionId === getStoredSessionId()) return;
+  localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  console.log("%c[SESSION] Persisted session ID", "color: teal;", sessionId.slice(0, 8) + "…");
+};
+
+export const clearStoredSessionId = () => {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+};
+
+const buildSessionHeader = () => {
+  const sid = getStoredSessionId();
+  return sid ? { "X-Session-Id": sid } : {};
+};
+
+// =========================
+// TOKEN MANAGEMENT
 // =========================
 let isRefreshing = false;
 let refreshSubscribers = [];
@@ -25,43 +52,57 @@ let authExpirationCallbacks = [];
 export const onAuthExpiration = (callback) => {
   authExpirationCallbacks.push(callback);
   return () => {
-    authExpirationCallbacks = authExpirationCallbacks.filter(cb => cb !== callback);
+    authExpirationCallbacks = authExpirationCallbacks.filter((cb) => cb !== callback);
   };
 };
 
 const notifyAuthExpiration = () => {
-  authExpirationCallbacks.forEach(cb => cb());
+  authExpirationCallbacks.forEach((cb) => cb());
 };
 
 const isTokenExpired = (token) => {
   if (!token) return true;
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
-    const exp = payload.exp * 1000;
-    const now = Date.now();
-    return exp < now + 30000;
-  } catch (e) {
+    return payload.exp * 1000 < Date.now() + 30000; // 30s buffer
+  } catch {
     return true;
   }
 };
 
-const isLoginEndpoint = (url) => {
-  return url?.includes("/api/users/login/") || 
-         url?.includes("/api/users/google-login/") ||
-         url?.includes("/api/users/register/");
-};
+// =========================
+// ENDPOINT CLASSIFIERS
+// =========================
+const isLoginEndpoint = (url) =>
+  url?.includes("/api/users/login/") ||
+  url?.includes("/api/users/google-login/") ||
+  url?.includes("/api/users/register/");
 
-const isRefreshEndpoint = (url) => {
-  return url?.includes("/token/refresh/") || 
-         url?.includes("/users/token/refresh/");
-};
+const isRefreshEndpoint = (url) =>
+  url?.includes("/token/refresh/") || url?.includes("/users/token/refresh/");
 
+const PUBLIC_ENDPOINTS = [
+  "/api/users/login/",
+  "/api/users/google-login/",
+  "/api/users/register/",
+  "/api/users/token/refresh/",
+  "/api/token/refresh/",
+  "/api/services/public/",
+  "/api/promotions/",
+];
+
+const isPublicEndpoint = (url = "") =>
+  PUBLIC_ENDPOINTS.some((pub) => url.includes(pub));
+
+// =========================
+// TOKEN REFRESH
+// =========================
 const refreshAccessToken = async () => {
   const storedRefresh = localStorage.getItem("refresh_token");
   if (!storedRefresh) return null;
 
   try {
-    console.log("%c[AUTH] Refreshing token...", "color: orange;");
+    console.log("%c[AUTH] Refreshing token…", "color: orange;");
     const response = await axios.post(
       `${baseURL}/api/users/token/refresh/`,
       { refresh: storedRefresh },
@@ -74,7 +115,7 @@ const refreshAccessToken = async () => {
   } catch (error) {
     console.error("[AUTH] Refresh failed ❌", error);
     if (error.response?.status === 401 || error.response?.status === 400) {
-      console.log("%c[AUTH] Refresh token expired or invalid - clearing auth", "color: red;");
+      console.log("%c[AUTH] Refresh token expired — clearing auth", "color: red;");
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       notifyAuthExpiration();
@@ -96,62 +137,56 @@ const addRefreshSubscriber = (cb) => {
 };
 
 const ensureValidToken = async () => {
-  let token = localStorage.getItem("access_token");
+  const token = localStorage.getItem("access_token");
   if (!token) return null;
   if (!isTokenExpired(token)) return token;
 
   if (isRefreshing) {
-    return new Promise((resolve) => {
-      addRefreshSubscriber((newToken) => resolve(newToken));
-    });
+    return new Promise((resolve) => addRefreshSubscriber(resolve));
   }
 
   isRefreshing = true;
   const newToken = await refreshAccessToken();
   isRefreshing = false;
-
-  if (newToken) {
-    onRefreshed(newToken);
-    return newToken;
-  }
-
-  onRefreshed(null);
-  return null;
+  onRefreshed(newToken);
+  return newToken;
 };
 
 // =========================
-// PUBLIC ENDPOINTS
+// SESSION INIT QUEUE
+// Ensures only one "warm-up" request fires at a time so parallel page-load
+// requests don't each create their own session before we have a session ID.
 // =========================
-const PUBLIC_ENDPOINTS = [
-  "/api/users/login/",
-  "/api/users/google-login/",
-  "/api/users/register/",
-  "/api/users/token/refresh/",
-  "/api/token/refresh/",
-  "/api/services/public/",
-  "/api/promotions/",
-  "/api/cart/session/check/",  // Add session endpoints as public
-  "/api/cart/session/init/",    // Add session endpoints as public
-];
+let sessionInitPromise = null;
 
-const isPublicEndpoint = (url = "") =>
-  PUBLIC_ENDPOINTS.some((pub) => url.includes(pub));
+const ensureSessionId = async () => {
+  if (getStoredSessionId()) return getStoredSessionId();
+  if (sessionInitPromise) return sessionInitPromise;
+
+  sessionInitPromise = axios
+    .get(`${baseURL}/api/services/public/`, {
+      withCredentials: true,
+      headers: buildSessionHeader(),
+    })
+    .then((res) => {
+      const sid = res.headers["x-session-id"];
+      if (sid) storeSessionId(sid);
+      return sid ?? null;
+    })
+    .catch(() => null)
+    .finally(() => {
+      sessionInitPromise = null;
+    });
+
+  return sessionInitPromise;
+};
 
 // =========================
 // REQUEST INTERCEPTOR - UPDATED WITH SESSION
 // =========================
 api.interceptors.request.use(
   async (config) => {
-    // Initialize session manager if not done
-    if (!sessionManager.initialized) {
-      await sessionManager.initialize();
-    }
-    
-    // Add session header for non-cookie fallback
-    const sessionHeaders = sessionManager.getSessionHeader();
-    Object.assign(config.headers, sessionHeaders);
-    
-    // Add auth token for non-public endpoints
+    // 1. Auth token for protected endpoints
     if (!isPublicEndpoint(config.url)) {
       const validToken = await ensureValidToken();
       if (validToken) {
@@ -159,12 +194,23 @@ api.interceptors.request.use(
       }
     }
 
+    // 2. Session header — pre-warm if not available yet for cart/service calls
+    const needsSession =
+      config.url?.includes("/api/cart/") ||
+      config.url?.includes("/api/services/");
+
+    if (needsSession && !getStoredSessionId()) {
+      await ensureSessionId();
+    }
+
+    Object.assign(config.headers, buildSessionHeader());
+
     console.log(
       `%c[REQ] ${config.method?.toUpperCase()} ${config.url}`,
       "color: blue;",
-      { 
+      {
         hasToken: !!config.headers.Authorization,
-        hasSessionHeader: !!config.headers['X-Session-Id']
+        sessionId: getStoredSessionId()?.slice(0, 8),
       }
     );
 
@@ -174,18 +220,14 @@ api.interceptors.request.use(
 );
 
 // =========================
-// RESPONSE INTERCEPTOR - UPDATED WITH SESSION
+// RESPONSE INTERCEPTOR
 // =========================
 api.interceptors.response.use(
   (response) => {
-    // Capture session ID from response headers
-    const sessionId = response.headers['x-session-id'];
-    if (sessionId && sessionId !== sessionManager.manualSessionId) {
-      sessionManager.manualSessionId = sessionId;
-      localStorage.setItem('manual_session_id', sessionId);
-      console.log('[Session] Updated session ID from header:', sessionId.substring(0, 8) + '...');
-    }
-    
+    // Persist session ID from every successful response
+    const sid = response.headers["x-session-id"];
+    if (sid) storeSessionId(sid);
+
     console.log(
       `%c[RES] ${response.status} ${response.config.url}`,
       "color: green;"
@@ -194,12 +236,18 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
+
+    // Persist session ID even from error responses (middleware still sets it)
+    const sid = error.response?.headers?.["x-session-id"];
+    if (sid) storeSessionId(sid);
+
+    // Let login failures pass through to the component
     if (isLoginEndpoint(originalRequest?.url)) {
-      console.log("%c[AUTH] Login failed - passing to component", "color: orange;");
+      console.log("%c[AUTH] Login failed — passing to component", "color: orange;");
       return Promise.reject(error);
     }
 
+    // 401 handling for non-login, non-refresh endpoints
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -211,9 +259,9 @@ api.interceptors.response.use(
       }
 
       const newToken = await refreshAccessToken();
-
       if (newToken) {
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        Object.assign(originalRequest.headers, buildSessionHeader());
         return api(originalRequest);
       }
 
