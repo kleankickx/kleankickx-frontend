@@ -39,7 +39,7 @@ import { sessionManager } from './utils/sessionManager';
 
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email/', '/auth/verify-email', '/forgot-password'];
+  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email/', '/auth/verify-email', '/forgot-password', '/auth/reset-password/:uid/:token'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
 
  
