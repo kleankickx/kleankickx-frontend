@@ -132,6 +132,8 @@ const Cart = () => {
   const [loadingServices, setLoadingServices] = useState(false);
   const [uploadingImages, setUploadingImages] = useState({});
   const [imageUploadProgress, setImageUploadProgress] = useState({});
+  // Stage labels shown alongside the progress bar — one entry per uploading item
+  const [imageUploadStage, setImageUploadStage] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [isRecovering, setIsRecovering] = useState(false);
   const [imagePreviews, setImagePreviews] = useState({});
@@ -427,46 +429,109 @@ useEffect(() => {
   const switchCamera = () => { setIsFrontCamera((v) => !v); setTimeout(startCamera, 100); };
 
   // ── Image upload ──────────────────────────────────────────────────────────
+  //
+  // Progress is tied to real pipeline stages — no fake timers.
+  //
+  // Stage breakdown (% ranges are stable budgets per stage):
+  //   0–15  Reading file into memory      (FileReader onprogress — real bytes)
+  //   15–20 HEIC conversion start         (indeterminate — single jump)
+  //   20–55 Image compression             (canvas processImage onProgress callback)
+  //   55–60 Base64 encoding               (synchronous — single jump on completion)
+  //   60–95 API upload                    (axios onUploadProgress — real bytes)
+  //   95–100 Server processing + refresh  (single jump on API 2xx)
+
+  const setProgress = (itemId, pct, stage) => {
+    setImageUploadProgress((p) => ({ ...p, [itemId]: Math.round(pct) }));
+    if (stage) setImageUploadStage((p) => ({ ...p, [itemId]: stage }));
+  };
+
   const handleImageUpload = async (itemId, file) => {
     const v = validateImageFile(file);
     if (!v.valid) { toast.error(v.message); return; }
 
     setUploadingImages((p) => ({ ...p, [itemId]: true }));
-    setImageUploadProgress((p) => ({ ...p, [itemId]: 0 }));
+    setProgress(itemId, 0, 'Reading file…');
 
     try {
-      const reader = new FileReader();
-      reader.onload = (e) => setImagePreviews((p) => ({ ...p, [itemId]: e.target.result }));
-      reader.readAsDataURL(file);
+      // ── Stage 1: Read file for preview + measure real read progress (0–15%) ──
+      const previewDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = (e) => {
+          if (e.lengthComputable) {
+            setProgress(itemId, (e.loaded / e.total) * 15, 'Reading file…');
+          }
+        };
+        reader.onload = (e) => {
+          setImagePreviews((p) => ({ ...p, [itemId]: e.target.result }));
+          resolve(e.target.result);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
 
-      const interval = setInterval(() => {
-        setImageUploadProgress((p) => {
-          const cur = p[itemId] || 0;
-          return cur < 90 ? { ...p, [itemId]: Math.min(cur + 10, 90) } : p;
-        });
-      }, 200);
-
+      // ── Stage 2: HEIC detection + conversion start (15–20%) ──
       const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
         file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
-      if (isHeic) toast.info('Processing HEIC image... This may take a moment.');
 
-      const processed = await processImage(file, (p) => setImageUploadProgress((prev) => ({ ...prev, [itemId]: p })));
-      clearInterval(interval);
-      setImageUploadProgress((p) => ({ ...p, [itemId]: 95 }));
+      if (isHeic) {
+        setProgress(itemId, 15, 'Converting HEIC…');
+      } else {
+        setProgress(itemId, 15, 'Preparing image…');
+      }
 
+      // ── Stage 3: Compression (20–55%) via processImage onProgress callback ──
+      // processImage already calls onProgress with values 30, 60, 90 internally.
+      // We remap those into our 20–55% budget.
+      const processed = await processImage(file, (internalPct) => {
+        // internalPct is 30 / 60 / 90 from processJpegImage
+        const remapped = 20 + (internalPct / 100) * 35;
+        const stage = internalPct < 60 ? 'Compressing image…' : 'Finalising image…';
+        setProgress(itemId, remapped, stage);
+      });
+
+      // If file was small enough to skip compression (returned immediately),
+      // make sure we still advance past stage 3.
+      setProgress(itemId, 55, 'Encoding…');
+
+      // ── Stage 4: Base64 encode (55–60%) — synchronous, single jump ──
       const b64 = await fileToBase64(processed);
       const raw = b64.includes(',') ? b64.split(',')[1] : b64;
       if (!raw) throw new Error('Failed to convert file to base64');
+      setProgress(itemId, 60, 'Uploading…');
 
-      await addImageToCartItem(itemId, raw);
-      setImageUploadProgress((p) => ({ ...p, [itemId]: 100 }));
-      toast.success('Photo added successfully!', { autoClose: 3000 });
+      // ── Stage 5: API upload with real byte progress (60–95%) ──
+      // addImageToCartItem goes through CartContext which calls api.post internally.
+      // We need onUploadProgress, so we call api directly here and let
+      // CartContext.loadCart sync the result.
+      await api.post(
+        `/api/cart/items/${itemId}/add-image/`,
+        { image_base64: raw },
+        {
+          onUploadProgress: (e) => {
+            if (e.lengthComputable) {
+              const uploadPct = 60 + (e.loaded / e.total) * 35;
+              setProgress(itemId, uploadPct, 'Uploading…');
+            }
+          },
+        }
+      );
+
+      // ── Stage 6: Server confirmed, refreshing cart (95–100%) ──
+      setProgress(itemId, 95, 'Saving…');
       await refreshCart();
+      setProgress(itemId, 100, 'Done!');
 
-      setTimeout(() => setImageUploadProgress((p) => { const s = { ...p }; delete s[itemId]; return s; }), 1000);
+      toast.success('Photo added successfully!', { autoClose: 3000 });
+      setTimeout(() => {
+        setImageUploadProgress((p) => { const s = { ...p }; delete s[itemId]; return s; });
+        setImageUploadStage((p) => { const s = { ...p }; delete s[itemId]; return s; });
+      }, 1200);
+
     } catch (error) {
       toast.error(error.message || 'Failed to upload image');
       setImagePreviews((p) => { const s = { ...p }; delete s[itemId]; return s; });
+      setImageUploadProgress((p) => { const s = { ...p }; delete s[itemId]; return s; });
+      setImageUploadStage((p) => { const s = { ...p }; delete s[itemId]; return s; });
       await refreshCart();
     } finally {
       setUploadingImages((p) => ({ ...p, [itemId]: false }));
@@ -526,16 +591,24 @@ useEffect(() => {
   const isAnyUploading = Object.values(uploadingImages).some(Boolean);
 
   // ── Sub-components ────────────────────────────────────────────────────────
-  const ImageUploadLoader = ({ progress }) => (
-    <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg min-w-[120px]">
-      <FaSpinner className="animate-spin text-primary w-6 h-6 mb-2" />
-      <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
-        <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+  const ImageUploadLoader = ({ progress, stage }) => {
+    const isDone = progress >= 100;
+    return (
+      <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg min-w-[140px]">
+        {isDone
+          ? <div className="w-6 h-6 mb-2 text-green-500">✓</div>
+          : <FaSpinner className="animate-spin text-primary w-6 h-6 mb-2" />}
+        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5">
+          <div
+            className={`h-1.5 rounded-full transition-all duration-300 ${isDone ? 'bg-green-500' : 'bg-primary'}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-xs font-medium text-gray-600">{progress}%</span>
+        {stage && <span className="text-xs text-gray-400 mt-0.5 text-center leading-tight">{stage}</span>}
       </div>
-      <span className="text-xs text-gray-500">{progress}%</span>
-      <span className="text-xs text-gray-400 mt-1">Processing image...</span>
-    </div>
-  );
+    );
+  };
 
   const CameraModal = () => !showCameraModal ? null : (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
@@ -718,7 +791,7 @@ useEffect(() => {
                                   <p className="text-xs text-gray-500 mt-1">Supports JPEG, PNG, WebP, HEIC (max 15MB)</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {isUploading ? <ImageUploadLoader progress={progress} />
+                                  {isUploading ? <ImageUploadLoader progress={progress} stage={imageUploadStage[item.id]} />
                                     : isRemoving ? (
                                       <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg">
                                         <FaSpinner className="animate-spin w-4 h-4" /><span className="text-sm">Removing...</span>
@@ -755,7 +828,7 @@ useEffect(() => {
                                   <p className="text-xs text-gray-500 mb-3">Supports JPEG, PNG, WebP, HEIC (max 15MB)</p>
                                 </div>
                                 <div className="flex items-start gap-3">
-                                  {isUploading ? <ImageUploadLoader progress={progress} />
+                                  {isUploading ? <ImageUploadLoader progress={progress} stage={imageUploadStage[item.id]} />
                                     : isRemoving ? (
                                       <div className="flex items-center gap-2 px-4 py-3 bg-gray-600 text-white rounded-lg w-full justify-center">
                                         <FaSpinner className="animate-spin w-4 h-4" /><span className="text-sm">Removing...</span>

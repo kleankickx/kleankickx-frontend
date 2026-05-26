@@ -4,6 +4,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
+import PartnerNavbar from './components/PartnerNavbar';
 import Register from './pages/Register';
 import VerifyEmail from './pages/VerifyEmail';
 import Services from './pages/Services';
@@ -18,7 +19,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Promotions from './pages/Promotions';
 import ReferralDashboard from './pages/ReferralDashboard';
-import AuthProvider from './context/AuthContext';
+import AuthProvider, { AuthContext } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import GetOrder from './pages/GetOrder';
 import MyOrders from './pages/MyOrders';
@@ -27,31 +28,88 @@ import PaymentStatus from './pages/PaymentStatus';
 import PaymentRetry from './pages/PaymentRetry';
 import FailedOrders from './pages/FailedOrders';
 import AccountVouchers from './pages/AccountVouchers';
-import RedeemVoucher  from './pages/RedeemVoucher';
+import RedeemVoucher from './pages/RedeemVoucher';
 import VoucherPurchaseSuccess from './pages/VoucherPurchaseSuccess';
-import { useContext, useEffect, useState, useCallback } from 'react';
-import { AuthContext } from './context/AuthContext';
+import { useContext, useEffect } from 'react';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
 import GoogleMapsLoader from './components/GoogleMapsLoader';
-import { sessionManager } from './utils/sessionManager';
+import PartnerRegister from './pages/PartnerRegister';
+import PartnerDashboard from './pages/PartnerDashboard';
+import PartnerServices from './pages/PartnerServices';
+import PartnerOrderDetail from './pages/PartnerOrderDetail';
+import PartnerCheckout from './pages/PartnerCheckout';
+import PartnerOrders from './pages/PartnerOrders';
+import AdminPartnerManagement from './pages/AdminPartnerManagement';
+
+// Loading component
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+      <p className="mt-4 text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
+
+// Component to conditionally render the appropriate navbar
+const ConditionalNavbar = () => {
+  const location = useLocation();
+  const { isPartner, authLoading, isAuthenticated } = useContext(AuthContext);
+  
+  // Don't render navbar while loading
+  if (authLoading) return null;
+  
+  // Routes where no navbar should be shown (auth pages)
+  const hideNavbarOn = [
+    '/auth/login', 
+    '/auth/register', 
+    '/auth/confirm-email/', 
+    '/auth/verify-email', 
+    '/forgot-password', 
+    '/auth/reset-password/:uid/:token',
+    '/partner/register'
+  ];
+  
+  // Check if current path matches any hide pattern
+  const shouldHideNavbar = hideNavbarOn.some(route => {
+    if (route.includes(':uid/:token')) {
+      return location.pathname.startsWith('/auth/reset-password/');
+    }
+    return location.pathname === route;
+  });
+  
+  if (shouldHideNavbar) {
+    return null;
+  }
+  
+  // If user is a partner, show PartnerNavbar everywhere (not just partner routes)
+  if (isPartner && isAuthenticated) {
+    return <PartnerNavbar />;
+  }
+  
+  // For customers or non-authenticated users, show regular Navbar
+  return <Navbar />;
+};
 
 const AppContent = () => {
-  const location = useLocation();
-  const hideNavbarOn = ['/auth/login', '/auth/register', '/auth/confirm-email/', '/auth/verify-email', '/forgot-password', '/auth/reset-password/:uid/:token'];
-  const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
-
- 
-
+  const { authLoading } = useContext(AuthContext);
+  
+  // Show loading spinner while auth is initializing
+  if (authLoading) {
+    return <LoadingSpinner />;
+  }
+  
   return (
     <div className="flex flex-col min-h-screen">
-      {!shouldHideNavbar && <Navbar />}
+      <ConditionalNavbar />
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
+          <Route path="/partner/register" element={<PartnerRegister />} />
           <Route path="/services" element={<Services />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/auth/verify-email" element={<VerifyEmail />} />
@@ -69,6 +127,60 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          
+          {/* Partner Routes */}
+          <Route
+            path="/partner/dashboard"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/partner/services"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerServices />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/partner/checkout"
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerCheckout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/partner/orders/:referenceCode"
+            element={
+              <ProtectedRoute>
+                <PartnerOrderDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/partner/orders"
+            element={
+              <ProtectedRoute>
+                <PartnerOrders />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Admin Routes */}
+          <Route
+            path="/admin/partners"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminPartnerManagement />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Customer Routes */}
           <Route path="/vouchers" element={<VoucherStore />} />
           <Route
             path="/account/vouchers"
@@ -96,9 +208,7 @@ const AppContent = () => {
           />
           <Route
             path="/referral-dashboard"
-            element={
-              <ReferralDashboard />
-            }
+            element={<ReferralDashboard />}
           />
           <Route
             path="/change-password"
@@ -125,7 +235,7 @@ const AppContent = () => {
             }
           />
           <Route
-            path="orders/failed"
+            path="/orders/failed"
             element={
               <ProtectedRoute>
                 <FailedOrders />
@@ -133,7 +243,7 @@ const AppContent = () => {
             }
           />
           <Route
-            path="promotions"
+            path="/promotions"
             element={
               <ProtectedRoute>
                 <Promotions />
@@ -167,18 +277,6 @@ const AppContent = () => {
 
 function App() {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-   useEffect(() => {
-    // Initialize session when app starts
-    sessionManager.initialize().catch(console.error);
-    
-    // Optional: Periodically sync session (every 5 minutes)
-    const interval = setInterval(() => {
-      sessionManager.syncSession().catch(console.error);
-    }, 5 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>

@@ -8,6 +8,7 @@ import React, {
   useContext,
 } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 import api from "../api";
 
 export const CartContext = createContext();
@@ -21,16 +22,13 @@ const emptyCart = {
 };
 
 export const CartProvider = ({ children }) => {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, isPartner } = useContext(AuthContext);
   const [cartData, setCartData] = useState(emptyCart);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
 
   // cartRef always holds the latest server-confirmed cart state.
-  // IMPORTANT: it must be updated immediately after every server response,
-  // not just after the React re-render, so that follow-up actions (e.g.
-  // addImageToCartItem right after addToCart) use the real item IDs.
   const cartRef = useRef(cartData);
   const initialLoadDone = useRef(false);
   const loadingRef = useRef(false);
@@ -41,8 +39,14 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   // ─── Load cart from server ───────────────────────────────────────────────
-
   const loadCart = useCallback(async () => {
+    // Skip cart loading for partners
+    if (isPartner) {
+      console.log("[CartContext] Partner account - skipping cart loading");
+      setCart(emptyCart);
+      return emptyCart;
+    }
+
     if (loadingRef.current) {
       console.log("[CartContext] Load already in progress, skipping");
       return cartRef.current;
@@ -65,10 +69,9 @@ export const CartProvider = ({ children }) => {
     } finally {
       loadingRef.current = false;
     }
-  }, [setCart]);
+  }, [setCart, isPartner]);
 
   // ─── Initial load on mount ───────────────────────────────────────────────
-
   useEffect(() => {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
@@ -81,7 +84,7 @@ export const CartProvider = ({ children }) => {
         setInitialized(true);
       })
       .catch(() => {
-        setInitialized(true); // avoid infinite skeleton
+        setInitialized(true);
       })
       .finally(() => {
         setLoading(false);
@@ -89,21 +92,25 @@ export const CartProvider = ({ children }) => {
   }, [loadCart]);
 
   // ─── Reload on auth change ───────────────────────────────────────────────
-
   useEffect(() => {
     if (!initialized) return;
     console.log("[CartContext] Auth changed, reloading cart");
     loadCart();
-  }, [isAuthenticated, initialized]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, initialized, isPartner, loadCart]);
 
   // ─── addToCart ───────────────────────────────────────────────────────────
-  //
-  // Key fix: cartRef is updated synchronously with the SERVER response before
-  // returning, so callers that immediately use an item ID (e.g. addImageToCartItem)
-  // will always see the real UUID, not the optimistic temp ID.
-
   const addToCart = useCallback(
     async (serviceId, quantity = 1, serviceData = null) => {
+      // Skip for partners
+      if (isPartner) {
+        console.log("[CartContext] Partner account - cannot add to cart");
+        toast.info("Partners order directly from wholesale catalog", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return null;
+      }
+
       const currentCart = cartRef.current;
 
       // Optimistic update for instant UI feedback
@@ -125,8 +132,6 @@ export const CartProvider = ({ children }) => {
             item_count: currentCart.item_count + quantity,
             total: currentCart.total + serviceData.price * quantity,
           });
-          // Note: cartRef is NOT updated here — we wait for the server response
-          // so cartRef always holds real IDs, not optimistic ones.
         } else {
           const tempItem = {
             id: `temp-${Date.now()}`,
@@ -150,25 +155,26 @@ export const CartProvider = ({ children }) => {
           service_id: serviceId,
           quantity,
         });
-
-        // Sync cartRef immediately with real server data (real item IDs).
-        // This must happen before the function returns so any chained action
-        // (e.g. uploading an image right after adding) uses the correct ID.
         setCart(response.data);
         return response.data;
       } catch (error) {
         console.error("Add to cart failed:", error);
-        await loadCart(); // rollback to server state
+        await loadCart();
         throw error;
       }
     },
-    [loadCart, setCart]
+    [loadCart, setCart, isPartner]
   );
 
   // ─── updateQuantity ──────────────────────────────────────────────────────
-
   const updateQuantity = useCallback(
     async (itemId, newQuantity) => {
+      // Skip for partners
+      if (isPartner) {
+        console.log("[CartContext] Partner account - cannot update cart");
+        return;
+      }
+
       const currentCart = cartRef.current;
       const itemIndex = currentCart.items.findIndex((item) => item.id === itemId);
       if (itemIndex === -1) return;
@@ -180,7 +186,7 @@ export const CartProvider = ({ children }) => {
       const quantityDiff = newQuantity - oldQuantity;
       const newTotal = Math.max(0, oldTotal + quantityDiff * pricePerItem);
 
-      // Optimistic update (UI only — cartRef keeps real state)
+      // Optimistic update
       setCartData((prev) => {
         const updatedItems = [...prev.items];
         if (newQuantity <= 0) {
@@ -202,7 +208,6 @@ export const CartProvider = ({ children }) => {
         } else {
           await api.put(`/api/cart/items/${itemId}/`, { quantity: newQuantity });
         }
-        // Sync cartRef on success
         cartRef.current = {
           ...cartRef.current,
           items:
@@ -215,7 +220,6 @@ export const CartProvider = ({ children }) => {
         };
       } catch (error) {
         console.error("Quantity update failed:", error);
-        // Rollback optimistic update
         setCartData((prev) => {
           const revertedItems = [...prev.items];
           const idx = revertedItems.findIndex((i) => i.id === itemId);
@@ -234,13 +238,18 @@ export const CartProvider = ({ children }) => {
         await loadCart();
       }
     },
-    [loadCart]
+    [loadCart, isPartner]
   );
 
   // ─── removeFromCart ──────────────────────────────────────────────────────
-
   const removeFromCart = useCallback(
     async (itemId) => {
+      // Skip for partners
+      if (isPartner) {
+        console.log("[CartContext] Partner account - cannot remove from cart");
+        return;
+      }
+
       const currentCart = cartRef.current;
       const itemToRemove = currentCart.items.find((item) => item.id === itemId);
       if (!itemToRemove) return;
@@ -265,83 +274,115 @@ export const CartProvider = ({ children }) => {
         cartRef.current = optimistic;
       } catch (error) {
         console.error("Remove from cart failed:", error);
-        // Rollback
         setCartData(currentCart);
       }
     },
-    []
+    [isPartner]
   );
 
   // ─── clearCart ───────────────────────────────────────────────────────────
-
   const clearCart = useCallback(async () => {
+    // Skip for partners
+    if (isPartner) {
+      console.log("[CartContext] Partner account - cannot clear cart");
+      return;
+    }
+
     await api.post("/api/cart/clear/");
     setCart(emptyCart);
-  }, [setCart]);
+  }, [setCart, isPartner]);
 
   // ─── Image actions ───────────────────────────────────────────────────────
-
   const addImageToCartItem = useCallback(
     async (itemId, imageBase64) => {
+      // Skip for partners
+      if (isPartner) {
+        console.log("[CartContext] Partner account - cannot add image to cart");
+        return;
+      }
+
       await api.post(`/api/cart/items/${itemId}/add-image/`, {
         image_base64: imageBase64,
       });
       await loadCart();
     },
-    [loadCart]
+    [loadCart, isPartner]
   );
 
   const removeImageFromCartItem = useCallback(
     async (itemId) => {
+      // Skip for partners
+      if (isPartner) {
+        console.log("[CartContext] Partner account - cannot remove image from cart");
+        return;
+      }
+
       await api.delete(`/api/cart/items/${itemId}/remove-image/`);
       await loadCart();
     },
-    [loadCart]
+    [loadCart, isPartner]
   );
 
-  // ─── Other actions ───────────────────────────────────────────────────────
-
+  // ─── mergeGuestCart ──────────────────────────────────────────────────────
   const mergeGuestCart = useCallback(
     async (guestCartId = null) => {
       if (!isAuthenticated) return null;
+      
+      // Skip for partners
+      if (isPartner) {
+        console.log("[CartContext] Partner account - skipping cart merge");
+        return null;
+      }
+      
       const payload = guestCartId ? { guest_cart_id: guestCartId } : {};
       const response = await api.post("/api/cart/merge-guest/", payload);
       await loadCart();
       return response.data;
     },
-    [loadCart, isAuthenticated]
+    [loadCart, isAuthenticated, isPartner]
   );
 
-  const refreshCart = useCallback(() => loadCart(), [loadCart]);
+  // ─── refreshCart ─────────────────────────────────────────────────────────
+  const refreshCart = useCallback(() => {
+    if (isPartner) {
+      console.log("[CartContext] Partner account - skipping cart refresh");
+      return Promise.resolve(emptyCart);
+    }
+    return loadCart();
+  }, [loadCart, isPartner]);
 
-  const getCartItemCount = useCallback(
-    () => cartData.item_count || 0,
-    [cartData.item_count]
-  );
+  // ─── Helper functions ────────────────────────────────────────────────────
+  const getCartItemCount = useCallback(() => {
+    if (isPartner) return 0;
+    return cartData.item_count || 0;
+  }, [cartData.item_count, isPartner]);
 
-  const getCartTotal = useCallback(
-    () => cartData.total || 0,
-    [cartData.total]
-  );
+  const getCartTotal = useCallback(() => {
+    if (isPartner) return 0;
+    return cartData.total || 0;
+  }, [cartData.total, isPartner]);
 
   const hasImage = useCallback(
-    (itemId) =>
-      !!cartRef.current.items.find((i) => i.id === itemId)?.image_base64,
-    []
+    (itemId) => {
+      if (isPartner) return false;
+      return !!cartRef.current.items.find((i) => i.id === itemId)?.image_base64;
+    },
+    [isPartner]
   );
 
   const getImageBase64 = useCallback(
-    (itemId) =>
-      cartRef.current.items.find((i) => i.id === itemId)?.image_base64 || null,
-    []
+    (itemId) => {
+      if (isPartner) return null;
+      return cartRef.current.items.find((i) => i.id === itemId)?.image_base64 || null;
+    },
+    [isPartner]
   );
 
   // ─── Context value ───────────────────────────────────────────────────────
-
   const value = {
-    cart: cartData.items,
-    cartMeta: cartData,
-    loading,
+    cart: isPartner ? [] : cartData.items,
+    cartMeta: isPartner ? emptyCart : cartData,
+    loading: isPartner ? false : loading,
     initialized,
     error,
     getCartItemCount,

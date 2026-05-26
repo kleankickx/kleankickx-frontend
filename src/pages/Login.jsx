@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
@@ -352,7 +352,7 @@ export const ResetPassword = () => {
   );
 };
 
-// Spinner Component for reuse
+// Spinner Component
 const LoadingSpinner = ({ size = "h-5 w-5" }) => (
   <svg className={`animate-spin ${size} text-white`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -371,7 +371,7 @@ const Login = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const { mergeGuestCart, refreshCart } = useContext(CartContext);
-  const { login, googleLogin, user, refreshUserData } = useContext(AuthContext);
+  const { login, googleLogin, user, refreshUserData, isPartner } = useContext(AuthContext);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -384,11 +384,10 @@ const Login = () => {
   const pendingRecovery = location.state?.pendingRecovery;
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
- 
 
-  // Check for pending cart recovery after login
+  // Check for pending cart recovery after login (only for customers)
   useEffect(() => {
-    if (user) {
+    if (user && !isPartner) {
       const pendingRecoveryId = sessionStorage.getItem('pending_recovery_cart_id');
       
       if (pendingRecoveryId) {
@@ -399,39 +398,67 @@ const Login = () => {
         navigate(`/cart?recover=${pendingRecovery}`, { replace: true });
       }
     }
-  }, [user, navigate, pendingRecovery]);
+  }, [user, isPartner, navigate, pendingRecovery]);
 
-  const handlePostLogin = async () => {
+  const handlePostLogin = async (userData) => {
     console.log('[Login] Starting post-login actions...');
+    console.log('[Login] User data from login:', userData);
+    
+    // Use the userData from the login response to determine partner status
+    const isPartnerUser = userData?.is_partner === true;
+    console.log('[Login] Is partner from userData:', isPartnerUser);
+    
     setIsMerging(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log('[Login] Refreshing user data...');
       await refreshUserData();
       
-      console.log('[Login] Refreshing cart after login...');
-      await refreshCart();
-      
-      console.log('[Login] Merging guest cart...');
-      const mergedCart = await mergeGuestCart();
-      console.log('[Login] Merge result:', mergedCart);
-      
-      if (mergedCart) {
-        toast.success('Cart synced with your account!', { autoClose: 3000 });
+      // Skip cart operations for partners - use the value from userData
+      if (!isPartnerUser) {
+        console.log('[Login] Customer login - syncing cart...');
+        try {
+          await refreshCart();
+          const mergedCart = await mergeGuestCart();
+          console.log('[Login] Merge result:', mergedCart);
+          
+          if (mergedCart) {
+            toast.success('Cart synced with your account!', { autoClose: 3000 });
+          }
+        } catch (cartErr) {
+          console.error('[Login] Cart sync error:', cartErr);
+        }
+      } else {
+        console.log('[Login] PARTNER LOGIN - Skipping all cart operations');
+        // Clear any cart data from localStorage for partners
+        localStorage.removeItem('cart_session_id');
       }
     } catch (err) {
       console.error('[Login] Post-login error:', err);
-      toast.warning('Login successful, but cart sync encountered an issue.', {
-        autoClose: 4000,
-      });
+      if (!isPartnerUser) {
+        toast.warning('Login successful, but cart sync encountered an issue.', {
+          autoClose: 4000,
+        });
+      }
     } finally {
       setIsMerging(false);
     }
 
     toast.success('Logged in successfully!', { autoClose: 2000 });
     
+    // Role-based redirect - use the value from userData
+    console.log('[Login] Redirecting based on partner status:', isPartnerUser);
+    
+    if (isPartnerUser) {
+      console.log('[Login] 🚀 Redirecting to partner dashboard');
+      navigate('/partner/dashboard', { replace: true });
+      return;
+    }
+    
+    // Customer redirect logic
+    console.log('[Login] Redirecting to customer destination');
     const pendingRecoveryId = sessionStorage.getItem('pending_recovery_cart_id');
     if (pendingRecoveryId) {
       sessionStorage.removeItem('pending_recovery_cart_id');
@@ -459,10 +486,8 @@ const Login = () => {
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     
-    // Reset error on each attempt
     setError('');
     
-    // Validation
     if (!email || !password) {
       setError('Please fill in all fields.');
       return;
@@ -476,15 +501,15 @@ const Login = () => {
     
     try {
       console.log('[Login] Email login...');
-      await login(email, password);
-      console.log('[Login] Email login successful');
-      await handlePostLogin();
+      const userData = await login(email, password);
+      console.log('[Login] Email login successful, userData:', userData);
+      
+      // Pass the userData directly to handlePostLogin
+      await handlePostLogin(userData);
     } catch (err) {
       console.error('[Login] Email login error:', err);
       
-      // Handle different error types
       if (err.response) {
-        // Server responded with error
         const status = err.response.status;
         const data = err.response.data;
         
@@ -502,11 +527,9 @@ const Login = () => {
           toast.error('Login failed. Please try again later.');
         }
       } else if (err.request) {
-        // Request made but no response
         setError('Network error. Please check your connection.');
         toast.error('Network error. Please try again.');
       } else {
-        // Something else happened
         setError('An unexpected error occurred. Please try again.');
         toast.error('Login failed. Please try again.');
       }
@@ -521,9 +544,10 @@ const Login = () => {
     
     try {
       console.log('[Login] Google login initiated...');
-      await googleLogin(credentialResponse);
-      console.log('[Login] Google login successful');
-      await handlePostLogin();
+      const userData = await googleLogin(credentialResponse);
+      console.log('[Login] Google login successful, userData:', userData);
+      
+      await handlePostLogin(userData);
     } catch (err) {
       console.error('[Login] Google login error:', err);
       
@@ -580,7 +604,6 @@ const Login = () => {
             </div>
           )}
 
-          {/* Show loading indicator only when syncing cart, not during login */}
           {isMerging && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2">
@@ -693,11 +716,36 @@ const Login = () => {
           </div>
 
           <p className="mt-4 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don't have a customer account?{' '}
             <Link to="/auth/register" className="text-primary hover:underline">
               Register
             </Link>
           </p>
+
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-2 text-gray-400">For Businesses</span>
+              </div>
+            </div>
+            
+            <p className="mt-3 text-center text-sm">
+              <Link 
+                to="/partner/register" 
+                className="text-primary hover:text-primary/80 font-medium inline-flex items-center gap-1 group"
+              >
+                Apply for Wholesale Partnership
+                <span className="transform transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+            </p>
+            
+            <p className="mt-1 text-xs text-center text-gray-400">
+              Exclusive wholesale pricing, priority processing, and dedicated support
+            </p>
+          </div>
         </motion.div>
       </div>
     </>

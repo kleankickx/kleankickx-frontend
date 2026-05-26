@@ -1,6 +1,6 @@
 // src/api.js
 import axios from "axios";
-import { sessionManager } from "./utils/sessionManager";
+
 
 // =========================
 // BASE CONFIG
