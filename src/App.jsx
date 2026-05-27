@@ -95,9 +95,15 @@ const ConditionalNavbar = () => {
 
 const AppContent = () => {
   const { authLoading } = useContext(AuthContext);
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/auth/login' || 
+                     location.pathname === '/auth/register' ||
+                     location.pathname === '/partner/register' ||
+                     location.pathname === '/forgot-password' ||
+                     location.pathname.startsWith('/auth/reset-password/');
   
-  // Show loading spinner while auth is initializing
-  if (authLoading) {
+  // Show loading spinner while auth is initializing (only on non-auth pages)
+  if (authLoading && !isAuthPage) {
     return <LoadingSpinner />;
   }
   

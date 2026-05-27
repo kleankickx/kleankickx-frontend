@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
@@ -158,7 +158,7 @@ const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-// Reset Password Component (for the reset page)
+// Reset Password Component
 export const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -533,7 +533,6 @@ const Login = () => {
         setError('An unexpected error occurred. Please try again.');
         toast.error('Login failed. Please try again.');
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -558,7 +557,6 @@ const Login = () => {
         setError('Google login failed. Please try again.');
         toast.error('Google login failed. Please try again.');
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -722,7 +720,7 @@ const Login = () => {
             </Link>
           </p>
 
-          <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="mt-4 pt-3">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
