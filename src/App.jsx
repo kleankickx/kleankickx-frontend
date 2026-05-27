@@ -41,7 +41,7 @@ import PartnerServices from './pages/PartnerServices';
 import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
-import AdminPartnerManagement from './pages/AdminPartnerManagement';
+
 
 // Loading component
 const LoadingSpinner = () => (
@@ -176,15 +176,6 @@ const AppContent = () => {
             }
           />
           
-          {/* Admin Routes */}
-          <Route
-            path="/admin/partners"
-            element={
-              <ProtectedRoute requireAdmin={true}>
-                <AdminPartnerManagement />
-              </ProtectedRoute>
-            }
-          />
           
           {/* Customer Routes */}
           <Route path="/vouchers" element={<VoucherStore />} />
