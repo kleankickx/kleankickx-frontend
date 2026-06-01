@@ -9,6 +9,7 @@ import axios from "axios";
 import PaymentCard from "../components/PaymentCard";
 import DeliveryInformationCard from "../components/DeliveryInformationCard";
 import { useCheckoutState } from "../hooks/useCheckoutState"; 
+import { GoogleMapsProvider } from "../components/GoogleMapsProvider";
 import {
   FiTruck,
   FiInfo,
@@ -497,9 +498,7 @@ const Checkout = () => {
 
   return (
     
-    <APIProvider
-      apiKey={Maps_API_KEY}
-      libraries={['places', 'geocoding']}
+    <GoogleMapsProvider
       onLoad={() => console.log('Google Maps API loaded successfully!')}
     >
       <div className="bg-gray-50 min-h-screen">
@@ -704,7 +703,7 @@ const Checkout = () => {
           )}
         </div>
       </div>
-    </APIProvider>
+    </GoogleMapsProvider>
      
   );
 };

@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 import api from '../api';
 import PlaceAutocompleteElementWrapper from "../components/PlaceAutoCompleteElementWrapper";
 import MapHandler from "../components/MapHandler";
+import { GoogleMapsProvider } from "../components/GoogleMapsProvider";
 
 const PartnerCheckout = () => {
   const navigate = useNavigate();
@@ -365,9 +366,7 @@ const handlePlaceOrder = async () => {
   }
 
   return (
-    <APIProvider
-      apiKey={Maps_API_KEY}
-      libraries={['places', 'geocoding']}
+    <GoogleMapsProvider
       onLoad={() => console.log('Google Maps API loaded for partner checkout!')}
     >
       <div className="min-h-screen bg-gray-50">
@@ -740,7 +739,7 @@ const handlePlaceOrder = async () => {
           handlePlaceSelect(location, type);
         }}
       />
-    </APIProvider>
+    </GoogleMapsProvider>
   );
 };
 

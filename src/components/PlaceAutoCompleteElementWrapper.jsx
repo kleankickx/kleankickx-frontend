@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import LocationCard from './LocationCard';
 import { AnimatePresence, motion } from 'framer-motion';
 import REGION_CONFIG from '../utils/regionConfig';
@@ -8,6 +7,9 @@ import { FaSpinner } from 'react-icons/fa';
 import axios from 'axios';
 
 const AVAILABLE_REGIONS = Object.keys(REGION_CONFIG);
+
+// Allowed regions for fallback mode
+const ALLOWED_FALLBACK_REGIONS = ['Accra', 'Greater Accra', 'Kasoa'];
 
 const PlaceAutocompleteElementWrapper = ({
   onPlaceSelect,
@@ -18,17 +20,138 @@ const PlaceAutocompleteElementWrapper = ({
   currentInputValue,
   initialLocation,
   pickupTime,
-  setPickupTime, useSame
+  setPickupTime, 
+  useSame
 }) => {
   const inputContainerRef = useRef(null);
   const autocompleteElementRef = useRef(null);
-  const placesLibrary = useMapsLibrary('places');
-  const geocodingLibrary = useMapsLibrary('geocoding');
-
   const [selectedLocation, setSelectedLocation] = useState(initialLocation || null);
   const [loading, setLoading] = useState(false);
+  const [usingFallbackMode, setUsingFallbackMode] = useState(false);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
+  // Check if Google Maps is loaded
+  useEffect(() => {
+    const checkGoogleMaps = setInterval(() => {
+      if (window.google?.maps?.places?.PlaceAutocompleteElement) {
+        setGoogleMapsLoaded(true);
+        clearInterval(checkGoogleMaps);
+      }
+    }, 100);
+    
+    return () => clearInterval(checkGoogleMaps);
+  }, []);
   
+  // Fallback pickup time
+  const getFallbackPickupTime = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    
+    return {
+      value: `${tomorrow.toISOString().split('T')[0]}, 09:00 - 17:00`,
+      label: "Next Business Day (9 AM - 5 PM)",
+      isFallback: true
+    };
+  };
+
+  // Check if region is allowed for fallback
+  const isRegionAllowedForFallback = (regionName) => {
+    if (!regionName) return false;
+    return ALLOWED_FALLBACK_REGIONS.some(allowed => 
+      regionName.toLowerCase().includes(allowed.toLowerCase())
+    );
+  };
+
+  // Fetch Zippy pickup times
+  const fetchZippyPickupTimes = async () => {
+    try {
+      const response = await axios.get('https://merchant-api-test.zippy.com.gh/configs', {
+        auth: {
+          username: import.meta.env.VITE_ZIPPY_USERNAME,
+          password: import.meta.env.VITE_ZIPPY_PASSWORD
+        },
+        timeout: 10000
+      });
+      
+      const pickupTimes = response.data?.data?.pickupTimes;
+      if (!pickupTimes) {
+        throw new Error('No pickup times in response');
+      }
+      
+      const dateKeys = Object.keys(pickupTimes);
+      if (dateKeys.length === 0) {
+        throw new Error('No dates available');
+      }
+      
+      const firstDateKey = dateKeys[0];
+      const firstDayTimeSlots = pickupTimes[firstDateKey];
+      
+      if (!firstDayTimeSlots || firstDayTimeSlots.length === 0) {
+        throw new Error('No time slots available');
+      }
+      
+      const firstPickupTime = firstDayTimeSlots[0];
+      return {
+        value: firstPickupTime.value,
+        label: firstPickupTime.label || firstPickupTime.value,
+        isFallback: false
+      };
+    } catch (error) {
+      console.error('Zippy API Error - Using fallback:', error);
+      return getFallbackPickupTime();
+    }
+  };
+
+  // Fetch delivery pricing from Zippy
+  const fetchZippyPricing = async (pickupLat, pickupLng, pickupTimeValue) => {
+    try {
+      const response = await axios.get('https://merchant-api-test.zippy.com.gh/delivery-times', {
+        auth: {
+          username: import.meta.env.VITE_ZIPPY_USERNAME,
+          password: import.meta.env.VITE_ZIPPY_PASSWORD
+        },
+        params: {
+          pickupTime: pickupTimeValue,
+          weight: 1,
+          senderLocation: `${pickupLat},${pickupLng}`,
+          receiverLocation: "5.632553, -0.224377"
+        },
+        timeout: 10000
+      });
+      
+      const pricingData = response.data?.data;
+      if (pricingData && pricingData.length > 0 && pricingData[0]?.totalPrice) {
+        return pricingData[0].totalPrice;
+      }
+      
+      throw new Error('No pricing data available');
+    } catch (error) {
+      console.error('Zippy Pricing API Error - Using fallback price:', error);
+      return 50;
+    }
+  };
+
+  // Geocode function using window.google directly
+  const geocodeLocation = useCallback(async (lat, lng) => {
+    return new Promise((resolve, reject) => {
+      if (!window.google?.maps?.Geocoder) {
+        reject(new Error('Geocoder not available'));
+        return;
+      }
+      
+      const geocoder = new window.google.maps.Geocoder();
+      const latLng = { lat, lng };
+      
+      geocoder.geocode({ location: latLng }, (results, status) => {
+        if (status === 'OK' && results && results.length > 0) {
+          resolve(results);
+        } else {
+          reject(new Error(`Geocoding failed: ${status}`));
+        }
+      });
+    });
+  }, []);
 
   const handlePlaceSelect = useCallback(
     async (event) => {
@@ -36,14 +159,14 @@ const PlaceAutocompleteElementWrapper = ({
       if (!placePrediction) {
         toast.error('Location selection failed: Incomplete event data.');
         setSelectedLocation(null);
-        setPickupTime(null); // Clear time on error
+        setPickupTime(null);
         onPlaceSelect(null, type);
         return;
       }
 
       try {
         setLoading(true);
-        setPickupTime(null); // Clear previous time
+        setPickupTime(null);
 
         const place = await placePrediction.toPlace();
         await place.fetchFields({
@@ -59,114 +182,106 @@ const PlaceAutocompleteElementWrapper = ({
         }
 
         let detectedRegion = region;
-
-        const geocoder = new geocodingLibrary.Geocoder();
-        const latLng = { lat: place.location.lat(), lng: place.location.lng() };
+        const lat = place.location.lat();
+        const lng = place.location.lng();
+        
         try {
-          const geocodeResponse = await geocoder.geocode({ location: latLng });
-          const geocodeResults = geocodeResponse.results;
+          const geocodeResults = await geocodeLocation(lat, lng);
           
-          if (geocodeResults && geocodeResults.length > 0) {
-            for (const result of geocodeResults) {
-              // Look for administrative_area_level_1 (region/state)
-              const adminAreaLevel1 = result.address_components.find((comp) =>
-                comp.types.includes('administrative_area_level_1')
-              );
-              
-              // Also look for locality or administrative_area_level_2 as fallback
-              const locality = result.address_components.find((comp) =>
-                comp.types.includes('locality')
-              );
-              
-              const adminAreaLevel2 = result.address_components.find((comp) =>
-                comp.types.includes('administrative_area_level_2')
-              );
+          for (const result of geocodeResults) {
+            const adminAreaLevel1 = result.address_components.find((comp) =>
+              comp.types.includes('administrative_area_level_1')
+            );
+            const locality = result.address_components.find((comp) =>
+              comp.types.includes('locality')
+            );
+            const adminAreaLevel2 = result.address_components.find((comp) =>
+              comp.types.includes('administrative_area_level_2')
+            );
 
-              if (adminAreaLevel1) {
-                detectedRegion = adminAreaLevel1.long_name;
-                break; // Found region, break out of loop
-              } else if (locality) {
-                detectedRegion = locality.long_name;
-                break;
-              } else if (adminAreaLevel2) {
-                detectedRegion = adminAreaLevel2.long_name;
-                break;
-              }
+            if (adminAreaLevel1) {
+              detectedRegion = adminAreaLevel1.long_name;
+              break;
+            } else if (locality) {
+              detectedRegion = locality.long_name;
+              break;
+            } else if (adminAreaLevel2) {
+              detectedRegion = adminAreaLevel2.long_name;
+              break;
             }
           }
 
-              // If still no region found, try to extract from formatted address
           if (!detectedRegion && place.formattedAddress) {
             const addressParts = place.formattedAddress.split(',');
             if (addressParts.length > 1) {
-              // Typically region is the second-to-last part in formatted addresses
               detectedRegion = addressParts[addressParts.length - 2]?.trim();
             }
           }
-        } 
-        catch (geocodeError) {
+        } catch (geocodeError) {
           console.error('Geocoding error:', geocodeError);
           toast.warn('Could not precisely determine region. Using fallback.');
         }
-  
+
+        // Fetch pickup times from Zippy (with fallback)
+        const pickupTimeResult = await fetchZippyPickupTimes();
+        
+        // Check if we're in fallback mode and validate region
+        const isFallback = pickupTimeResult.isFallback;
+        
+        if (isFallback) {
+          setUsingFallbackMode(true);
+          
+          // Validate region for fallback mode
+          if (!isRegionAllowedForFallback(detectedRegion)) {
+            toast.error(
+              `Sorry, delivery is currently only available in Accra and Kasoa. Selected region: ${detectedRegion || 'Unknown'}`,
+              { autoClose: 6000 }
+            );
+            setSelectedLocation(null);
+            setPickupTime(null);
+            onPlaceSelect(null, type);
+            setLoading(false);
+            return;
+          }
+        } else {
+          setUsingFallbackMode(false);
+        }
+        
+        // Fetch pricing from Zippy (with fallback)
+        const cost = await fetchZippyPricing(lat, lng, pickupTimeResult.value);
+
+        // Show warning if using fallback values
+        if (pickupTimeResult.isFallback) {
+          toast.warning('Using estimated pickup times. Actual times may vary.', {
+            autoClose: 5000
+          });
+          
+          toast.info('Currently serving Accra and Kasoa only. Other regions coming soon!', {
+            autoClose: 5000
+          });
+        }
+
+        if (cost === 50 && pickupTimeResult.isFallback) {
+          toast.info('Using standard delivery rate of GHS 50.00 for Accra/Kasoa', {
+            autoClose: 4000
+          });
+        }
+
         const location = {
           address: place.formattedAddress,
           name: place.displayName || place.formattedAddress,
           region: detectedRegion,
-          cost: 0,
-          pickupTime: null,
-          lat: place.location.lat(),
-          lng: place.location.lng(),
-          place_id: place.place_id
+          cost: cost,
+          pickupTime: pickupTimeResult.value,
+          lat: lat,
+          lng: lng,
+          place_id: place.place_id,
+          usingFallback: pickupTimeResult.isFallback || cost === 50
         };
-       
-        try {
-          const responseConfig = await axios.get('https://merchant-api-test.zippy.com.gh/configs', {
-            auth: {
-              username: import.meta.env.VITE_ZIPPY_USERNAME,
-              password: import.meta.env.VITE_ZIPPY_PASSWORD
-            }
-          });
-          const pickupTimes = responseConfig.data.data.pickupTimes;
-          const dateKeys = Object.keys(pickupTimes);
-          const firstDateKey = dateKeys[0];
-          const firstDayTimeSlots = pickupTimes[firstDateKey];
-          const firstPickupTime = firstDayTimeSlots[0];
-          location.pickupTime = firstPickupTime.value;
-
-          console.log(responseConfig)
-          const responsePricing = await axios.get('https://merchant-api-test.zippy.com.gh/delivery-times', {
-            auth: {
-              username: import.meta.env.VITE_ZIPPY_USERNAME,
-              password: import.meta.env.VITE_ZIPPY_PASSWORD
-            },
-            params: {
-              pickupTime: firstPickupTime.value,
-              weight: 1,
-              senderLocation: `${location.lat},${location.lng}`,
-              receiverLocation: "5.632553, -0.224377"
-            }
-          });
-          const pricingData = responsePricing.data.data;
-          if (!pricingData || pricingData.length === 0) {
-            toast.warn('Delivery/pickup service is not available in this area.')
-          }
-          else{   
-            console.log(responsePricing)
-            console.log('Zippy Pricing Data:', pricingData[0].totalPrice);
-
-            location.cost = pricingData[0].totalPrice;
-            setSelectedLocation(location);
-            onPlaceSelect(location, type);
-            setPickupTime(firstPickupTime);
-          }
-          
-        } catch (zippyError) {
-          console.error('Error fetching Zippy config:', zippyError);
-          toast.warn('Could not fetch available pickup times.');
-          setPickupTime(null);
-        }
         
+        setSelectedLocation(location);
+        onPlaceSelect(location, type);
+        setPickupTime(pickupTimeResult);
 
       } catch (error) {
         console.error('Error processing location:', error);
@@ -178,46 +293,56 @@ const PlaceAutocompleteElementWrapper = ({
         setLoading(false);
       }
     },
-    [onPlaceSelect, type, region, geocodingLibrary]
+    [onPlaceSelect, type, region, setPickupTime, geocodeLocation]
   );
 
-  // ... (useEffect for Google Maps setup remains the same) ...
+  // Setup Google Maps autocomplete - using window.google directly
   useEffect(() => {
-    if (!placesLibrary || !inputContainerRef.current) return;
+    if (!googleMapsLoaded || !inputContainerRef.current) return;
     if (!window.google?.maps?.places?.PlaceAutocompleteElement) {
       toast.error('Location services unavailable. Please check API key.');
       return;
+    }
+
+    // Clean up any existing autocomplete
+    if (autocompleteElementRef.current && inputContainerRef.current?.contains(autocompleteElementRef.current)) {
+      inputContainerRef.current.removeChild(autocompleteElementRef.current);
     }
 
     const autocomplete = new window.google.maps.places.PlaceAutocompleteElement({
       types: ['address'],
       includedRegionCodes: ['gh']
     });
+    
     autocompleteElementRef.current = autocomplete;
     inputContainerRef.current.innerHTML = '';
-    autocompleteElementRef.current.placeholder = placeholder || 'Search for a place';
-    autocompleteElementRef.current.style.width = '100%';
-    autocompleteElementRef.current.style.height = '45px';
-    autocompleteElementRef.current.style.border = '1px solid #D1D5DB';
+    autocomplete.placeholder = placeholder || 'Search for a place';
+    autocomplete.style.width = '100%';
+    autocomplete.style.height = '45px';
+    autocomplete.style.border = '1px solid #D1D5DB';
+    autocomplete.style.borderRadius = '0.5rem';
+    autocomplete.style.padding = '0 1rem';
     inputContainerRef.current.appendChild(autocomplete);
     autocomplete.addEventListener('gmp-select', handlePlaceSelect);
 
     if (currentInputValue && initialLocation) {
-      autocompleteElementRef.current.value = currentInputValue;
+      autocomplete.value = currentInputValue;
       setSelectedLocation(initialLocation);
     }
 
     return () => {
-      autocomplete.removeEventListener('gmp-select', handlePlaceSelect);
+      if (autocomplete) {
+        autocomplete.removeEventListener('gmp-select', handlePlaceSelect);
+      }
       if (inputContainerRef.current?.contains(autocomplete)) {
         inputContainerRef.current.removeChild(autocomplete);
       }
     };
-  }, [placesLibrary, handlePlaceSelect, currentInputValue, initialLocation]);
+  }, [googleMapsLoaded, handlePlaceSelect, currentInputValue, initialLocation, placeholder]);
 
   const clearSelection = () => {
     setSelectedLocation(null);
-    setPickupTime(null); // Clear time on clear selection
+    setPickupTime(null);
     onPlaceSelect(null, type);
     if (autocompleteElementRef.current) {
       autocompleteElementRef.current.value = '';
@@ -227,36 +352,30 @@ const PlaceAutocompleteElementWrapper = ({
   const formatTimeRangeToAmPm = (timeRange) => {
     if (!timeRange) return '';
     
-    // Splits "09:00-10:00" into ["09:00", "10:00"]
     const [startTime, endTime] = timeRange.split('-');
 
     const formatTime = (time24) => {
         try {
             const [hour, minute] = time24.split(':');
-            // Creates a dummy Date object at a known time to use locale formatting
             const date = new Date(2000, 0, 1, parseInt(hour), parseInt(minute));
             
-            // Format to 12-hour time with AM/PM
             return date.toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true
             });
         } catch (e) {
-            return time24; // Fallback to 24hr format on error
+            return time24;
         }
     };
 
     return `${formatTime(startTime)} - ${formatTime(endTime)}`;
   };
 
-  // Fix the conditional rendering logic
   const shouldShowPickupTimeInfo = () => {
     if (useSame) {
-      // When useSame is true, only show on delivery type
       return type === 'delivery';
     } else {
-      // When useSame is false, only show on pickup type
       return type === 'pickup';
     }
   };
@@ -264,7 +383,6 @@ const PlaceAutocompleteElementWrapper = ({
   const renderPickupTimeInfo = () => {
       if (!pickupTime){
         return (
-          // warning to reselect a location to get pickup time
           <motion.div
               key="pickuptime-warning"
               initial={{ opacity: 0, y: 10 }}
@@ -279,27 +397,19 @@ const PlaceAutocompleteElementWrapper = ({
         )
       }
 
-      // Use the 'value' to get the date part for contextual display: "2025-10-28, 09:00 - 10:00"
       const [datePart] = pickupTime?.value.split(', ');
-      
-      // The time range is the clean label: "09:00-10:00"
-      const time24Display = pickupTime?.value.split(', ')[1].replace(' - ', '-');
-      
-      // 💡 NEW: Convert 24-hour time range to 12-hour AM/PM 💡
+      const time24Display = pickupTime?.value.split(', ')[1]?.replace(' - ', '-') || pickupTime?.value;
       const timeAmPmDisplay = formatTimeRangeToAmPm(time24Display);
       
       let dateDisplay = '';
       let dayOfWeek = '';
 
       try {
-          // Ensure dateObj is a correct representation of the date (timezone might affect 'Today'/'Tomorrow')
-          // Using an adjustment to ensure the date is interpreted locally, although toDateString() is often sufficient.
           const dateObj = new Date(datePart + 'T00:00:00'); 
           const today = new Date();
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
 
-          // Reset time component for comparison robustness
           today.setHours(0, 0, 0, 0);
           tomorrow.setHours(0, 0, 0, 0);
           dateObj.setHours(0, 0, 0, 0);
@@ -323,31 +433,47 @@ const PlaceAutocompleteElementWrapper = ({
           dayOfWeek = '';
       }
 
-
       return (
           <motion.div
               key="pickuptime"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className={`mt-2 p-3 rounded-lg  border ${ useSame ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-green-50 border-green-200 text-green-800'}  text-sm`}
+              className={`mt-2 p-3 rounded-lg border ${useSame ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-green-50 border-green-200 text-green-800'} text-sm`}
           >
               <p className="font-semibold mb-1 flex items-center">
                   🚛 Earliest Available Pickup:
+                  {pickupTime?.isFallback && (
+                    <span className="ml-2 text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
+                      Estimated
+                    </span>
+                  )}
               </p>
               <p className="pl-1">
                   <span className="font-bold">{dateDisplay} ({dayOfWeek})</span>, between {' '}
-                  {/* 💡 Use the new AM/PM formatted time 💡 */}
-                  <span className={`font-bold text-base ${ useSame ? 'text-blue-900' : 'text-green-900'}`}>{timeAmPmDisplay}</span>
+                  <span className={`font-bold text-base ${useSame ? 'text-blue-900' : 'text-green-900'}`}>{timeAmPmDisplay}</span>
               </p>
-              {/* Removed the raw pickupTime.value for a cleaner look */}
-              <p className={`text-xs ${ useSame ? 'text-blue-600' : 'text-green-600'} mt-1`}>
-                  This is the earliest hour-long window we can schedule your pickup.
+              <p className={`text-xs ${useSame ? 'text-blue-600' : 'text-green-600'} mt-1`}>
+                  {pickupTime?.isFallback 
+                    ? 'Estimated pickup window (Accra & Kasoa only)'
+                    : 'This is the earliest hour-long window we can schedule your pickup.'
+                  }
               </p>
           </motion.div>
       );
   };
 
+  // Show loading while Google Maps is loading
+  if (!googleMapsLoaded) {
+    return (
+      <div className="relative mt-2">
+        <div className="w-full h-[45px] bg-gray-100 animate-pulse rounded-lg"></div>
+        <div className="mt-2 p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm text-center">
+          Loading location services...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative mt-2">
@@ -367,7 +493,7 @@ const PlaceAutocompleteElementWrapper = ({
             className="mt-2 p-3 rounded border border-gray-200 bg-gray-50 text-gray-600 text-sm flex flex-col items-center justify-center"
           >
             <FaSpinner className="animate-spin text-primary" />
-            <p className="mt-2 text-center">Processing location and checking availability...</p>
+            <p className="mt-2 text-center">Checking availability and pricing...</p>
           </motion.div>
         ) : selectedLocation ? (
           <>
@@ -378,6 +504,15 @@ const PlaceAutocompleteElementWrapper = ({
               onClear={clearSelection}
             />
             {shouldShowPickupTimeInfo() && renderPickupTimeInfo()}
+            {selectedLocation.usingFallback && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700"
+              >
+                ℹ️ Currently serving <strong>Accra and Kasoa</strong> only. Other regions coming soon!
+              </motion.div>
+            )}
           </>
         ) : (
           <motion.div

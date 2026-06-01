@@ -281,7 +281,6 @@ function App() {
         <AuthProvider>
           <CartProvider>
             <ScrollToTop />
-            <GoogleMapsLoader />
             <AppContent />
           </CartProvider>
         </AuthProvider>
