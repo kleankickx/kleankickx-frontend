@@ -255,9 +255,6 @@ const PlaceAutocompleteElementWrapper = ({
 
         // Only show rate info once per session when using fallback
         if (cost === 50 && isFallback && !regionInfoShown) {
-          toast.info('Standard delivery rate: GHS 50.00 for Accra/Kasoa', {
-            autoClose: 4000
-          });
           regionInfoShown = true;
         }
 
