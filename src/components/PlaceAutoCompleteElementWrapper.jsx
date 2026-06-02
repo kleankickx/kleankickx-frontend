@@ -54,19 +54,6 @@ const PlaceAutocompleteElementWrapper = ({
     };
   }, []);
   
-  // Fallback pickup time
-  const getFallbackPickupTime = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(9, 0, 0, 0);
-    
-    return {
-      value: `${tomorrow.toISOString().split('T')[0]}, 09:00 - 17:00`,
-      label: "Next Business Day (9 AM - 5 PM)",
-      isFallback: true
-    };
-  };
-
   // Check if region is allowed for fallback
   const isRegionAllowedForFallback = (regionName) => {
     if (!regionName) return false;
@@ -111,7 +98,7 @@ const PlaceAutocompleteElementWrapper = ({
       };
     } catch (error) {
       console.error('Zippy API Error - Using fallback:', error);
-      return getFallbackPickupTime();
+      return null; // Return null to indicate fallback mode with no pickup time
     }
   };
 
@@ -140,7 +127,7 @@ const PlaceAutocompleteElementWrapper = ({
       throw new Error('No pricing data available');
     } catch (error) {
       console.error('Zippy Pricing API Error - Using fallback price:', error);
-      return 50;
+      return 50; // Fallback price
     }
   };
 
@@ -231,23 +218,19 @@ const PlaceAutocompleteElementWrapper = ({
           }
         } catch (geocodeError) {
           console.error('Geocoding error:', geocodeError);
-          // Silent fail - no toast for geocoding errors
         }
 
-        // Fetch pickup times from Zippy (with fallback)
+        // Fetch pickup times from Zippy (may return null for fallback)
         const pickupTimeResult = await fetchZippyPickupTimes();
         
-        // Check if we're in fallback mode and validate region
-        const isFallback = pickupTimeResult.isFallback;
+        // Check if we're in fallback mode (Zippy failed)
+        const isFallback = pickupTimeResult === null;
         
         if (isFallback) {
           setUsingFallbackMode(true);
           
           // Show fallback warning only once per session
           if (!fallbackWarningShown) {
-            toast.warning('Using estimated pickup times. Service limited to Accra & Kasoa.', {
-              autoClose: 5000
-            });
             fallbackWarningShown = true;
           }
           
@@ -268,10 +251,13 @@ const PlaceAutocompleteElementWrapper = ({
         }
         
         // Fetch pricing from Zippy (with fallback)
-        const cost = await fetchZippyPricing(lat, lng, pickupTimeResult.value);
+        const cost = await fetchZippyPricing(lat, lng, pickupTimeResult?.value);
 
         // Only show rate info once per session when using fallback
-        if (cost === 50 && pickupTimeResult.isFallback && !regionInfoShown) {
+        if (cost === 50 && isFallback && !regionInfoShown) {
+          toast.info('Standard delivery rate: GHS 50.00 for Accra/Kasoa', {
+            autoClose: 4000
+          });
           regionInfoShown = true;
         }
 
@@ -280,16 +266,16 @@ const PlaceAutocompleteElementWrapper = ({
           name: place.displayName || place.formattedAddress,
           region: detectedRegion,
           cost: cost,
-          pickupTime: pickupTimeResult.value,
+          pickupTime: pickupTimeResult?.value || null, // No pickup time in fallback mode
           lat: lat,
           lng: lng,
           place_id: place.place_id,
-          usingFallback: pickupTimeResult.isFallback || cost === 50
+          usingFallback: isFallback
         };
         
         setSelectedLocation(location);
         onPlaceSelect(location, type);
-        setPickupTime(pickupTimeResult);
+        setPickupTime(pickupTimeResult); // Will be null in fallback mode
 
       } catch (error) {
         console.error('Error processing location:', error);
@@ -304,7 +290,7 @@ const PlaceAutocompleteElementWrapper = ({
     [onPlaceSelect, type, region, setPickupTime, geocodeLocation]
   );
 
-  // Setup Google Maps autocomplete - using window.google directly
+  // Setup Google Maps autocomplete
   useEffect(() => {
     if (!googleMapsLoaded || !inputContainerRef.current) return;
     if (!window.google?.maps?.places?.PlaceAutocompleteElement) {
@@ -389,20 +375,9 @@ const PlaceAutocompleteElementWrapper = ({
   };
 
   const renderPickupTimeInfo = () => {
-      if (!pickupTime){
-        return (
-          <motion.div
-              key="pickuptime-warning"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm"
-          >
-              <p className="font-semibold mb-1 flex items-center">
-                  ⚠️ Please reselect a location to get the pickup time.
-              </p>
-          </motion.div>
-        )
+      // Don't show pickup time info in fallback mode or if no pickup time
+      if (!pickupTime || pickupTime === null) {
+        return null;
       }
 
       const [datePart] = pickupTime?.value.split(', ');
@@ -451,21 +426,13 @@ const PlaceAutocompleteElementWrapper = ({
           >
               <p className="font-semibold mb-1 flex items-center">
                   🚛 Earliest Available Pickup:
-                  {pickupTime?.isFallback && (
-                    <span className="ml-2 text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
-                      Estimated
-                    </span>
-                  )}
               </p>
               <p className="pl-1">
                   <span className="font-bold">{dateDisplay} ({dayOfWeek})</span>, between {' '}
                   <span className={`font-bold text-base ${useSame ? 'text-blue-900' : 'text-green-900'}`}>{timeAmPmDisplay}</span>
               </p>
               <p className={`text-xs ${useSame ? 'text-blue-600' : 'text-green-600'} mt-1`}>
-                  {pickupTime?.isFallback 
-                    ? 'Estimated pickup window (Accra & Kasoa only)'
-                    : 'This is the earliest hour-long window we can schedule your pickup.'
-                  }
+                  This is the earliest hour-long window we can schedule your pickup.
               </p>
           </motion.div>
       );
