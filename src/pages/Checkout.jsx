@@ -35,11 +35,10 @@ import PersonalInformationCard from "../components/PersonalInformationCard";
 import PromotionCard from "../components/PromotionCard";
 import OrderSummaryCard from "../components/OrderSummaryCard";
 import { calculateOrderSummary } from '../utils/calculateOrderSummary'
-import { usePlaceOrder } from '../hooks/usePlaceOrder'; // The new hook
+import { usePlaceOrder } from '../hooks/usePlaceOrder';
 import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
 import api from '../api';
-
 
 const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, user, discounts } = useContext(AuthContext);
@@ -88,67 +87,6 @@ const Checkout = () => {
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   
-  // --- RECOVERY MECHANISM: Check for pending orders from Paystack return ---
-  // useEffect(() => {
-  //   const checkPendingOrder = async () => {
-  //     const pendingOrderRef = sessionStorage.getItem('pending_order_ref');
-  //     const orderPlacedAt = sessionStorage.getItem('order_placed_at');
-      
-  //     if (pendingOrderRef && orderPlacedAt) {
-  //       setCheckingPendingOrder(true);
-        
-  //       // Check if order was placed within the last 30 minutes
-  //       const placedTime = new Date(orderPlacedAt).getTime();
-  //       const currentTime = new Date().getTime();
-  //       const thirtyMinutes = 30 * 60 * 1000;
-        
-  //       if (currentTime - placedTime < thirtyMinutes) {
-  //         // Still within valid timeframe - check payment status with backend
-  //         try {
-  //           const response = await api.get(`/api/orders/${pendingOrderRef}/payment-status/`);
-            
-  //           if (response.data.payment_status === 'success') {
-  //             toast.success(`✅ Payment successful! Order #${pendingOrderRef} has been confirmed.`);
-  //             // Navigate to order details
-  //             navigate(`/orders/${pendingOrderRef}/`);
-  //           } else if (response.data.payment_status === 'pending') {
-  //             toast.info(
-  //               <div>
-  //                 <p>Your order #{pendingOrderRef} is pending payment.</p>
-  //                 <p className="text-sm mt-1">You can complete payment or check status later.</p>
-  //               </div>,
-  //               { autoClose: 8000 }
-  //             );
-  //             // Optionally navigate to orders page
-  //             navigate('/orders/');
-  //           } else if (response.data.payment_status === 'failed') {
-  //             toast.warning(
-  //               <div>
-  //                 <p>Payment for order #{pendingOrderRef} was not successful.</p>
-  //                 <p className="text-sm mt-1">Please try again or contact support.</p>
-  //               </div>,
-  //               { autoClose: 8000 }
-  //             );
-  //           }
-  //         } catch (error) {
-  //           console.error("Error checking pending order status:", error);
-  //           toast.info(`You have a pending order #${pendingOrderRef}. Please check your orders page for status.`);
-  //         }
-  //       } else {
-  //         // Clear expired session data
-  //         toast.info("Your previous order session has expired.");
-  //       }
-        
-  //       // Clear the session storage regardless
-  //       sessionStorage.removeItem('pending_order_ref');
-  //       sessionStorage.removeItem('order_placed_at');
-  //       setCheckingPendingOrder(false);
-  //     }
-  //   };
-
-  //   checkPendingOrder();
-  // }, [api, navigate]);
-
   useEffect(() => {
     const init = async () => {
       try {
@@ -160,7 +98,7 @@ const Checkout = () => {
       } catch (error) {
         console.error("Error during checkout init:", error);
       } finally {
-        setLoading(false); // Always turn off loader
+        setLoading(false);
       }
     };
 
@@ -231,7 +169,6 @@ const Checkout = () => {
     }
   }
 
-
   // Call the calculation function, memoizing the result
   const summary = useMemo(() => {
     return calculateOrderSummary({
@@ -272,27 +209,23 @@ const Checkout = () => {
 
   // Helper function to format the number for display (024 123 4567)
   const formatPhoneNumberDisplay = (number) => {
-      // 1. Clean the number to just digits
       const cleaned = number ? String(number).replace(/\D/g, '') : '';
       if (!cleaned) return '';
       
-      // 2. Remove any leading '233' or '0' to get the 9-digit local number
       let localNumber = cleaned;
       if (localNumber.startsWith('233')) {
-          localNumber = localNumber.substring(3); // Remove +233
+          localNumber = localNumber.substring(3);
       } else if (localNumber.startsWith('0')) {
-          localNumber = localNumber.substring(1); // Remove leading 0
+          localNumber = localNumber.substring(1);
       }
 
-      // 3. Ghana local numbers (excluding the leading 0) are 9 digits.
       if (localNumber.length === 9) {
-          // Format as (NN) NNN NNNN -> e.g., 24 123 4567
           return localNumber.replace(/(\d{2})(\d{3})(\d{4})/, '0$1 $2 $3');
       }
       
-      // Fallback: Return the cleaned number as is if the length is still being typed
       return number; 
   }
+  
   // Ghana phone number validation
   const validateGhanaPhone = (number) => {
     const cleaned = number.replace(/\D/g, '');
@@ -306,8 +239,6 @@ const Checkout = () => {
   const [isPhoneValid, setIsPhoneValid] = useState(
       user?.phone_number ? validateGhanaPhone(user.phone_number) : false
   );
-
-  
 
   const handlePhoneChange = (e) => {
     let input = e.target.value;
@@ -324,7 +255,7 @@ const Checkout = () => {
     localStorage.setItem('pickupRegion', pickupRegion);
   }, [deliveryRegion, pickupRegion]);
 
-  // Sync delivery location when useSame is true (REVERSED LOGIC)
+  // Sync delivery location when useSame is true
   useEffect(() => {
     if (useSame && pickup) {
       setDelivery({ ...pickup, region: pickupRegion });
@@ -378,7 +309,6 @@ const Checkout = () => {
     
     setActiveInput(null);
     
-    // Only show toast if not in silent mode and there's actually a change
     if (!silent) {
       if (location) {
         toast.success(
@@ -408,11 +338,11 @@ const Checkout = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!pickup) { // Changed from !delivery to !pickup
+    if (!pickup) {
       toast.error('Please select a pickup location');
       return;
     }
-    if (!delivery && !useSame) { // Changed condition
+    if (!delivery && !useSame) {
       toast.error('Please select a delivery location');
       return;
     }
@@ -428,28 +358,24 @@ const Checkout = () => {
     setShowAlert(false);
   };
 
-  // Handle payment with Paystack - with additional safeguards
+  // Handle payment with Paystack
   const onPayment = async() => {
-    // Safeguard: Check if cart is empty
     if (!cart || cart.length === 0) {
       toast.error('Your cart is empty. Please add items before placing an order.');
       return;
     }
 
-    // Safeguard: Check if user is logged in
     if (!user) {
       toast.error('Please log in to complete your order.');
       navigate('/login?continuePath=/checkout');
       return;
     }
 
-    // Safeguard: Check if phone number is valid
     if (!isPhoneValid) {
       toast.error('Please enter a valid Ghana phone number');
       return;
     }
 
-    // Safeguard: Check if locations are set based on order type
     if (!isSelfHandled) {
       if (!pickup) {
         toast.error('Please select a pickup location');
@@ -461,7 +387,6 @@ const Checkout = () => {
       }
     }
 
-    // The hook handles token checks, Paystack initialization, and order submission
     await handlePayment(summary, cart, phoneNumber, delivery, pickup, useSame, pickupTime, isSelfHandled);
   };
 
@@ -481,7 +406,7 @@ const Checkout = () => {
       top: 0,
       behavior: 'smooth'
     });
-    setShowAlert(true); // Reset alert visibility on payment view change
+    setShowAlert(true);
   }, [paymentView]);
 
   // Show loading state while checking pending order
@@ -497,14 +422,20 @@ const Checkout = () => {
   }
 
   return (
-    
-    <GoogleMapsProvider
-      onLoad={() => console.log('Google Maps API loaded successfully!')}
-    >
+    <GoogleMapsProvider onLoad={() => console.log('Google Maps API loaded successfully!')}>
       <div className="bg-gray-50 min-h-screen">
         <div className="lg:px-18 px-4 py-8">
           
-          {cart.length === 0 ? (
+          {/* Show loading spinner while loading data */}
+          {loading ? (
+            <div className="min-h-[70vh] flex items-center justify-center">
+              <div className="text-center">
+                <FaSpinner className="animate-spin text-4xl text-primary mx-auto mb-4" />
+                <p className="text-gray-600">Loading your cart...</p>
+              </div>
+            </div>
+          ) : cart.length === 0 ? (
+            /* Empty Cart State - Only show when loading is complete AND cart is empty */
             <div className="min-h-[70vh] flex items-center justify-center px-4 py-8">
               <div className="text-center max-w-md mx-auto">
                 {/* Animated Icon */}
@@ -557,154 +488,134 @@ const Checkout = () => {
                 </div>
               </div>
             </div>
-          ): (
+          ) : (
+            /* Checkout Content - Only show when loading is complete AND cart has items */
             <div> 
-
               <div className="">
                 <div className={`mb-6 ${paymentView ? 'hidden' : ''}`}>
                   <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Complete Your Order</h1>
                   <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
                 </div>
-                {!loading && cart.length > 0 ? (
-                  <div>
-                    
-                      <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                      >
-                        <div className="py-6">
-                          {/* Main Grid Layout */}
-                          <div className="flex flex-col xl:flex-row gap-6 w-full">
-                            
-                            {/* Left Column - Forms (2/3 width on large screens) */}
-                            <div className="flex-1 space-y-6 order-2 xl:order-1">
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Personal Information - Top Left */}
-                                <div className="lg:col-span-1">
-                                  <PersonalInformationCard
-                                    phoneNumber={phoneNumber}
-                                    isPhoneValid={isPhoneValid}
-                                    handlePhoneChange={handlePhoneChange}
-                                    user={user}
-                                  />
-                                </div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <div className="py-6">
+                    {/* Main Grid Layout */}
+                    <div className="flex flex-col xl:flex-row gap-6 w-full">
+                      
+                      {/* Left Column - Forms (2/3 width on large screens) */}
+                      <div className="flex-1 space-y-6 order-2 xl:order-1">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Personal Information - Top Left */}
+                          <div className="lg:col-span-1">
+                            <PersonalInformationCard
+                              phoneNumber={phoneNumber}
+                              isPhoneValid={isPhoneValid}
+                              handlePhoneChange={handlePhoneChange}
+                              user={user}
+                            />
+                          </div>
 
-                                {/* Delivery Information - Top Right */}
-                                <div className="lg:col-span-1">
-                                  <div className="">
-                                    <DeliveryInformationCard
-                                      // Logic Props
-                                      useSame={useSame}
-                                      setUseSame={setUseSame}
-                                      handlePlaceSelect={handlePlaceSelect}
-                                      setActiveInput={setActiveInput}
-                                      paymentView={paymentView}
-
-                                      // Data Props for Delivery
-                                      delivery={delivery}
-                                      deliveryInputValue={deliveryInputValue}
-                                      deliveryRegion={deliveryRegion}
-
-                                      // Data Props for Pickup
-                                      pickup={pickup}
-                                      pickupInputValue={pickupInputValue}
-                                      pickupRegion={pickupRegion}
-                                      pickupTime={pickupTime}
-                                      setPickupTime={setPickupTime}
-
-                                      isSelfHandled={isSelfHandled}
-                                      setIsSelfHandled={setIsSelfHandled}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Promotions Card - Above Payment on mobile */}
-                              <div className="block xl:hidden">
-                                {availablePromotions.length > 0 && (
-                                  <div className="mb-6">
-                                    <PromotionCard
-                                      appliedPromotion={appliedPromotion}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="block lg:hidden">
-                                <OrderSummaryCard 
-                                  cart={cart}
-                                  appliedPromotion={appliedPromotion}
-                                  useSame={useSame}
-                                  {...summary} 
-                                />
-                              </div>
-
-                              {/* Payment Card - Full width below */}
-                              <div className="lg:col-span-2">
-                                <motion.div
-                                  initial={{ opacity: 0, y: 20 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ duration: 0.6, delay: 0.2 }}
-                                >
-                                  <PaymentCard
-                                    total={summary.total}
-                                    handlePayment={onPayment}
-                                    placing={placing}
-                                    cartLength={cart.length}
-                                    pickup={pickup} // Make sure pickup is passed first
-                                    useSame={useSame}
-                                    delivery={delivery} // delivery second
-                                    isPhoneValid={isPhoneValid}
-                                    pickupTime={pickupTime}
-                                    isSelfHandled={isSelfHandled} 
-                                  />
-                                </motion.div>
-                              </div>
-                            </div>
-
-                            {/* Right Column - Order Summary & Promotions (1/3 width) */}
-                            <div className="xl:w-1/3 space-y-6 order-3 xl:order-1">
-                                {/* Promotions Card - Desktop only */}
-                              {availablePromotions.length > 0 && (
-                                <div className="hidden xl:block">
-                                    <PromotionCard
-                                      appliedPromotion={appliedPromotion}
-                                    />
-                                  
-                                </div>
-                              )}
-                              {/* Order Summary Card - First on mobile */}
-                              <div className="hidden lg:block">
-                                <OrderSummaryCard 
-                                  cart={cart}
-                                  appliedPromotion={appliedPromotion}
-                                  useSame={useSame}
-                                  isSelfHandled={isSelfHandled} 
-                                  {...summary} 
-                                />
-                              </div>
-
-                              
+                          {/* Delivery Information - Top Right */}
+                          <div className="lg:col-span-1">
+                            <div className="">
+                              <DeliveryInformationCard
+                                useSame={useSame}
+                                setUseSame={setUseSame}
+                                handlePlaceSelect={handlePlaceSelect}
+                                setActiveInput={setActiveInput}
+                                paymentView={paymentView}
+                                delivery={delivery}
+                                deliveryInputValue={deliveryInputValue}
+                                deliveryRegion={deliveryRegion}
+                                pickup={pickup}
+                                pickupInputValue={pickupInputValue}
+                                pickupRegion={pickupRegion}
+                                pickupTime={pickupTime}
+                                setPickupTime={setPickupTime}
+                                isSelfHandled={isSelfHandled}
+                                setIsSelfHandled={setIsSelfHandled}
+                              />
                             </div>
                           </div>
                         </div>
-                      </motion.div>
-                    
+
+                        {/* Promotions Card - Above Payment on mobile */}
+                        <div className="block xl:hidden">
+                          {availablePromotions.length > 0 && (
+                            <div className="mb-6">
+                              <PromotionCard
+                                appliedPromotion={appliedPromotion}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="block lg:hidden">
+                          <OrderSummaryCard 
+                            cart={cart}
+                            appliedPromotion={appliedPromotion}
+                            useSame={useSame}
+                            {...summary} 
+                          />
+                        </div>
+
+                        {/* Payment Card - Full width below */}
+                        <div className="lg:col-span-2">
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                          >
+                            <PaymentCard
+                              total={summary.total}
+                              handlePayment={onPayment}
+                              placing={placing}
+                              cartLength={cart.length}
+                              pickup={pickup}
+                              useSame={useSame}
+                              delivery={delivery}
+                              isPhoneValid={isPhoneValid}
+                              pickupTime={pickupTime}
+                              isSelfHandled={isSelfHandled} 
+                            />
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      {/* Right Column - Order Summary & Promotions (1/3 width) */}
+                      <div className="xl:w-1/3 space-y-6 order-3 xl:order-1">
+                        {/* Promotions Card - Desktop only */}
+                        {availablePromotions.length > 0 && (
+                          <div className="hidden xl:block">
+                            <PromotionCard
+                              appliedPromotion={appliedPromotion}
+                            />
+                          </div>
+                        )}
+                        {/* Order Summary Card - Desktop */}
+                        <div className="hidden lg:block">
+                          <OrderSummaryCard 
+                            cart={cart}
+                            appliedPromotion={appliedPromotion}
+                            useSame={useSame}
+                            isSelfHandled={isSelfHandled} 
+                            {...summary} 
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-[40vh]">
-                    <FaSpinner className="animate-spin text-4xl text-primary" />
-                    <p className="ml-4 text-gray-700 mt-2">Loading checkout...</p>
-                  </div>
-                )}
+                </motion.div>
               </div>
             </div>
           )}
         </div>
       </div>
     </GoogleMapsProvider>
-     
   );
 };
 

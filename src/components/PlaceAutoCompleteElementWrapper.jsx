@@ -11,6 +11,10 @@ const AVAILABLE_REGIONS = Object.keys(REGION_CONFIG);
 // Allowed regions for fallback mode
 const ALLOWED_FALLBACK_REGIONS = ['Accra', 'Greater Accra', 'Kasoa'];
 
+// Track if fallback warning has been shown
+let fallbackWarningShown = false;
+let regionInfoShown = false;
+
 const PlaceAutocompleteElementWrapper = ({
   onPlaceSelect,
   placeholder,
@@ -40,6 +44,14 @@ const PlaceAutocompleteElementWrapper = ({
     }, 100);
     
     return () => clearInterval(checkGoogleMaps);
+  }, []);
+  
+  // Reset fallback warning flags when component unmounts
+  useEffect(() => {
+    return () => {
+      fallbackWarningShown = false;
+      regionInfoShown = false;
+    };
   }, []);
   
   // Fallback pickup time
@@ -219,7 +231,7 @@ const PlaceAutocompleteElementWrapper = ({
           }
         } catch (geocodeError) {
           console.error('Geocoding error:', geocodeError);
-          toast.warn('Could not precisely determine region. Using fallback.');
+          // Silent fail - no toast for geocoding errors
         }
 
         // Fetch pickup times from Zippy (with fallback)
@@ -230,6 +242,14 @@ const PlaceAutocompleteElementWrapper = ({
         
         if (isFallback) {
           setUsingFallbackMode(true);
+          
+          // Show fallback warning only once per session
+          if (!fallbackWarningShown) {
+            toast.warning('Using estimated pickup times. Service limited to Accra & Kasoa.', {
+              autoClose: 5000
+            });
+            fallbackWarningShown = true;
+          }
           
           // Validate region for fallback mode
           if (!isRegionAllowedForFallback(detectedRegion)) {
@@ -250,21 +270,9 @@ const PlaceAutocompleteElementWrapper = ({
         // Fetch pricing from Zippy (with fallback)
         const cost = await fetchZippyPricing(lat, lng, pickupTimeResult.value);
 
-        // Show warning if using fallback values
-        if (pickupTimeResult.isFallback) {
-          toast.warning('Using estimated pickup times. Actual times may vary.', {
-            autoClose: 5000
-          });
-          
-          toast.info('Currently serving Accra and Kasoa only. Other regions coming soon!', {
-            autoClose: 5000
-          });
-        }
-
-        if (cost === 50 && pickupTimeResult.isFallback) {
-          toast.info('Using standard delivery rate of GHS 50.00 for Accra/Kasoa', {
-            autoClose: 4000
-          });
+        // Only show rate info once per session when using fallback
+        if (cost === 50 && pickupTimeResult.isFallback && !regionInfoShown) {
+          regionInfoShown = true;
         }
 
         const location = {
