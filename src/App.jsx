@@ -34,7 +34,6 @@ import { useContext, useEffect } from 'react';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
-import GoogleMapsLoader from './components/GoogleMapsLoader';
 import PartnerRegister from './pages/PartnerRegister';
 import PartnerDashboard from './pages/PartnerDashboard';
 import PartnerServices from './pages/PartnerServices';
