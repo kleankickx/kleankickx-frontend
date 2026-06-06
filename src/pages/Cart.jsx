@@ -20,6 +20,7 @@ import { FaTimes } from 'react-icons/fa';
 import heic2any from 'heic2any';
 import Footer from '../components/Footer';
 import api from '../api';
+import { trackEvent } from '../utils/analytics';
 
 // ─── Skeletons ────────────────────────────────────────────────────────────────
 
@@ -560,6 +561,26 @@ useEffect(() => {
     return { ...svc, image: svc.image || null };
   };
 
+  const trackBeginCheckout = () => {
+    trackEvent('begin_checkout', {
+      currency: 'GHS',
+      value: cartMeta.total,
+      coupon: appliedPromotion?.code || undefined,
+      items: cart.map((item) => {
+        const service = getService(item);
+
+        return {
+          item_id: String(service.id),
+          item_name: service.name,
+          item_category:
+            service.service_type || 'Cleaning',
+          price: item.unit_price,
+          quantity: item.quantity,
+        };
+      }),
+    });
+  };
+
   const isPackageService = (s) => s?.service_type?.startsWith('PACKAGE_');
   const isFreeService = (s) => s?.is_free_signup_service === true;
   const isVoucherService = (i) => i.is_voucher_redeem === true;
@@ -926,6 +947,7 @@ useEffect(() => {
                         if (isAnyUploading) { toast.warning('Please wait for image uploads to complete'); return; }
                         const allHavePhotos = cart.every((i) => hasImage(i.id) || imagePreviews[i.id]);
                         if (allHavePhotos) {
+                          trackBeginCheckout();
                           navigate('/checkout');
                         } else {
                           const n = cart.filter((i) => !hasImage(i.id) && !imagePreviews[i.id]).length;

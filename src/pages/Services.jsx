@@ -11,6 +11,7 @@ import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import { FaCheckCircle, FaExclamationTriangle, FaGift, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
+import { trackEvent } from '../utils/analytics';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -30,6 +31,7 @@ const Services = () => {
   const [addingToCart, setAddingToCart] = useState(null);
   const [highlightedService, setHighlightedService] = useState(null);
   const [showAlreadyClaimedModal, setShowAlreadyClaimedModal] = useState(false);
+  const trackedServices = useRef(new Set());
   
   // Get cart from context
   const { cart, addToCart } = useContext(CartContext);
@@ -47,6 +49,52 @@ const Services = () => {
   useEffect(() => {
     console.log('[Services] Cart from context:', cart);
   }, [cart]);
+
+  //
+  useEffect(() => {
+    if (!sortedServices.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+
+          const serviceId = entry.target.dataset.serviceId;
+
+          const service = sortedServices.find(
+            s => String(s.id) === serviceId
+          );
+
+          if (!service) return;
+
+          if (trackedServices.current.has(service.id)) return;
+
+          trackedServices.current.add(service.id);
+
+          trackEvent('view_item', {
+            currency: 'GHS',
+            value: service.price,
+            items: [
+              {
+                item_id: String(service.id),
+                item_name: service.name,
+                item_category: service.service_type || 'Cleaning',
+                price: service.price,
+                quantity: service.included_quantity || 1
+              }
+            ]
+          });
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    Object.values(serviceCardRefs.current).forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [sortedServices]);
 
   // Check if there's a service ID to highlight from location state
   useEffect(() => {
@@ -331,7 +379,14 @@ const handleAddToCart = async (service) => {
   setAddingToCart(id);
   
   try {
-    await addToCart(id, 1, { name, price });
+    await addToCart(id, 1, 
+      { 
+        id: service.id,
+        name: service.name,
+        price: service.price,
+        service_type: service.service_type,
+      }
+    );
     toast.success(`${name} added to cart!`);
     navigate('/cart');
   } catch (error) {
@@ -538,6 +593,7 @@ const handleAddToCart = async (service) => {
     
     return (
       <motion.div
+        data-service-id={service.id}
         ref={el => serviceCardRefs.current[service.id] = el}
         key={service.id}
         className={`bg-white rounded-xl shadow-sm overflow-hidden border hover:shadow-md transition-all duration-300 relative group flex flex-col ${
