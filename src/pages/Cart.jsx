@@ -22,8 +22,191 @@ import Footer from '../components/Footer';
 import api from '../api';
 import { trackEvent } from '../utils/analytics';
 
-// ─── Skeletons ────────────────────────────────────────────────────────────────
+// ─── Pair Counter Animation Component ─────────────────────────────────────────
+const PairCounterAnimation = ({ quantity, isPackage, packageSize = 1 }) => {
+  const pairs = isPackage ? quantity * packageSize : quantity;
+  const [isHovered, setIsHovered] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTooltip(true), 500);
+    const hideTimer = setTimeout(() => setShowTooltip(false), 3000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
+
+  return (
+    <div 
+      className="relative flex items-center gap-2"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Animated sneaker icons */}
+      <div className="flex items-center -space-x-1">
+        {[...Array(Math.min(pairs, 3))].map((_, i) => (
+          <div
+            key={i}
+            className="relative animate-bounce"
+            style={{
+              animationDelay: `${i * 0.15}s`,
+              animationDuration: '0.6s',
+              animationIterationCount: isHovered ? 'infinite' : 2,
+            }}
+          >
+            <div className="w-6 h-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center shadow-md transform -rotate-12">
+              <span className="text-xs">👟</span>
+            </div>
+          </div>
+        ))}
+        {pairs > 3 && (
+          <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center shadow-md ml-1">
+            <span className="text-xs text-white font-bold">+{pairs - 3}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Pair count display */}
+      <div className="flex flex-col">
+        <div className="flex items-baseline gap-1">
+          <span className="font-bold text-gray-900 text-lg">{pairs}</span>
+          <span className="text-sm text-gray-600">pair{pairs !== 1 ? 's' : ''}</span>
+        </div>
+        {isPackage && (
+          <div className="text-xs text-green-600 font-medium">
+            ({quantity} × {packageSize}-sneaker bundle)
+          </div>
+        )}
+      </div>
+
+      {/* Info tooltip */}
+      {(showTooltip || isHovered) && (
+        <div className="absolute -top-12 left-0 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap z-10 shadow-lg animate-fade-in">
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-400">👟</span>
+            <span>
+              {quantity === 1 
+                ? `Includes ${pairs} complete pair${pairs !== 1 ? 's' : ''} (left + right shoe)`
+                : `${pairs} total pair${pairs !== 1 ? 's' : ''} — ${quantity} × ${isPackage ? packageSize : 1} sneaker${!isPackage && quantity > 1 ? 's' : ''}`
+              }
+            </span>
+          </div>
+          <div className="absolute left-4 -bottom-1 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Pair Info Banner Component ──────────────────────────────────────────────
+const PairInfoBanner = () => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="mb-6 bg-blue-50 rounded-xl border border-blue-200 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <h3 className="font-semibold text-gray-900 text-sm mb-2">
+            We count in pairs
+          </h3>
+          
+          <p className="text-gray-700 text-sm mb-3">
+            Each quantity equals 1 complete pair (left + right shoe). 
+            Quantity 2 = 2 pairs (4 shoes total)
+          </p>
+          
+          <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+            <div>
+              <span className="font-medium text-gray-800">Standard:</span> Qty 1 = 1 pair
+            </div>
+            <div>
+              <span className="font-medium text-gray-800">Bundles:</span> Qty 1 = full bundle (e.g., 10 pairs)
+            </div>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => setIsVisible(false)}
+          className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+          aria-label="Dismiss"
+        >
+          <XMarkIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── Enhanced Quantity Selector with Pair Preview ───────────────────────────
+const QuantitySelectorWithPairPreview = ({ quantity, onIncrement, onDecrement, isPackage, packageSize = 1, isFree, isVoucher }) => {
+  const pairs = isPackage ? quantity * packageSize : quantity;
+  const [showPairPreview, setShowPairPreview] = useState(false);
+
+  if (isFree || isVoucher) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Quantity Controls */}
+      <div className="flex items-center">
+        <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200">
+          <button
+            onClick={onDecrement}
+            disabled={quantity <= 1}
+            className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-l-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+          >
+            <MinusIcon className="w-5 h-5" />
+          </button>
+          
+          <div 
+            className="relative px-2"
+            onMouseEnter={() => setShowPairPreview(true)}
+            onMouseLeave={() => setShowPairPreview(false)}
+            onTouchStart={() => setShowPairPreview(true)}
+            onTouchEnd={() => setTimeout(() => setShowPairPreview(false), 500)}
+          >
+            <span className="min-w-[32px] text-center font-semibold text-gray-900 text-lg cursor-help select-none">
+              {quantity}
+            </span>
+            
+            {/* Pair preview tooltip - simplified */}
+            {showPairPreview && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white rounded-lg p-2 z-20 shadow-xl whitespace-nowrap">
+                <div className="text-xs">
+                  = {pairs} pair{pairs !== 1 ? 's' : ''}
+                </div>
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+              </div>
+            )}
+          </div>
+          
+          <button
+            onClick={onIncrement}
+            className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-r-lg transition-colors active:scale-95"
+          >
+            <PlusIcon className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+      
+      {/* Pair count indicator - always visible */}
+      <div className="text-xs text-gray-500">
+        <span className="text-gray-400">=</span>{' '}
+        <span className="font-medium text-gray-700">{pairs}</span>
+        {' '}pair{pairs !== 1 ? 's' : ''}
+        {isPackage && (
+          <span className="text-gray-400 ml-1">
+            ({quantity} × {packageSize})
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Skeletons (kept same as original) ───────────────────────────────────────
 const CartItemSkeleton = () => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-pulse">
     <div className="px-5 py-2.5 bg-gray-100">
@@ -110,7 +293,6 @@ const PageSkeleton = ({ count = 2 }) => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-
 const Cart = () => {
   const {
     cart,
@@ -133,7 +315,6 @@ const Cart = () => {
   const [loadingServices, setLoadingServices] = useState(false);
   const [uploadingImages, setUploadingImages] = useState({});
   const [imageUploadProgress, setImageUploadProgress] = useState({});
-  // Stage labels shown alongside the progress bar — one entry per uploading item
   const [imageUploadStage, setImageUploadStage] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [isRecovering, setIsRecovering] = useState(false);
@@ -154,78 +335,58 @@ const Cart = () => {
   const canvasRef = useRef(null);
   const navigate = useNavigate();
 
- // ── Auto-recover cart from URL param ──────────────────────────────────────
-useEffect(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const recoverCartId = urlParams.get('recover');
-  
-  if (!recoverCartId) return;
-
-  const attemptRecovery = async () => {
-    setIsRecovering(true);
+  // ── Auto-recover cart from URL param ──────────────────────────────────────
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const recoverCartId = urlParams.get('recover');
     
-    try {
-      // Try to recover the cart
-      const response = await api.post('/api/cart/recover/', { cart_id: recoverCartId });
+    if (!recoverCartId) return;
+
+    const attemptRecovery = async () => {
+      setIsRecovering(true);
       
-      // Check the response status
-      if (response.data.status === 'already_recovered') {
-        toast.info(response.data.message || 'This cart has already been restored.', {
-          autoClose: 4000,
-        });
-      } else if (response.data.status === 'already_active') {
-        toast.info(response.data.message || 'Your cart is already active.', {
-          autoClose: 3000,
-        });
-      } else {
-        // Success - cart recovered
-        await refreshCart();
-        toast.success(response.data.message || 'Your cart has been restored successfully!', { 
-          autoClose: 3000 
-        });
+      try {
+        const response = await api.post('/api/cart/recover/', { cart_id: recoverCartId });
+        
+        if (response.data.status === 'already_recovered') {
+          toast.info(response.data.message || 'This cart has already been restored.', { autoClose: 4000 });
+        } else if (response.data.status === 'already_active') {
+          toast.info(response.data.message || 'Your cart is already active.', { autoClose: 3000 });
+        } else {
+          await refreshCart();
+          toast.success(response.data.message || 'Your cart has been restored successfully!', { autoClose: 3000 });
+        }
+        
+        window.history.replaceState({}, '', '/cart');
+        
+      } catch (error) {
+        console.error('Failed to recover cart:', error);
+        
+        if (error.response?.status === 401) {
+          sessionStorage.setItem('pending_recovery_cart_id', recoverCartId);
+          toast.info('Please sign in to restore your cart', { position: 'top-right', autoClose: 3000 });
+          window.history.replaceState({}, '', '/cart');
+          navigate('/auth/login', {
+            state: {
+              from: '/cart',
+              pendingRecovery: recoverCartId,
+              message: 'Sign in to restore your saved cart!'
+            }
+          });
+        } else if (error.response?.data?.error) {
+          toast.error(error.response.data.error, { autoClose: 4000 });
+          window.history.replaceState({}, '', '/cart');
+        } else {
+          toast.error('Could not restore your cart. Please try again.', { autoClose: 4000 });
+          window.history.replaceState({}, '', '/cart');
+        }
+      } finally {
+        setIsRecovering(false);
       }
-      
-      // Clear URL
-      window.history.replaceState({}, '', '/cart');
-      
-    } catch (error) {
-      console.error('Failed to recover cart:', error);
-      
-      // If error is 401 (Unauthorized), redirect to login
-      if (error.response?.status === 401) {
-        // Store cart ID for recovery after login
-        sessionStorage.setItem('pending_recovery_cart_id', recoverCartId);
-        
-        toast.info('Please sign in to restore your cart', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        
-        // Clear URL before redirect
-        window.history.replaceState({}, '', '/cart');
-        
-        // Redirect to login
-        navigate('/auth/login', {
-          state: {
-            from: '/cart',
-            pendingRecovery: recoverCartId,
-            message: 'Sign in to restore your saved cart!'
-          }
-        });
-      } else if (error.response?.data?.error) {
-        toast.error(error.response.data.error, { autoClose: 4000 });
-        window.history.replaceState({}, '', '/cart');
-      } else {
-        toast.error('Could not restore your cart. Please try again.', { autoClose: 4000 });
-        window.history.replaceState({}, '', '/cart');
-      }
-    } finally {
-      setIsRecovering(false);
-    }
-  };
-  
-  attemptRecovery();
-}, []);
+    };
+    
+    attemptRecovery();
+  }, []);
 
   // ── Sync image previews whenever cart data changes ────────────────────────
   useEffect(() => {
@@ -303,14 +464,11 @@ useEffect(() => {
 
   const handleRemoveFromCart = useCallback(async (itemId) => {
     setRemovingItemId(itemId);
-    
-    // Remove preview immediately
     setImagePreviews(prev => {
       const next = { ...prev };
       delete next[itemId];
       return next;
     });
-    
     await removeFromCart(itemId);
     setRemovingItemId(null);
   }, [removeFromCart]);
@@ -386,7 +544,7 @@ useEffect(() => {
     return { valid: true };
   };
 
-  // ── Camera ────────────────────────────────────────────────────────────────
+  // ── Camera functions (same as original) ───────────────────────────────────
   const stopCamera = () => {
     if (videoRef.current?.srcObject) {
       videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
@@ -429,18 +587,7 @@ useEffect(() => {
   const openCamera = (itemId) => { setCameraMode(itemId); setShowCameraModal(true); setTimeout(startCamera, 300); };
   const switchCamera = () => { setIsFrontCamera((v) => !v); setTimeout(startCamera, 100); };
 
-  // ── Image upload ──────────────────────────────────────────────────────────
-  //
-  // Progress is tied to real pipeline stages — no fake timers.
-  //
-  // Stage breakdown (% ranges are stable budgets per stage):
-  //   0–15  Reading file into memory      (FileReader onprogress — real bytes)
-  //   15–20 HEIC conversion start         (indeterminate — single jump)
-  //   20–55 Image compression             (canvas processImage onProgress callback)
-  //   55–60 Base64 encoding               (synchronous — single jump on completion)
-  //   60–95 API upload                    (axios onUploadProgress — real bytes)
-  //   95–100 Server processing + refresh  (single jump on API 2xx)
-
+  // ── Image upload with progress (same as original) ────────────────────────
   const setProgress = (itemId, pct, stage) => {
     setImageUploadProgress((p) => ({ ...p, [itemId]: Math.round(pct) }));
     if (stage) setImageUploadStage((p) => ({ ...p, [itemId]: stage }));
@@ -454,7 +601,6 @@ useEffect(() => {
     setProgress(itemId, 0, 'Reading file…');
 
     try {
-      // ── Stage 1: Read file for preview + measure real read progress (0–15%) ──
       const previewDataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onprogress = (e) => {
@@ -470,7 +616,6 @@ useEffect(() => {
         reader.readAsDataURL(file);
       });
 
-      // ── Stage 2: HEIC detection + conversion start (15–20%) ──
       const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
         file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
 
@@ -480,30 +625,19 @@ useEffect(() => {
         setProgress(itemId, 15, 'Preparing image…');
       }
 
-      // ── Stage 3: Compression (20–55%) via processImage onProgress callback ──
-      // processImage already calls onProgress with values 30, 60, 90 internally.
-      // We remap those into our 20–55% budget.
       const processed = await processImage(file, (internalPct) => {
-        // internalPct is 30 / 60 / 90 from processJpegImage
         const remapped = 20 + (internalPct / 100) * 35;
         const stage = internalPct < 60 ? 'Compressing image…' : 'Finalising image…';
         setProgress(itemId, remapped, stage);
       });
 
-      // If file was small enough to skip compression (returned immediately),
-      // make sure we still advance past stage 3.
       setProgress(itemId, 55, 'Encoding…');
 
-      // ── Stage 4: Base64 encode (55–60%) — synchronous, single jump ──
       const b64 = await fileToBase64(processed);
       const raw = b64.includes(',') ? b64.split(',')[1] : b64;
       if (!raw) throw new Error('Failed to convert file to base64');
       setProgress(itemId, 60, 'Uploading…');
 
-      // ── Stage 5: API upload with real byte progress (60–95%) ──
-      // addImageToCartItem goes through CartContext which calls api.post internally.
-      // We need onUploadProgress, so we call api directly here and let
-      // CartContext.loadCart sync the result.
       await api.post(
         `/api/cart/items/${itemId}/add-image/`,
         { image_base64: raw },
@@ -517,7 +651,6 @@ useEffect(() => {
         }
       );
 
-      // ── Stage 6: Server confirmed, refreshing cart (95–100%) ──
       setProgress(itemId, 95, 'Saving…');
       await refreshCart();
       setProgress(itemId, 100, 'Done!');
@@ -568,12 +701,10 @@ useEffect(() => {
       coupon: appliedPromotion?.code || undefined,
       items: cart.map((item) => {
         const service = getService(item);
-
         return {
           item_id: String(service.id),
           item_name: service.name,
-          item_category:
-            service.service_type || 'Cleaning',
+          item_category: service.service_type || 'Cleaning',
           price: item.unit_price,
           quantity: item.quantity,
         };
@@ -662,6 +793,37 @@ useEffect(() => {
   return (
     <>
       <section className="bg-gray-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8 mb-8">
+        <style jsx>{`
+          @keyframes slide-shoe {
+            0% { transform: translateX(-100%) translateY(-50%) rotate(0deg); }
+            100% { transform: translateX(400px) translateY(-50%) rotate(360deg); }
+          }
+          @keyframes slide-shoe-reverse {
+            0% { transform: translateX(100%) translateY(-50%) rotate(0deg); }
+            100% { transform: translateX(-400px) translateY(-50%) rotate(-360deg); }
+          }
+          @keyframes walk {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+          }
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-slide-shoe {
+            animation: slide-shoe 4s linear infinite;
+          }
+          .animate-slide-shoe-reverse {
+            animation: slide-shoe-reverse 4s linear infinite;
+          }
+          .animate-walk {
+            animation: walk 0.6s ease-in-out infinite;
+          }
+          .animate-fade-in {
+            animation: fade-in 0.2s ease-out;
+          }
+        `}</style>
+
         <CameraModal />
 
         {isRecovering && (
@@ -695,6 +857,9 @@ useEffect(() => {
             </button>
           </div>
 
+          {/* PAIR INFO BANNER - Shows the pair counting concept */}
+          <PairInfoBanner />
+
           {cart.length > 0 ? (
             <div className="grid lg:grid-cols-3 gap-6">
               {/* Cart Items */}
@@ -705,6 +870,8 @@ useEffect(() => {
                   const isFree = isFreeService(service);
                   const isVoucher = isVoucherService(item);
                   const pkgInfo = isPkg ? getPackageInfo(service) : null;
+                  const packageSize = pkgInfo?.sneakers || 1;
+                  const pairsTotal = isPkg ? item.quantity * packageSize : item.quantity;
                   const previewUrl = imagePreviews[item.id];
                   const hasImg = hasImage(item.id) || !!previewUrl;
                   const isUploading = uploadingImages[item.id];
@@ -744,6 +911,16 @@ useEffect(() => {
                               <div className="flex-1 min-w-0 pr-3">
                                 <h3 className="font-bold text-gray-900 text-base mb-1">{service.name}</h3>
                                 <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
+                                
+                                {/* Enhanced pair counter display */}
+                                <div className="mt-2">
+                                  <PairCounterAnimation 
+                                    quantity={item.quantity} 
+                                    isPackage={isPkg} 
+                                    packageSize={packageSize}
+                                  />
+                                </div>
+                                
                                 {isVoucher && item.voucher_code && (
                                   <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
                                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -772,36 +949,36 @@ useEffect(() => {
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 gap-3">
-                              <div className="flex items-center gap-3">
-                                {!isFree && !isVoucher ? (
-                                  <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
-                                    <button onClick={() => handleQuantityChange(item.id, item.quantity, -1)} disabled={item.quantity <= 1}
-                                      className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
-                                      <MinusIcon className="w-5 h-5" />
-                                    </button>
-                                    <span className="w-12 text-center font-bold text-gray-900 text-lg">{item.quantity}</span>
-                                    <button onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
-                                      className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary rounded-lg transition-colors active:scale-95">
-                                      <PlusIcon className="w-5 h-5" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className={`px-3 py-1.5 rounded-lg border ${isVoucher ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200' : 'bg-gradient-to-r from-green-100 to-emerald-100 border-green-200'}`}>
-                                    <span className={`font-medium text-sm ${isVoucher ? 'text-emerald-700' : 'text-green-700'}`}>{isVoucher ? 'Voucher Applied' : 'Free Service'}</span>
-                                  </div>
-                                )}
-                              </div>
+                              {/* Enhanced quantity selector with pair preview */}
+                              {!isFree && !isVoucher ? (
+                                <QuantitySelectorWithPairPreview
+                                  quantity={item.quantity}
+                                  onIncrement={() => handleQuantityChange(item.id, item.quantity, 1)}
+                                  onDecrement={() => handleQuantityChange(item.id, item.quantity, -1)}
+                                  isPackage={isPkg}
+                                  packageSize={packageSize}
+                                />
+                              ) : (
+                                <div className={`px-3 py-1.5 rounded-lg border ${isVoucher ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200' : 'bg-gradient-to-r from-green-100 to-emerald-100 border-green-200'}`}>
+                                  <span className={`font-medium text-sm ${isVoucher ? 'text-emerald-700' : 'text-green-700'}`}>{isVoucher ? 'Voucher Applied' : 'Free Service'}</span>
+                                </div>
+                              )}
+                              
                               <div className="text-right">
                                 <div className={`font-bold text-lg ${isVoucher ? 'text-emerald-600' : isFree ? 'text-green-600' : 'text-gray-900'}`}>
                                   {isVoucher ? (<><span className="line-through text-gray-400 text-sm mr-2">₵{service.price}</span><span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">FREE</span></>)
                                     : isFree ? (<><span className="line-through text-gray-400 text-sm mr-2">₵{service.price}</span>FREE</>)
                                     : `₵${(item.unit_price * item.quantity).toFixed(2)}`}
                                 </div>
-                                {isPkg && <div className="text-sm text-green-600 font-medium">Save with bundle</div>}
+                                {isPkg && (
+                                  <div className="text-xs text-green-600 font-medium">
+                                    ₵{((item.unit_price * item.quantity) / pairsTotal).toFixed(2)}/pair
+                                  </div>
+                                )}
                               </div>
                             </div>
 
-                            {/* Photo upload */}
+                            {/* Photo upload section (same as original) */}
                             <div className="border-t border-gray-100 mt-4 pt-4">
                               {/* Desktop */}
                               <div className="hidden sm:flex flex-row items-center justify-between gap-3">
@@ -888,21 +1065,61 @@ useEffect(() => {
                 })}
               </div>
 
-              {/* Order Summary */}
+              {/* Order Summary with pair count summary */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sticky top-20">
                   <h2 className="text-lg font-bold text-gray-900 mb-5">Order Summary</h2>
+                  
+                  {/* Total pairs summary */}
+                  <div className="mb-4 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">👟</span>
+                        <span className="text-sm font-medium text-gray-700">Total Pairs:</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-bold text-gray-900">
+                          {cart.reduce((total, item) => {
+                            const service = getService(item);
+                            const isPkg = isPackageService(service);
+                            const pkgInfo = isPkg ? getPackageInfo(service) : null;
+                            const packageSize = pkgInfo?.sneakers || 1;
+                            const pairs = isPkg ? item.quantity * packageSize : item.quantity;
+                            return total + pairs;
+                          }, 0)}
+                        </span>
+                        <span className="text-sm text-gray-600 ml-1">pairs</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 text-center">
+                      {cart.reduce((total, item) => {
+                        const service = getService(item);
+                        const isPkg = isPackageService(service);
+                        const pkgInfo = isPkg ? getPackageInfo(service) : null;
+                        const packageSize = pkgInfo?.sneakers || 1;
+                        const pairs = isPkg ? item.quantity * packageSize : item.quantity;
+                        return total + pairs;
+                      }, 0) * 2} individual shoes
+                    </div>
+                  </div>
+                  
                   <div className="space-y-4">
                     <div className="space-y-3 max-h-56 overflow-y-auto pr-2">
                       {cart.map((item) => {
                         const service = getService(item);
                         const isFree = isFreeService(service);
                         const isVoucher = isVoucherService(item);
+                        const isPkg = isPackageService(service);
+                        const pkgInfo = isPkg ? getPackageInfo(service) : null;
+                        const packageSize = pkgInfo?.sneakers || 1;
+                        const pairs = isPkg ? item.quantity * packageSize : item.quantity;
+                        
                         return (
                           <div key={item.id} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                            <div className="flex items-center gap-2 max-w-[70%]">
+                            <div className="flex items-center gap-2 max-w-[60%]">
                               <span className="text-gray-700 text-sm truncate">{service.name}</span>
                               <span className="text-gray-500 text-xs">×{item.quantity}</span>
+                              <span className="text-xs text-gray-400">({pairs} pair{pairs !== 1 ? 's' : ''})</span>
                               {isVoucher && <span className="text-xs bg-gradient-to-r from-emerald-500 to-green-500 text-white px-2 py-0.5 rounded">Voucher</span>}
                               {isFree && !isVoucher && <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded">Free</span>}
                             </div>
