@@ -24,6 +24,27 @@ Sentry.init({
   enableLogs: true
 });
 
+
+// --- GOOGLE ANALYTICS DYNAMIC INITIALIZATION ---
+const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
+
+if (GA_ID) {
+  // 1. Inject the script tag into the head
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+  document.head.appendChild(script);
+
+  // 2. Initialize dataLayer and gtag function
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function() {
+    window.dataLayer.push(arguments);
+  };
+  
+  window.gtag('js', new Date());
+  window.gtag('config', GA_ID);
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
