@@ -24,6 +24,8 @@ jobs:
           echo "VITE_PAYSTACK_PUBLIC_KEY=${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}" >> .env
           echo "VITE_ZIPPY_PASSWORD=${{ secrets.VITE_ZIPPY_PASSWORD }}" >> .env
           echo "VITE_ZIPPY_USERNAME=${{ secrets.VITE_ZIPPY_USERNAME }}" >> .env
+          echo "VITE_GA_MEASUREMENT_ID=${{ secrets.VITE_GA_MEASUREMENT_ID }}" >> .env
+          
       - name: Build
         run: npm run build
       - name: Push Build to Build Branch
