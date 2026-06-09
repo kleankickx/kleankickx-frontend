@@ -1,5 +1,3 @@
-// src/pages/GetOrder.jsx
-
 import React, { useEffect, useState, useContext } from 'react';
 import {
   FaShoppingCart,
@@ -38,7 +36,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '../components/Footer';
 import api from '../api';
-import { trackPurchase } from '../utils/analytics';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
@@ -476,64 +473,6 @@ const RegularAddressCard = ({ type, address, cost }) => (
     </div>
 );
 
-// Discount Badge Component
-const DiscountBadge = ({ order, discount, percentage }) => {
-    const colorMap = {
-        "redeemed_points": {
-            bgFrom: "from-blue-50",
-            bgTo: "to-blue-50",
-            border: "border-blue-200",
-            iconBg: "bg-blue-100",
-            iconText: "text-blue-600",
-            titleText: "text-blue-800",
-            text: "text-blue-600",
-            amountText: "text-blue-700",
-        },
-        "referral": {
-            bgFrom: "from-purple-50",
-            bgTo: "to-purple-50",
-            border: "border-purple-200",
-            iconBg: "bg-purple-100",
-            iconText: "text-purple-600",
-            titleText: "text-purple-800",
-            text: "text-purple-600",
-            amountText: "text-purple-700",
-        },
-        "default": {
-            bgFrom: "from-green-50",
-            bgTo: "to-emerald-50",
-            border: "border-emerald-200",
-            iconBg: "bg-emerald-100",
-            iconText: "text-emerald-600",
-            titleText: "text-emerald-800",
-            text: "text-emerald-600",
-            amountText: "text-emerald-700",
-        },
-    };
-
-    const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
-    const formattedDiscountType = discount.discount_type.replace('_', ' ');
-    
-    return (
-        <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
-            <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
-                <FaTag className={`${colorScheme.iconText} text-lg`} />
-            </div>
-            <div className="flex-1">
-                <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
-                    {formattedDiscountType} Discount
-                </p>
-                <p className={`text-xs ${colorScheme.text}`}>
-                    {percentage}% discount applied
-                </p>
-            </div>
-            <div className={`${colorScheme.amountText} font-bold`}>
-                -GHS {parseFloat(order.subtotal * percentage / 100).toFixed(2)}
-            </div>
-        </div>
-    );
-};
-
 // Main Component
 const GetOrder = () => {
     const [order, setOrder] = useState(null);
@@ -607,53 +546,6 @@ const GetOrder = () => {
         return (paymentStatus === 'PENDING' || paymentStatus === 'FAILED') && 
                orderStatus !== 'CANCELLED';
     };
-
-    // GA4 Purchase Tracking - Client-side fallback
-    useEffect(() => {
-        // Send GA4 purchase event when order loads and payment is successful
-        // This serves as a fallback in case webhook didn't fire
-        if (order && order.payment_status === 'SUCCESS' && order.status !== 'CANCELLED') {
-            // Check if we've already tracked this order in this session
-            const trackedKey = `ga4_tracked_${order.reference_code}`;
-            if (!sessionStorage.getItem(trackedKey)) {
-                
-                // Prepare items from order
-                const items = (order.items || []).map(item => ({
-                    item_id: String(item.service?.id || item.service_id),
-                    item_name: item.service?.name || item.service_name,
-                    item_category: item.service?.service_type || 'Cleaning',
-                    price: parseFloat(item.unit_price || item.price),
-                    quantity: item.quantity,
-                }));
-                
-                if (items.length > 0) {
-                    // Get coupon from discounts if any
-                    let coupon = null;
-                    if (order.discounts_applied) {
-                        const promoDiscount = order.discounts_applied.find(d => d.type === 'promotion');
-                        if (promoDiscount) coupon = promoDiscount.promotion_code;
-                    }
-                    
-                    // Track purchase (duplicate prevention - GA4 deduplicates by transaction_id)
-                    const trackingResult = trackPurchase({
-                        transaction_id: order.reference_code,
-                        value: parseFloat(order.total_amount || order.total),
-                        currency: 'GHS',
-                        items: items,
-                        payment_type: order.payment_method || 'paystack',
-                        shipping: parseFloat(order.delivery_cost || 0) + parseFloat(order.pickup_cost || 0),
-                        coupon: coupon,
-                    });
-                    
-                    if (trackingResult) {
-                        // Mark as tracked
-                        sessionStorage.setItem(trackedKey, 'true');
-                        console.log('GA4 purchase event sent from order page for:', order.reference_code);
-                    }
-                }
-            }
-        }
-    }, [order]);
 
     useEffect(() => {
         const paymentStatus = searchParams.get('payment');
@@ -780,6 +672,62 @@ const GetOrder = () => {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const colorMap = {
+        "redeemed_points": {
+            bgFrom: "from-blue-50",
+            bgTo: "to-blue-50",
+            border: "border-blue-200",
+            iconBg: "bg-blue-100",
+            iconText: "text-blue-600",
+            titleText: "text-blue-800",
+            text: "text-blue-600",
+            amountText: "text-blue-700",
+        },
+        "referral": {
+            bgFrom: "from-purple-50",
+            bgTo: "to-purple-50",
+            border: "border-purple-200",
+            iconBg: "bg-purple-100",
+            iconText: "text-purple-600",
+            titleText: "text-purple-800",
+            text: "text-purple-600",
+            amountText: "text-purple-700",
+        },
+        "default": {
+            bgFrom: "from-green-50",
+            bgTo: "to-emerald-50",
+            border: "border-emerald-200",
+            iconBg: "bg-emerald-100",
+            iconText: "text-emerald-600",
+            titleText: "text-emerald-800",
+            text: "text-emerald-600",
+            amountText: "text-emerald-700",
+        },
+    };
+
+    const DiscountBadge = ({ order, discount, percentage }) => {
+        const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
+        const formattedDiscountType = discount.discount_type.replace('_', ' ');
+        return (
+            <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
+                <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
+                    <FaTag className={`${colorScheme.iconText} text-lg`} />
+                </div>
+                <div className="flex-1">
+                    <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
+                        {formattedDiscountType} Discount
+                    </p>
+                    <p className={`text-xs ${colorScheme.text}`}>
+                        {percentage}% discount applied
+                    </p>
+                </div>
+                <div className={`${colorScheme.amountText} font-bold`}>
+                    -GHS {parseFloat(order.subtotal * percentage / 100).toFixed(2)}
+                </div>
+            </div>
+        );
     };
 
     const getPaymentStatusDisplay = (status) => {
