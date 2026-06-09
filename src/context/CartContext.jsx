@@ -10,7 +10,7 @@ import React, {
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
 import api from "../api";
-
+import { trackEvent } from "../utils/analytics";
 export const CartContext = createContext();
 
 const emptyCart = {
@@ -156,6 +156,22 @@ export const CartProvider = ({ children }) => {
           quantity,
         });
         setCart(response.data);
+        if (serviceData) {
+          trackEvent("add_to_cart", {
+            currency: "GHS",
+            value: serviceData.price * quantity,
+            items: [
+              {
+                item_id: String(serviceId),
+                item_name: serviceData.name,
+                item_category:
+                  serviceData.service_type || "Cleaning",
+                price: serviceData.price,
+                quantity,
+              },
+            ],
+          });
+        }
         return response.data;
       } catch (error) {
         console.error("Add to cart failed:", error);
