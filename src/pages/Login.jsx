@@ -400,6 +400,34 @@ const Login = () => {
     }
   }, [user, isPartner, navigate, pendingRecovery]);
 
+
+useEffect(() => {
+  // Check if user came from email verification
+  const searchParams = new URLSearchParams(location.search);
+  const verified = searchParams.get('verified');
+  const email = searchParams.get('email');
+  
+  if (verified === 'true') {
+    toast.success(
+      email 
+        ? `Email verified! You can now login with ${email}`
+        : 'Email verified successfully! Please login to continue.',
+      { 
+        position: 'top-right',
+        autoClose: 5000
+      }
+    );
+    
+    // Clean up URL without refreshing
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.delete('verified');
+    newSearchParams.delete('email');
+    const newSearch = newSearchParams.toString();
+    const newPath = location.pathname + (newSearch ? `?${newSearch}` : '');
+    navigate(newPath, { replace: true });
+  }
+}, [location, navigate]);
+
   const handlePostLogin = async (userData) => {
     console.log('[Login] Starting post-login actions...');
     console.log('[Login] User data from login:', userData);

@@ -37,9 +37,11 @@ import NotFound from './pages/NotFound';
 import PartnerRegister from './pages/PartnerRegister';
 import PartnerDashboard from './pages/PartnerDashboard';
 import PartnerServices from './pages/PartnerServices';
+import PartnerOrderSuccess from './pages/PartnerOrderSuccess';
 import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
+import PartnerRoute from './components/PartnerRoute';
 
 
 // Loading component
@@ -134,27 +136,42 @@ const AppContent = () => {
           />
           
           {/* Partner Routes */}
-          <Route
-            path="/partner/dashboard"
+         <Route 
+            path="/partner/dashboard" 
             element={
               <ProtectedRoute requireVerification={true}>
-                <PartnerDashboard />
+                  <PartnerDashboard />
               </ProtectedRoute>
-            }
+            } 
           />
-          <Route
-            path="/partner/services"
+
+          <Route 
+            path="/partner/order-success/:orderReference?" 
             element={
               <ProtectedRoute requireVerification={true}>
-                <PartnerServices />
+                <PartnerRoute>
+                  <PartnerOrderSuccess />
+                </PartnerRoute>
               </ProtectedRoute>
-            }
+            } 
+          />
+          <Route 
+            path="/partner/services" 
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerRoute>
+                  <PartnerServices />
+                </PartnerRoute>
+              </ProtectedRoute>
+            } 
           />
           <Route
             path="/partner/checkout"
             element={
               <ProtectedRoute requireVerification={true}>
-                <PartnerCheckout />
+                <PartnerRoute>
+                  <PartnerCheckout />
+                </PartnerRoute>
               </ProtectedRoute>
             }
           />
