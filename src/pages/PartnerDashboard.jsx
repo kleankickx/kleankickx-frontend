@@ -19,7 +19,11 @@ import {
   FileCheck,
   Mail,
   Ban,
-  MinusCircle
+  MinusCircle,
+  FileText,  // <-- ADD THIS IMPORT
+  CreditCard, // <-- Also add this if you use it
+  Calendar,   // <-- Also add this if you use it
+  Settings
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../api';

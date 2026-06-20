@@ -16,6 +16,8 @@ import {
   faChartLine,
   faCog,
   faPhone,
+  faFileInvoice,
+  faCreditCard,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -112,6 +114,12 @@ const PartnerNavbar = () => {
       icon: faBox,
       simple: true,
     },
+    {
+      label: 'Invoices',
+      to: '/partner/invoices',
+      icon: faFileInvoice,
+      simple: true,
+    },
   ];
 
   const toggleDropdown = (groupLabel) => {
@@ -188,6 +196,21 @@ const PartnerNavbar = () => {
 
           {/* Right Side Actions */}
           <div className="hidden lg:flex items-center gap-4">
+            {/* Invoices Quick Link */}
+            <NavLink
+              to="/partner/invoices"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? 'bg-green-600 text-white'
+                    : 'hover:bg-gray-700'
+                }`
+              }
+            >
+              <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4" />
+              <span className="text-sm font-medium">Invoices</span>
+            </NavLink>
+
             {/* User Dropdown */}
             <div className="relative">
               <button
@@ -256,6 +279,17 @@ const PartnerNavbar = () => {
                     >
                       <FontAwesomeIcon icon={faBox} className="w-4 h-4 text-yellow-400" />
                       <span>Order History</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        navigate('/partner/invoices');
+                        setIsDropdownOpen(false);
+                      }}
+                      className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-purple-400" />
+                      <span>Invoices</span>
                     </button>
                     
                     <div className="border-t border-gray-700 my-2" />

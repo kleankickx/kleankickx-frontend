@@ -17,7 +17,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Package
+  Package,
+  Lock
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../api';
@@ -29,11 +30,6 @@ const PartnerInvoiceDetail = () => {
   
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
-  const [paymentReference, setPaymentReference] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isPartner) {
@@ -48,48 +44,12 @@ const PartnerInvoiceDetail = () => {
       setLoading(true);
       const response = await api.get(`/api/partner/invoices/${id}/`);
       setInvoice(response.data);
-      setPaymentAmount(response.data.balance_due?.toString() || '0');
     } catch (error) {
       console.error('Failed to fetch invoice:', error);
       toast.error('Failed to load invoice details');
       navigate('/partner/invoices');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    
-    const amount = parseFloat(paymentAmount);
-    if (!amount || amount <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-    
-    if (amount > invoice.balance_due) {
-      toast.error(`Amount exceeds balance due of GHS ${invoice.balance_due.toFixed(2)}`);
-      return;
-    }
-    
-    setSubmitting(true);
-    
-    try {
-      const response = await api.post(`/api/partner/invoices/${invoice.id}/pay/`, {
-        amount: amount,
-        reference: paymentReference || undefined,
-      });
-      
-      if (response.data.success) {
-        toast.success(response.data.message || 'Payment recorded successfully!');
-        setShowPaymentModal(false);
-        fetchInvoiceDetail();
-      }
-    } catch (error) {
-      console.error('Payment failed:', error);
-      toast.error(error.response?.data?.error || 'Payment failed. Please try again.');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -221,22 +181,35 @@ const PartnerInvoiceDetail = () => {
                 'text-blue-800'
               }`}>
                 {isPaid ? 'This invoice has been fully paid.' :
-                 isOverdue ? 'This invoice is overdue. Please make a payment.' :
+                 isOverdue ? 'This invoice is overdue. Please contact support.' :
                  invoice.status === 'PARTIALLY_PAID' ? 'This invoice is partially paid.' :
                  'This invoice is pending payment.'}
               </p>
               {canPay && (
-                <button
-                  onClick={() => setShowPaymentModal(true)}
-                  className="mt-2 px-4 py-1.5 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
-                >
-                  <CreditCard className="h-4 w-4" />
-                  Make Payment
-                </button>
+                <div className="mt-2 flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                  <Lock className="h-4 w-4" />
+                  <span>Payments are processed by the admin team</span>
+                </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Payment Disabled Banner */}
+        {canPay && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <Lock className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Payment Processing</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Invoice payments are currently processed by the admin team. 
+                  If you need to make a payment, please contact our support team or wait for the invoice due date.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Invoice Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
@@ -265,7 +238,7 @@ const PartnerInvoiceDetail = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Payment Term</p>
-                <p className="font-medium">{invoice.payment_term || 'N/A'}</p>
+                <p className="font-medium">    {invoice.payment_term_name || invoice.payment_term_display || invoice.payment_term || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Period</p>
@@ -380,146 +353,13 @@ const PartnerInvoiceDetail = () => {
             Back to Invoices
           </button>
           {canPay && (
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
-            >
-              <CreditCard className="h-4 w-4" />
-              Make Payment
-            </button>
+            <div className="px-6 py-2.5 bg-gray-100 text-gray-500 rounded-lg font-medium flex items-center gap-2 cursor-not-allowed">
+              <Lock className="h-4 w-4" />
+              Payment Disabled
+            </div>
           )}
         </div>
       </div>
-
-      {/* Payment Modal - Same as in PartnerInvoices */}
-      {showPaymentModal && invoice && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Make Payment</h2>
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <svg className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Pay for invoice {invoice.invoice_number}
-              </p>
-            </div>
-
-            <form onSubmit={handlePayment} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Invoice Total
-                </label>
-                <p className="text-lg font-bold text-gray-900">
-                  {formatCurrency(invoice.total)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Balance Due
-                </label>
-                <p className="text-lg font-bold text-amber-600">
-                  {formatCurrency(invoice.balance_due)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Amount *
-                </label>
-                <input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  step="0.01"
-                  min="0.01"
-                  max={invoice.balance_due}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Maximum: {formatCurrency(invoice.balance_due)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Method
-                </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="MOBILE_MONEY">Mobile Money</option>
-                  <option value="CARD">Card</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Reference (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={paymentReference}
-                  onChange={(e) => setPaymentReference(e.target.value)}
-                  placeholder="Enter reference number"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                <p className="font-medium">⚠️ Important</p>
-                <p className="text-xs mt-1">
-                  This payment will be recorded and the invoice status will be updated accordingly.
-                  {parseFloat(paymentAmount) < invoice.balance_due && 
-                    ` The invoice will be marked as "Partially Paid".`}
-                  {parseFloat(paymentAmount) >= invoice.balance_due && 
-                    ` The invoice will be marked as "Paid in Full".`}
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 bg-primary text-white py-2.5 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4" />
-                      Confirm Payment
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
