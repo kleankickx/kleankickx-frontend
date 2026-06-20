@@ -42,6 +42,8 @@ import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
 import PartnerRoute from './components/PartnerRoute';
+import PartnerInvoices from './pages/PartnerInvoices';
+import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
 
 
 // Loading component
@@ -141,6 +143,27 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireVerification={true}>
                   <PartnerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/partner/invoices" 
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerRoute>
+                  <PartnerInvoices />
+                </PartnerRoute>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/partner/invoices/:id" 
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerRoute>
+                  <PartnerInvoiceDetail />
+                </PartnerRoute>
               </ProtectedRoute>
             } 
           />

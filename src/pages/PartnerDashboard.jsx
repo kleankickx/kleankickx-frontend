@@ -383,6 +383,20 @@ const PartnerDashboard = () => {
               </div>
             </div>
           </div>
+
+          <button
+          onClick={() => navigate('/partner/invoices')}
+          className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all text-left"
+        >
+          <div className="flex items-start gap-3">
+            <FileText className="h-8 w-8" />
+            <div>
+              <h3 className="font-semibold text-lg">View Invoices</h3>
+              <p className="text-purple-100 text-sm mt-1">Manage your invoices and make payments</p>
+            </div>
+          </div>
+        </button>
+  
           
           <button
             onClick={() => navigate('/partner/profile')}
