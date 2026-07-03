@@ -5,7 +5,7 @@ import axios from "axios";
 // =========================
 // BASE CONFIG
 // =========================
-const baseURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const baseURL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:10000";
 
 const api = axios.create({
   baseURL,

@@ -281,7 +281,9 @@ const PartnerCheckout = () => {
     }
   };
 
-  // src/pages/PartnerCheckout.jsx - Update handlePlaceOrder function
+
+
+// src/pages/PartnerCheckout.jsx - Updated handlePlaceOrder function
 
 const handlePlaceOrder = async () => {
   if (!validateAddresses()) {
@@ -320,27 +322,34 @@ const handlePlaceOrder = async () => {
     const response = await api.post('/api/orders/partner/create/', orderData);
     
     if (response.data.success) {
-      // Check if payment is required
-      if (response.data.requires_payment && response.data.paystack_auth_url) {
-        // Redirect to Paystack for payment
-        toast.info('Redirecting to payment gateway...');
-        window.location.href = response.data.paystack_auth_url;
+      // Order placed successfully - no immediate payment required
+      toast.success(response.data.message || 'Order placed successfully!');
+      
+      // Clear checkout from localStorage
+      localStorage.removeItem('partner_checkout_items');
+      localStorage.removeItem('partner_pickupLocation');
+      localStorage.removeItem('partner_deliveryLocation');
+      localStorage.removeItem('partner_pickupTime');
+      
+      // Get invoice info from response
+      const invoiceInfo = response.data.invoice;
+      
+      // Redirect to order confirmation/success page with invoice details
+      if (response.data.order_reference_code) {
+        navigate(`/partner/order-success/${response.data.order_reference_code}`, {
+          state: {
+            order: response.data,
+            invoice: invoiceInfo,
+            message: response.data.message
+          }
+        });
       } else {
-        // No payment needed, order placed successfully
-        toast.success('Order placed successfully!');
-        
-        // Clear checkout from localStorage
-        localStorage.removeItem('partner_checkout_items');
-        localStorage.removeItem('partner_pickupLocation');
-        localStorage.removeItem('partner_deliveryLocation');
-        localStorage.removeItem('partner_pickupTime');
-        
-        // Redirect to order details
-        if (response.data.order_reference_code) {
-          navigate(`/partner/orders/${response.data.order_reference_code}`);
-        } else {
-          navigate('/partner/dashboard');
-        }
+        // Fallback to dashboard
+        navigate('/partner/dashboard', {
+          state: {
+            message: 'Order placed successfully! It will be added to your next invoice.'
+          }
+        });
       }
     } else {
       throw new Error(response.data.message || 'Order creation failed');

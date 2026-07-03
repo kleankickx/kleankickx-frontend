@@ -1,10 +1,11 @@
 // src/pages/PartnerRegister.jsx
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Eye, EyeOff, Building, Mail, Phone, User, Lock, Briefcase } from 'lucide-react';
+import { Eye, EyeOff, Building, Mail, Phone, User, Lock, Briefcase, Calendar, Info, HelpCircle } from 'lucide-react';
 import logo from "../assets/logo2.png";
+import api from '../api';
 
 const PartnerRegister = () => {
   const navigate = useNavigate();
@@ -19,12 +20,39 @@ const PartnerRegister = () => {
     phone_number: '',
     company_name: '',
     corporate_email: '',
+    payment_term_code: '',
   });
   
+  const [paymentTerms, setPaymentTerms] = useState([]);
+  const [loadingTerms, setLoadingTerms] = useState(true);
+  const [selectedTermDetails, setSelectedTermDetails] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+
+  // Fetch payment terms on component mount
+  useEffect(() => {
+    const fetchPaymentTerms = async () => {
+      try {
+        const response = await api.get('/api/partner/payment-terms/');
+        setPaymentTerms(response.data);
+        // Set default selection if available
+        const defaultTerm = response.data.find(term => term.is_default);
+        if (defaultTerm) {
+          setFormData(prev => ({ ...prev, payment_term_code: defaultTerm.code }));
+          setSelectedTermDetails(defaultTerm);
+        }
+      } catch (error) {
+        console.error('Failed to fetch payment terms:', error);
+        toast.error('Could not load payment terms. Please refresh the page.');
+      } finally {
+        setLoadingTerms(false);
+      }
+    };
+    
+    fetchPaymentTerms();
+  }, []);
 
   const validateField = (name, value) => {
     let error = '';
@@ -59,6 +87,9 @@ const PartnerRegister = () => {
         if (!value) error = 'Corporate email is required';
         else if (!/\S+@\S+\.\S+/.test(value)) error = 'Email is invalid';
         break;
+      case 'payment_term_code':
+        if (!value) error = 'Please select a payment term';
+        break;
       default:
         break;
     }
@@ -69,6 +100,12 @@ const PartnerRegister = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Update selected term details when payment term changes
+    if (name === 'payment_term_code') {
+      const term = paymentTerms.find(t => t.code === value);
+      setSelectedTermDetails(term || null);
+    }
     
     // Clear error for this field when user starts typing
     if (errors[name]) {
@@ -92,7 +129,7 @@ const PartnerRegister = () => {
     const newErrors = {};
     const fieldsToValidate = [
       'email', 'password', 'confirmPassword', 'first_name', 'last_name',
-      'phone_number', 'company_name', 'corporate_email'
+      'phone_number', 'company_name', 'corporate_email', 'payment_term_code'
     ];
     
     fieldsToValidate.forEach(field => {
@@ -121,6 +158,7 @@ const PartnerRegister = () => {
         phone_number: formData.phone_number,
         company_name: formData.company_name,
         corporate_email: formData.corporate_email,
+        payment_term_code: formData.payment_term_code,
       };
       
       await partnerRegister(registrationData);
@@ -138,6 +176,33 @@ const PartnerRegister = () => {
     }
   };
 
+  // Helper to get grace period display
+  const getGracePeriodDisplay = (term) => {
+    if (!term) return '';
+    if (term.invoice_frequency === 'WEEKLY') {
+      return `${term.grace_period_days} business days`;
+    }
+    return `${term.grace_period_days} days`;
+  };
+
+  // Helper to get frequency display
+  const getFrequencyDisplay = (term) => {
+    if (!term) return '';
+    return term.invoice_frequency.charAt(0) + term.invoice_frequency.slice(1).toLowerCase();
+  };
+
+  // Handle "Use login email" for corporate email
+  const handleUseLoginEmail = () => {
+    setFormData(prev => ({ 
+      ...prev, 
+      corporate_email: prev.email 
+    }));
+    // Clear error for corporate_email if it exists
+    if (errors.corporate_email) {
+      setErrors(prev => ({ ...prev, corporate_email: '' }));
+    }
+  };
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gray-100">
       <div className="max-w-4xl mx-auto">
@@ -147,7 +212,6 @@ const PartnerRegister = () => {
             <span className="text-2xl font-light text-gray-400">|</span>
             <h1 className="text-3xl font-bold text-gray-900">Partners</h1>
         </div>
-
 
         <div className="bg-white rounded-lg shadow-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -361,11 +425,22 @@ const PartnerRegister = () => {
                   )}
                 </div>
 
-                {/* Corporate Email */}
+                {/* Corporate Email with Help */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Corporate Email *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Corporate Email *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleUseLoginEmail}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                      style={{ color: '#007F03' }}
+                    >
+                      <Mail size={12} />
+                      Use login email
+                    </button>
+                  </div>
                   <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                     <input
@@ -380,17 +455,95 @@ const PartnerRegister = () => {
                       style={{ '--tw-ring-color': '#007F03' }}
                       placeholder="business@company.com"
                     />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                      <HelpCircle size={16} className="cursor-help" title="This email will be used for all business communications including invoices and billing notifications" />
+                    </div>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    This will be used for all business communications
-                  </p>
+                  
+                  {/* Help Box for Corporate Email */}
+                  <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: '#F0F7FF', border: '1px solid #BBDEFB' }}>
+                    <div className="flex items-start gap-2">
+                      <Info size={16} style={{ color: '#1976D2', flexShrink: 0, marginTop: 1 }} />
+                      <div className="text-xs" style={{ color: '#0D47A1' }}>
+                        <p className="font-medium">About Corporate Email</p>
+                        <p className="mt-0.5">
+                          This email will be used for:
+                        </p>
+                        <ul className="list-disc list-inside mt-0.5 space-y-0.5">
+                          <li>Receiving invoices and payment receipts</li>
+                          <li>Business notifications and updates</li>
+                          <li>Billing and account communications</li>
+                          <li>Partnership-related correspondence</li>
+                        </ul>
+                        <p className="mt-1 text-[10px] opacity-75">
+                          You can use your login email if you don't have a separate corporate email.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   {touched.corporate_email && errors.corporate_email && (
                     <p className="mt-1 text-xs text-red-500">{errors.corporate_email}</p>
                   )}
                 </div>
 
+                {/* Payment Term Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Term *
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <select
+                      name="payment_term_code"
+                      value={formData.payment_term_code}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
+                        touched.payment_term_code && errors.payment_term_code ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      style={{ '--tw-ring-color': '#007F03' }}
+                      disabled={loadingTerms}
+                    >
+                      <option value="">Select a payment term...</option>
+                      {paymentTerms.map((term) => (
+                        <option key={term.code} value={term.code}>
+                          {term.name} - {getFrequencyDisplay(term)} ({getGracePeriodDisplay(term)} grace)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {loadingTerms ? (
+                    <p className="mt-1 text-xs text-gray-500">Loading payment terms...</p>
+                  ) : touched.payment_term_code && errors.payment_term_code ? (
+                    <p className="mt-1 text-xs text-red-500">{errors.payment_term_code}</p>
+                  ) : null}
+                </div>
+
+                {/* Payment Term Details */}
+                {selectedTermDetails && (
+                  <div className="rounded-lg p-4" style={{ backgroundColor: '#E3F2FD', border: '1px solid #1976D2' }}>
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <Info size={20} style={{ color: '#1976D2' }} />
+                      </div>
+                      <div className="text-sm" style={{ color: '#0D47A1' }}>
+                        <p className="font-medium mb-1">Payment Term Details</p>
+                        <ul className="space-y-1 text-xs">
+                          <li><strong>Term:</strong> {selectedTermDetails.name}</li>
+                          <li><strong>Frequency:</strong> {getFrequencyDisplay(selectedTermDetails)}</li>
+                          <li><strong>Grace Period:</strong> {getGracePeriodDisplay(selectedTermDetails)}</li>
+                          <li className="text-xs opacity-75 mt-1">
+                            {selectedTermDetails.description || 'No additional details available.'}
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Info Box - Using KleanKickx brand colors */}
-                <div className="rounded-lg p-4 mt-4" style={{ backgroundColor: '#E8F5E9', border: '1px solid #007F03' }}>
+                <div className="rounded-lg p-4" style={{ backgroundColor: '#E8F5E9', border: '1px solid #007F03' }}>
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0">
                       <Building size={20} style={{ color: '#007F03' }} />
@@ -426,7 +579,7 @@ const PartnerRegister = () => {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={authLoading}
+                disabled={authLoading || loadingTerms}
                 className="w-full text-white py-3 px-4 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 style={{ backgroundColor: '#007F03', '--tw-ring-color': '#007F03' }}
                 onMouseEnter={(e) => e.target.style.backgroundColor = '#006602'}

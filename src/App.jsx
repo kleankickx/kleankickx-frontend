@@ -37,9 +37,14 @@ import NotFound from './pages/NotFound';
 import PartnerRegister from './pages/PartnerRegister';
 import PartnerDashboard from './pages/PartnerDashboard';
 import PartnerServices from './pages/PartnerServices';
+import PartnerOrderSuccess from './pages/PartnerOrderSuccess';
 import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
+import PartnerRoute from './components/PartnerRoute';
+import PartnerInvoices from './pages/PartnerInvoices';
+import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
+import KleanKickxLegal from './pages/KleanKickxLegal';
 
 
 // Loading component
@@ -123,7 +128,7 @@ const AppContent = () => {
           <Route path="/about-us" element={<About />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
-          
+          <Route path="/legal" element={<KleanKickxLegal />} />
           <Route
             path="/checkout"
             element={
@@ -134,27 +139,63 @@ const AppContent = () => {
           />
           
           {/* Partner Routes */}
-          <Route
-            path="/partner/dashboard"
+         <Route 
+            path="/partner/dashboard" 
             element={
               <ProtectedRoute requireVerification={true}>
-                <PartnerDashboard />
+                  <PartnerDashboard />
               </ProtectedRoute>
-            }
+            } 
           />
-          <Route
-            path="/partner/services"
+
+          <Route 
+            path="/partner/invoices" 
             element={
               <ProtectedRoute requireVerification={true}>
-                <PartnerServices />
+                <PartnerRoute>
+                  <PartnerInvoices />
+                </PartnerRoute>
               </ProtectedRoute>
-            }
+            } 
+          />
+          <Route 
+            path="/partner/invoices/:id" 
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerRoute>
+                  <PartnerInvoiceDetail />
+                </PartnerRoute>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/partner/order-success/:orderReference?" 
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerRoute>
+                  <PartnerOrderSuccess />
+                </PartnerRoute>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/partner/services" 
+            element={
+              <ProtectedRoute requireVerification={true}>
+                <PartnerRoute>
+                  <PartnerServices />
+                </PartnerRoute>
+              </ProtectedRoute>
+            } 
           />
           <Route
             path="/partner/checkout"
             element={
               <ProtectedRoute requireVerification={true}>
-                <PartnerCheckout />
+                <PartnerRoute>
+                  <PartnerCheckout />
+                </PartnerRoute>
               </ProtectedRoute>
             }
           />

@@ -400,6 +400,34 @@ const Login = () => {
     }
   }, [user, isPartner, navigate, pendingRecovery]);
 
+
+useEffect(() => {
+  // Check if user came from email verification
+  const searchParams = new URLSearchParams(location.search);
+  const verified = searchParams.get('verified');
+  const email = searchParams.get('email');
+  
+  if (verified === 'true') {
+    toast.success(
+      email 
+        ? `Email verified! You can now login with ${email}`
+        : 'Email verified successfully! Please login to continue.',
+      { 
+        position: 'top-right',
+        autoClose: 5000
+      }
+    );
+    
+    // Clean up URL without refreshing
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.delete('verified');
+    newSearchParams.delete('email');
+    const newSearch = newSearchParams.toString();
+    const newPath = location.pathname + (newSearch ? `?${newSearch}` : '');
+    navigate(newPath, { replace: true });
+  }
+}, [location, navigate]);
+
   const handlePostLogin = async (userData) => {
     console.log('[Login] Starting post-login actions...');
     console.log('[Login] User data from login:', userData);
@@ -569,7 +597,7 @@ const Login = () => {
         onSuccess={(email) => console.log('Reset email sent to:', email)}
       />
 
-      <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex justify-center items-center flex-col">
+      <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex py-8 justify-center items-center flex-col">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -739,11 +767,35 @@ const Login = () => {
                 <span className="transform transition-transform group-hover:translate-x-1">→</span>
               </Link>
             </p>
-            
-            <p className="mt-1 text-xs text-center text-gray-400">
-              Exclusive wholesale pricing, priority processing, and dedicated support
-            </p>
-          </div> */}
+          </div>
+
+          {/* Legal Links - Added at the bottom */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <Link 
+                to="/legal" 
+                state={{ tab: 'privacy' }}
+                className="text-xs text-gray-400 hover:text-primary transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-gray-300 text-xs">•</span>
+              <Link 
+                to="/legal" 
+                state={{ tab: 'terms' }}
+                className="text-xs text-gray-400 hover:text-primary transition-colors"
+              >
+                Terms of Service
+              </Link>
+              <span className="text-gray-300 text-xs">•</span>
+              <Link 
+                to="/about-us" 
+                className="text-xs text-gray-400 hover:text-primary transition-colors"
+              >
+                About Us
+              </Link>
+            </div>
+          </div>
         </motion.div>
       </div>
     </>

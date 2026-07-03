@@ -1,11 +1,11 @@
-// src/pages/PartnerServices.jsx
+// src/pages/PartnerServices.jsx - Updated to use partner-specific services
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { 
   ShoppingCart, Plus, Minus, Package, Truck, 
   ChevronLeft, ShoppingBag, CheckCircle, X, 
-  Search, Filter, Grid, List, Sparkles
+  Search, Filter, Grid, List, Sparkles, Tag, Shield
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../api';
@@ -21,13 +21,16 @@ const PartnerServices = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid');
+  const [partnerData, setPartnerData] = useState(null);
 
   useEffect(() => {
+    // Check if user is partner and has active status
     if (!isPartner) {
-      navigate('/auth/login');
+      toast.error('Access denied. Partner account required.');
+      navigate('/');
       return;
     }
-    fetchServices();
+    fetchPartnerServices();
   }, [isPartner, navigate]);
 
   useEffect(() => {
@@ -42,16 +45,55 @@ const PartnerServices = () => {
     }
   }, [searchTerm, services]);
 
-  const fetchServices = async () => {
+  const fetchPartnerServices = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/services/partner/');
-      const servicesData = response.data.services || response.data;
+      const response = await api.get('/api/partner/services/');
+      
+      console.log('Partner Services Response:', response.data);
+      
+      // Check if partner can access services
+      if (response.data.can_place_orders === false) {
+        toast.warning(response.data.error || 'Your account does not have access to services.');
+        navigate('/partner/dashboard');
+        return;
+      }
+      
+      setPartnerData({
+        company_name: response.data.company_name,
+        partner_status: response.data.partner_status,
+        can_place_orders: response.data.can_place_orders
+      });
+      
+      const servicesData = response.data.services || [];
       setServices(servicesData);
       setFilteredServices(servicesData);
+      
+      if (servicesData.length === 0) {
+        toast.info('No wholesale services available yet.');
+      }
     } catch (error) {
       console.error('Failed to fetch services:', error);
-      toast.error('Failed to load wholesale services');
+      
+      // Handle specific error responses
+      if (error.response?.status === 403) {
+        const errorData = error.response.data;
+        if (errorData.status === 'PENDING_REVIEW') {
+          toast.warning('Your account is under review. Services will be available once your account is activated.');
+          navigate('/partner/dashboard');
+        } else if (errorData.status === 'SUSPENDED') {
+          toast.error('Your account has been suspended. Please contact support.');
+          navigate('/partner/dashboard');
+        } else if (errorData.status === 'REJECTED') {
+          toast.error('Your partnership application has been rejected.');
+          navigate('/partner/dashboard');
+        } else {
+          toast.error('Access denied. Please contact support.');
+          navigate('/partner/dashboard');
+        }
+      } else {
+        toast.error('Failed to load wholesale services. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,9 +118,12 @@ const PartnerServices = () => {
       return;
     }
     
+    // Use partner price if available, otherwise use regular price
+    const price = service.partner_price || service.price;
+    
     setCheckoutItems(prev => {
       const existing = prev.find(item => item.id === service.id);
-      const unitPrice = parseFloat(service.price) || 0;
+      const unitPrice = parseFloat(price) || 0;
       
       if (existing) {
         return prev.map(item =>
@@ -91,7 +136,8 @@ const PartnerServices = () => {
         ...service, 
         quantity,
         service_id: service.id,
-        unit_price: unitPrice
+        unit_price: unitPrice,
+        has_custom_price: service.has_custom_price || false
       }];
     });
     
@@ -100,7 +146,8 @@ const PartnerServices = () => {
       return rest;
     });
     
-    toast.success(`Added ${quantity} x ${service.name}`);
+    const priceDisplay = service.has_custom_price ? 'special' : 'standard';
+    toast.success(`Added ${quantity} x ${service.name} (${priceDisplay} price)`);
     
     if (checkoutItems.length === 0) {
       setTimeout(() => setShowCheckout(true), 500);
@@ -152,7 +199,8 @@ const PartnerServices = () => {
 
   const ServiceCard = ({ service }) => {
     const quantity = quantities[service.id] || 0;
-    const price = parseFloat(service.price) || 0;
+    const price = parseFloat(service.partner_price || service.price) || 0;
+    const hasCustomPrice = service.has_custom_price || false;
     
     return (
       <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-primary/20">
@@ -181,6 +229,12 @@ const PartnerServices = () => {
                 Wholesale
               </span>
             )}
+            {hasCustomPrice && (
+              <span className="bg-amber-500/90 backdrop-blur-sm text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                <Tag size={12} />
+                Partner Price
+              </span>
+            )}
           </div>
           
           {service.included_quantity > 0 && (
@@ -197,10 +251,13 @@ const PartnerServices = () => {
           <p className="text-gray-500 text-sm mb-3 line-clamp-2">{service.description}</p>
           
           <div className="mb-4">
-            <span className="text-2xl font-bold text-primary">
-              GH₵ {price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </span>
-            <span className="text-xs text-gray-400 ml-1">/service</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-primary">
+                GH₵ {price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+              
+            </div>
+            
           </div>
           
           {/* Quantity Selector */}
@@ -246,7 +303,8 @@ const PartnerServices = () => {
 
   const ServiceListItem = ({ service }) => {
     const quantity = quantities[service.id] || 0;
-    const price = parseFloat(service.price) || 0;
+    const price = parseFloat(service.partner_price || service.price) || 0;
+    const hasCustomPrice = service.has_custom_price || false;
     
     return (
       <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 p-4">
@@ -273,12 +331,25 @@ const PartnerServices = () => {
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-1">{service.name}</h3>
             <p className="text-gray-500 text-sm mb-2 line-clamp-1">{service.description}</p>
-            <div className="flex items-center gap-3">
-              <span className="text-xl font-bold text-primary">
-                GH₵ {price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold text-primary">
+                  GH₵ {price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+                {hasCustomPrice && (
+                  <span className="text-xs text-gray-400 line-through">
+                    GH₵ {parseFloat(service.price).toFixed(2)}
+                  </span>
+                )}
+              </div>
               {service.is_wholesale && (
                 <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full">Wholesale</span>
+              )}
+              {hasCustomPrice && (
+                <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Tag size={12} />
+                  Partner Price
+                </span>
               )}
             </div>
           </div>
@@ -341,7 +412,9 @@ const PartnerServices = () => {
               </button>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">Wholesale Services</h1>
-                <p className="text-sm text-white/80 hidden sm:block">Browse and add items to your order</p>
+                <p className="text-sm text-white/80 hidden sm:block">
+                  {partnerData?.company_name || 'Partner'} - {services.length} services available
+                </p>
               </div>
             </div>
             
@@ -400,6 +473,12 @@ const PartnerServices = () => {
                 <span className="font-semibold text-gray-900">{filteredServices.length}</span> services available
               </span>
             </div>
+            {partnerData?.can_place_orders && (
+              <div className="flex items-center gap-2 text-green-600">
+                <Shield size={18} />
+                <span className="text-sm font-medium">Active Partner</span>
+              </div>
+            )}
             {checkoutItems.length > 0 && (
               <div className="flex items-center gap-2 text-primary">
                 <ShoppingBag size={18} />
@@ -435,7 +514,7 @@ const PartnerServices = () => {
         )}
       </div>
 
-      {/* Checkout Modal */}
+      {/* Checkout Modal - Same as before */}
       {showCheckout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCheckout(false)}>
           <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -454,6 +533,7 @@ const PartnerServices = () => {
                 const price = parseFloat(item.unit_price) || 0;
                 const qty = parseInt(item.quantity) || 0;
                 const isLast = index === checkoutItems.length - 1;
+                const hasCustomPrice = item.has_custom_price || false;
                 
                 return (
                   <div 
@@ -462,7 +542,12 @@ const PartnerServices = () => {
                   >
                     <div className="flex-1">
                       <p className="font-medium text-gray-800 text-sm">{item.name}</p>
-                      <p className="text-xs text-gray-400">GH₵ {price.toFixed(2)} each</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-gray-400">GH₵ {price.toFixed(2)} each</p>
+                        {hasCustomPrice && (
+                          <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Special</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button

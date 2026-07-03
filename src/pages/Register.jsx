@@ -381,18 +381,39 @@ const Register = () => {
             Login
           </Link>
         </p>
+
+        {/* Legal Links - Added inside the card */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link 
+              to="/legal" 
+              state={{ tab: 'privacy' }}
+              className="text-xs text-gray-400 hover:text-primary transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <span className="text-gray-300 text-xs">•</span>
+            <Link 
+              to="/legal" 
+              state={{ tab: 'terms' }}
+              className="text-xs text-gray-400 hover:text-primary transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <span className="text-gray-300 text-xs">•</span>
+            <Link 
+              to="/about-us" 
+              className="text-xs text-gray-400 hover:text-primary transition-colors"
+            >
+              About Us
+            </Link>
+          </div>
+        </div>
       </motion.div>
 
-      {/* terms and conditions */}
-      <div className="text-center mt-8 text-sm text-gray-500">
-        By registering, you agree to our{' '}
-        <Link to="/terms" className="text-primary hover:underline">
-          Terms and Conditions
-        </Link>{' '}
-        and{' '}
-        <Link to="/privacy" className="text-primary hover:underline">
-          Privacy Policy
-        </Link>.
+      {/* Optional: Additional footer text outside the card */}
+      <div className="text-center mt-4 text-xs text-gray-400">
+        By registering, you agree to our terms and privacy policy.
       </div>
     </div>
   );

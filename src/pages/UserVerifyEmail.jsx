@@ -15,15 +15,11 @@ const UserVerifyEmail = () => {
     const location = useLocation();
     const { refreshToken, updateTokens, isAuthenticated } = useContext(AuthContext);
    
-
     // Get parameters from URL
     const urlParams = new URLSearchParams(location.search);
     const userEmail = urlParams.get('email');
     const nextPath = urlParams.get('next');
     const navigate = useNavigate()
-
-     // Define a unique key for storage
-    const INITIAL_SENT_KEY = `verify_email_sent_${userEmail}`; // Use email for uniqueness
 
     // Check if the user is coming from a registration/login where they need verification
     const needsVerification = urlParams.get('isVerified') === 'false'; 
@@ -35,12 +31,6 @@ const UserVerifyEmail = () => {
     const [loading, setLoading] = useState(false);      // API request state
     const [checkingStatus, setCheckingStatus] = useState(false); // Checking verification status
     const [isVerified, setIsVerified] = useState(false); // Track if email is verified
-    const [initialSent, setInitialSent] = useState(() => {
-        // Check if a success flag exists in localStorage for this specific email
-        const storedValue = localStorage.getItem(INITIAL_SENT_KEY);
-        // Return true if the flag exists, otherwise false
-        return storedValue === 'true'; 
-    });
     
     // Check for email validity early
     if (!userEmail) {
@@ -52,8 +42,6 @@ const UserVerifyEmail = () => {
     const checkVerificationStatus = async () => {
         setCheckingStatus(true);
         try {
-            // You'll need to create this endpoint or use an existing one
-            // For now, we'll try to login or use a status check endpoint
             const response = await api.post('/api/users/check-verification-status/', {
                 email: userEmail
             });
@@ -91,7 +79,7 @@ const UserVerifyEmail = () => {
         }
     }, [fromLogin]);
     
-    // Helper function to send the verification email (used by both auto-send and resend)
+    // Helper function to send the verification email
     const sendVerificationEmail = async () => {
         setLoading(true);
         try {
@@ -104,8 +92,6 @@ const UserVerifyEmail = () => {
             if (backendStatus === 'SENT') {
                 // Scenario 1: Email was successfully queued for sending
                 setCooldown(30); // Start frontend cooldown timer
-                localStorage.setItem(INITIAL_SENT_KEY, 'true');
-                setInitialSent(true); 
                 setIsVerified(false); // Ensure not showing verified state
                 toast.success(response.data?.message || 'Verification email sent!');
                 
@@ -121,22 +107,16 @@ const UserVerifyEmail = () => {
                         );
                         
                         console.log("Tokens updated after verification.");
-                        // Update context with the new token (containing is_verified: true)
                         updateTokens(refreshResponse.data.access, refreshResponse.data.refresh);
-
                     } catch (refreshErr) {
                         console.error("Failed to refresh token after verification:", refreshErr);
                     }
                 }
                 
                 toast.success(response.data?.message || 'Your email is already verified!');
-                
-                // Option: Auto-redirect after a short delay
-                // setTimeout(() => navigate(nextPath || '/dashboard'), 2000);
             }
             
         } catch (err) {
-            // --- Error Handling ---
             console.log(err)
             
             // 1. Extract the error message from the response data
@@ -151,8 +131,6 @@ const UserVerifyEmail = () => {
             if (status === 429) {
                 toast.warn(errorMessage);
                 setCooldown(30); 
-
-            // 3. Handle other errors (404 User not found, 400 Bad Request, etc.)
             } else {
                 toast.error(errorMessage);
             }
@@ -161,18 +139,7 @@ const UserVerifyEmail = () => {
         }
     };
 
-    // 1. 🚀 INITIAL SEND EFFECT: Send email automatically on component mount
-    useEffect(() => {
-        // Define an async function internally
-        const initiateSend = async () => {
-            if (!initialSent && (needsVerification || isExpired)) {
-                await sendVerificationEmail(); 
-            }
-        };
-    
-        // Call the async function immediately
-        initiateSend();
-    }, [initialSent, needsVerification, isExpired]);
+    // NO AUTO-SEND ON MOUNT - Email is already sent by backend during registration
 
     // 2. COOLDOWN EFFECT: Countdown timer
     useEffect(() => {
@@ -214,59 +181,55 @@ const UserVerifyEmail = () => {
                 </p>
             </div>
         );
-    } else if (isExpired) {
-        mainMessage = (
-            <div className="space-y-2">
-                <p className="text-amber-600 font-medium">
-                    Link Expired
-                </p>
-                <p className="text-gray-700">
-                    The verification link for <span className="font-medium text-gray-900">{userEmail}</span> has expired.
-                    A new link has been sent. Please check your inbox.
-                </p>
-            </div>
-        );
-    } else if (needsVerification) {
-        mainMessage = (
-            <div className="space-y-2">
-                <p className="text-gray-700">
-                    It seems that <span className="font-medium text-gray-900">{userEmail}</span> is registered but not verified.
-                    We've sent a verification link to your inbox.
-                </p>
-            </div>
-        );
     } else {
         mainMessage = (
-            <div className="space-y-2">
-                <p className="text-gray-700">
-                    A verification link has been sent to
-                    <span className="font-medium text-gray-900"> {userEmail}</span>. Please
-                    click the link in that email to activate your account.
-                </p>
+            <div className="space-y-4">
+                <div className="flex items-center justify-center gap-2 text-green-600">
+                    <EnvelopeIcon className="w-8 h-8" />
+                    <span className="text-lg font-semibold">Check Your Email</span>
+                </div>
+                
+                {isExpired ? (
+                    <p className="text-amber-600 font-medium">
+                        Your verification link has expired.
+                    </p>
+                ) : null}
+                
+                <div className="text-gray-700 space-y-2">
+                    <p>
+                        We've sent a verification link to 
+                        <span className="font-medium text-gray-900"> {userEmail}</span>.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        Please check your inbox and click the verification link to activate your account.
+                        If you don't see the email, check your spam folder.
+                    </p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="h-[calc(100vh-7rem)] flex flex-col gap-4 items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
-            <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className=""
-            >
-                <Link to="/">
-                    <img src={logo} className="w-[10rem]" alt="Kleankickx Logo" />
-                </Link>                  
-            </motion.div>
+        <div className="flex h-full items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
             
-            <div className="bg-white w-full max-w-md shadow-lg rounded-xl p-8 text-center space-y-6">
+            
+            <div className="bg-white w-full mt-8 max-w-md shadow-lg rounded-xl p-8 text-center space-y-6">
+                <motion.div 
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                    className="flex justify-center items-center"
+                >
+                    <Link to="/">
+                        <img src={logo} className="w-[10rem]" alt="Kleankickx Logo" />
+                    </Link>                  
+                </motion.div>
                 {/* Header - changes based on verification status */}
                 <div className="flex flex-col items-center gap-2">
                     {isVerified ? (
                         <CheckCircleIcon className="w-12 h-12 text-green-600" />
                     ) : (
-                        <EnvelopeIcon className="w-12 h-12 text-green-700" />
+                        <EnvelopeIcon className="w-12 h-12 text-green-600" />
                     )}
                     <h2 className={`text-2xl font-bold ${isVerified ? 'text-green-600' : 'text-green-700'}`}>
                         {isVerified ? 'Email Verified!' : 'Verify Your Email'}
@@ -349,7 +312,7 @@ const UserVerifyEmail = () => {
                             Didn't get the email? Check your spam folder or{' '}
                             <button 
                                 onClick={handleResendVerification}
-                                disabled={cooldown > 0}
+                                disabled={cooldown > 0 || loading}
                                 className="text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
                             >
                                 click here to resend
