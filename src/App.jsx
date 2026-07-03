@@ -44,6 +44,7 @@ import PartnerOrders from './pages/PartnerOrders';
 import PartnerRoute from './components/PartnerRoute';
 import PartnerInvoices from './pages/PartnerInvoices';
 import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
+import KleanKickxLegal from './pages/KleanKickxLegal';
 
 
 // Loading component
@@ -127,7 +128,7 @@ const AppContent = () => {
           <Route path="/about-us" element={<About />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
-          
+          <Route path="/legal" element={<KleanKickxLegal />} />
           <Route
             path="/checkout"
             element={

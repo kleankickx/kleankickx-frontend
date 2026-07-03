@@ -597,7 +597,7 @@ useEffect(() => {
         onSuccess={(email) => console.log('Reset email sent to:', email)}
       />
 
-      <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex justify-center items-center flex-col">
+      <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex py-8 justify-center items-center flex-col">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -767,10 +767,34 @@ useEffect(() => {
                 <span className="transform transition-transform group-hover:translate-x-1">→</span>
               </Link>
             </p>
-            
-            <p className="mt-1 text-xs text-center text-gray-400">
-              Exclusive wholesale pricing, priority processing, and dedicated support
-            </p>
+          </div>
+
+          {/* Legal Links - Added at the bottom */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <Link 
+                to="/legal" 
+                state={{ tab: 'privacy' }}
+                className="text-xs text-gray-400 hover:text-primary transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-gray-300 text-xs">•</span>
+              <Link 
+                to="/legal" 
+                state={{ tab: 'terms' }}
+                className="text-xs text-gray-400 hover:text-primary transition-colors"
+              >
+                Terms of Service
+              </Link>
+              <span className="text-gray-300 text-xs">•</span>
+              <Link 
+                to="/about-us" 
+                className="text-xs text-gray-400 hover:text-primary transition-colors"
+              >
+                About Us
+              </Link>
+            </div>
           </div>
         </motion.div>
       </div>

@@ -3,6 +3,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { FaInstagram, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { IoMdMail } from "react-icons/io";
+import { Link } from 'react-router-dom';
 
 // Import your SDG images
 import SDG11 from '../assets/sus-image-1.jpeg';
@@ -51,16 +52,6 @@ const Footer = () => {
       {/* Main Content */}
       <div className="relative z-10 pt-20 pb-12 px-4 px-4 lg:px-24">
         <div className="">
-          {/* Logo & Branding Area - Can add logo here */}
-          {/* <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              <span className="text-primary">Klean</span>Kickx
-            </h2>
-            <p className="text-gray-300 max-w-2xl mx-auto">
-              Professional sneaker care and restoration services in Accra, Ghana
-            </p>
-          </div> */}
-
           {/* Grid Layout */}
           <motion.div 
             className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16"
@@ -222,12 +213,20 @@ const Footer = () => {
               </p>
               
               <div className="flex items-center space-x-6">
-                <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link 
+                  to="/legal" 
+                  state={{ tab: 'privacy' }}
+                  className="text-gray-400 hover:text-white text-sm transition-colors"
+                >
                   Privacy Policy
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                </Link>
+                <Link 
+                  to="/legal" 
+                  state={{ tab: 'terms' }}
+                  className="text-gray-400 hover:text-white text-sm transition-colors"
+                >
                   Terms of Service
-                </a>
+                </Link>
                 <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                   FAQ
                 </a>
