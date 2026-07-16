@@ -33,7 +33,21 @@ const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
+
+  // Desktop-only: controls the hover/click dropdowns in the top nav bar.
   const [activeDropdown, setActiveDropdown] = useState(null);
+
+  // Mobile-only: controls the accordion sections inside the slide-out drawer.
+  // IMPORTANT: this is intentionally a SEPARATE state from `activeDropdown`.
+  // The desktop dropdown JSX is only CSS-hidden on mobile (`hidden lg:flex`),
+  // not unmounted, so if it shared state with the mobile accordion, opening
+  // an accordion on mobile would also mount the (invisible) desktop dropdown
+  // and hijack `dropdownRef`, causing the outside-click handler below to
+  // treat taps inside the mobile drawer as "outside clicks" and collapse the
+  // accordion before the click could ever navigate. Keeping these separate
+  // fixes that race condition entirely.
+  const [mobileAccordion, setMobileAccordion] = useState(null);
+
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
@@ -43,7 +57,7 @@ const Navbar = () => {
   // Get cart item count - this will update as soon as cart loads
   const cartItemCount = getCartItemCount();
 
-  // Close dropdown when clicking outside
+  // Close desktop dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
       if (
@@ -68,7 +82,7 @@ const Navbar = () => {
         !e.target.closest('.mobile-menu-trigger')
       ) {
         setIsMobileMenuOpen(false);
-        setActiveDropdown(null);
+        setMobileAccordion(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -89,7 +103,7 @@ const Navbar = () => {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
-    setActiveDropdown(null);
+    setMobileAccordion(null);
   };
 
   const handleLogout = async (e) => {
@@ -164,8 +178,15 @@ const Navbar = () => {
     setIsBannerVisible(false);
   };
 
+  // Desktop dropdown toggle (top nav bar)
   const toggleDropdown = (groupLabel) => {
     setActiveDropdown(activeDropdown === groupLabel ? null : groupLabel);
+  };
+
+  // Mobile accordion toggle (slide-out drawer) - fully independent of the
+  // desktop dropdown state, see comment near `mobileAccordion` above.
+  const toggleMobileAccordion = (groupLabel) => {
+    setMobileAccordion(mobileAccordion === groupLabel ? null : groupLabel);
   };
 
   return (
@@ -216,7 +237,7 @@ const Navbar = () => {
           <div className="hidden lg:flex items-center justify-center flex-1 gap-1">
             {navGroups.map((group) => {
               if (group.authOnly && !isAuthenticated) return null;
-              
+
               if (group.simple) {
                 return (
                   <div key={group.label} className="relative">
@@ -257,7 +278,7 @@ const Navbar = () => {
 
                   {/* Dropdown Menu */}
                   {activeDropdown === group.label && (
-                    <div 
+                    <div
                       className="absolute left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 py-2"
                       ref={dropdownRef}
                     >
@@ -298,14 +319,14 @@ const Navbar = () => {
               aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-              
+
               {/* Show loading spinner only on initial load */}
               {cartLoading ? (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                  <svg 
-                    className="animate-spin h-3 w-3 text-white" 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    fill="none" 
+                  <svg
+                    className="animate-spin h-3 w-3 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
                     viewBox="0 0 24 24"
                   >
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -339,9 +360,9 @@ const Navbar = () => {
                     }`}
                   />
                 </button>
-                
+
                 {isDropdownOpen && (
-                  <div 
+                  <div
                     className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2"
                     ref={dropdownRef}
                   >
@@ -414,13 +435,13 @@ const Navbar = () => {
               aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-              
+
               {cartLoading ? (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                  <svg 
-                    className="animate-spin h-3 w-3 text-white" 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    fill="none" 
+                  <svg
+                    className="animate-spin h-3 w-3 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
                     viewBox="0 0 24 24"
                   >
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -446,16 +467,16 @@ const Navbar = () => {
 
         {/* Mobile menu overlay - full screen backdrop */}
         <div
-          className={`fixed inset-0 bg-black/60 transition-opacity duration-300 lg:hidden ${
+          className={`fixed inset-0 z-40 bg-black/60 transition-opacity duration-300 lg:hidden ${
             isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
           }`}
           onClick={closeMobileMenu}
         />
 
-        {/* Mobile side drawer - NOW SLIDING FROM LEFT */}
+        {/* Mobile side drawer - slides in from the left */}
         <div
           ref={mobileMenuRef}
-          className={`fixed top-0 left-0 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
+          className={`fixed top-0 left-0 z-50 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -478,7 +499,7 @@ const Navbar = () => {
             <div className="flex-1 overflow-y-auto space-y-6">
               {/* Cart Summary in Mobile Menu - Only show when cart has items */}
               {!cartLoading && cartItemCount > 0 && (
-                <div 
+                <div
                   onClick={() => {
                     navigate('/cart');
                     closeMobileMenu();
@@ -540,9 +561,9 @@ const Navbar = () => {
                       ) : (
                         <div className="space-y-1">
                           <button
-                            onClick={() => toggleDropdown(group.label)}
+                            onClick={() => toggleMobileAccordion(group.label)}
                             className={`flex items-center justify-between w-full px-4 py-3.5 rounded-lg transition-colors ${
-                              activeDropdown === group.label
+                              mobileAccordion === group.label
                                 ? 'bg-gray-700 text-green-400'
                                 : 'hover:bg-gray-700'
                             }`}
@@ -553,12 +574,12 @@ const Navbar = () => {
                             <FontAwesomeIcon
                               icon={faChevronRight}
                               className={`w-3 h-3 transition-transform duration-200 ${
-                                activeDropdown === group.label ? 'rotate-90' : ''
+                                mobileAccordion === group.label ? 'rotate-90' : ''
                               }`}
                             />
                           </button>
-                          
-                          {activeDropdown === group.label && (
+
+                          {mobileAccordion === group.label && (
                             <div className="ml-4 pl-4 border-l border-gray-700 space-y-1 py-2">
                               {group.items.map((item) => (
                                 <NavLink
@@ -636,7 +657,7 @@ const Navbar = () => {
                   </NavLink>
                 </div>
               )}
-              
+
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
