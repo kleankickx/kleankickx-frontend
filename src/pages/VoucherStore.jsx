@@ -508,7 +508,7 @@ const VoucherStore = () => {
             <span className="">Gift Vouchers</span>
           </h1>
           <p className="text-gray-600 max-w-2xl">
-            Give the gift of pristine sneakers! Purchase vouchers at 10% discount and save on premium cleaning services.
+            Give the gift of pristine sneakers! Purchase vouchers and save on premium cleaning services.
           </p>
         </div>
 
