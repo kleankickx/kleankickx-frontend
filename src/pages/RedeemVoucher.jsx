@@ -33,13 +33,9 @@ const RedeemVoucher = () => {
 
     if (urlCode) {
       setCode(urlCode);
-      if (urlCode.trim().length >= 8) {
-        handleVerifyVoucher(urlCode, null);
-      }
+      if (urlCode.trim().length >= 8) handleVerifyVoucher(urlCode, null);
     }
-    if (token) {
-      handleVerifyVoucher(null, token);
-    }
+    if (token) handleVerifyVoucher(null, token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
@@ -101,11 +97,11 @@ const RedeemVoucher = () => {
         </div>,
         { autoClose: 3000 }
       );
-    } catch (error) {
-      console.error('Voucher verification error:', error);
+    } catch (err) {
+      console.error('Voucher verification error:', err);
       let errorMsg = 'Unable to verify voucher';
-      if (error.response?.status === 404) errorMsg = 'Invalid voucher code';
-      else if (error.response?.data?.error) errorMsg = error.response.data.error;
+      if (err.response?.status === 404) errorMsg = 'Invalid voucher code';
+      else if (err.response?.data?.error) errorMsg = err.response.data.error;
 
       setError(errorMsg);
       toast.error(
@@ -144,7 +140,7 @@ const RedeemVoucher = () => {
         return;
       }
 
-      // Fetch service so backend sees correct service_type/included_quantity.
+      // Fetch service so backend gets the correct service_type etc.
       let service = null;
       try {
         const serviceResponse = await api.get(
@@ -152,7 +148,7 @@ const RedeemVoucher = () => {
         );
         service = serviceResponse.data;
       } catch (err) {
-        console.warn('Could not load service details, using voucher payload:', err);
+        console.warn('Could not load service details:', err);
       }
 
       const serviceData = {
@@ -167,7 +163,7 @@ const RedeemVoucher = () => {
         original_price: service?.price ?? voucherDetails.value,
       };
 
-      // ✅ Correct 3-arg call: (serviceId, quantity, serviceData)
+      // Correct 3-arg call: (serviceId, quantity, serviceData)
       await addToCart(voucherDetails.service_id, 1, serviceData);
 
       toast.success(
@@ -178,11 +174,12 @@ const RedeemVoucher = () => {
       );
 
       setTimeout(() => navigate('/cart'), 1200);
-    } catch (error) {
-      console.error('Redeem error:', error);
+    } catch (err) {
+      console.error('Redeem error:', err);
       const msg =
-        error.response?.data?.error ||
-        error.response?.data?.detail ||
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        err.message ||
         'Failed to add voucher to cart';
       toast.error(msg);
     } finally {
@@ -210,9 +207,7 @@ const RedeemVoucher = () => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      year: 'numeric', month: 'short', day: 'numeric',
     });
   };
 
@@ -225,7 +220,6 @@ const RedeemVoucher = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl mb-4 border border-green-200">
             <FaGift className="text-3xl text-green-600" />
@@ -239,7 +233,6 @@ const RedeemVoucher = () => {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Redemption Form */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -282,8 +275,7 @@ const RedeemVoucher = () => {
                         className="px-4 py-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 whitespace-nowrap"
                         disabled={verifying || loading}
                       >
-                        <FaCopy />
-                        Paste
+                        <FaCopy /> Paste
                       </button>
                     </div>
 
@@ -296,8 +288,7 @@ const RedeemVoucher = () => {
                           className="mt-3"
                         >
                           <div className="flex items-center gap-2 text-red-600 text-sm">
-                            <FaExclamationTriangle />
-                            {error}
+                            <FaExclamationTriangle /> {error}
                           </div>
                         </motion.div>
                       )}
@@ -318,26 +309,13 @@ const RedeemVoucher = () => {
                     }`}
                   >
                     {verifying ? (
-                      <>
-                        <FaSpinner className="animate-spin" />
-                        Verifying...
-                      </>
+                      <><FaSpinner className="animate-spin" /> Verifying...</>
                     ) : loading ? (
-                      <>
-                        <FaSpinner className="animate-spin" />
-                        Adding to Cart...
-                      </>
+                      <><FaSpinner className="animate-spin" /> Adding to Cart...</>
                     ) : voucherDetails ? (
-                      <>
-                        <FaShoppingBag />
-                        Add to Cart & Continue
-                        <FaArrowRight />
-                      </>
+                      <><FaShoppingBag /> Add to Cart & Continue <FaArrowRight /></>
                     ) : (
-                      <>
-                        <FaSearch />
-                        Verify Voucher
-                      </>
+                      <><FaSearch /> Verify Voucher</>
                     )}
                   </button>
 
@@ -374,7 +352,6 @@ const RedeemVoucher = () => {
             </div>
           </motion.div>
 
-          {/* Right Column */}
           <div className="space-y-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -452,27 +429,21 @@ const RedeemVoucher = () => {
                     </div>
 
                     <div className="space-y-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">1</div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-1">Enter Code</h4>
-                          <p className="text-sm text-gray-600">Type or paste your unique 12-character voucher code</p>
+                      {[
+                        { n: 1, title: 'Enter Code', desc: 'Type or paste your unique 12-character voucher code' },
+                        { n: 2, title: 'Verify & Add', desc: "We'll verify your code and add the service to cart" },
+                        { n: 3, title: 'Book Service', desc: 'Complete checkout to schedule your cleaning appointment' },
+                      ].map(({ n, title, desc }) => (
+                        <div key={n} className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">
+                            {n}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
+                            <p className="text-sm text-gray-600">{desc}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">2</div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-1">Verify & Add</h4>
-                          <p className="text-sm text-gray-600">We'll verify your code and add the service to cart</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">3</div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-1">Book Service</h4>
-                          <p className="text-sm text-gray-600">Complete checkout to schedule your cleaning appointment</p>
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     <div className="mt-8 pt-6 border-t border-gray-100">
@@ -532,18 +503,9 @@ const RedeemVoucher = () => {
               <div className="text-sm text-blue-600">
                 <p className="mb-2">Common issues:</p>
                 <ul className="space-y-1 ml-2">
-                  <li className="flex items-center gap-2">
-                    <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
-                    Invalid or expired code
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
-                    Already redeemed voucher
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
-                    Technical issues
-                  </li>
+                  <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-400 rounded-full"></div>Invalid or expired code</li>
+                  <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-400 rounded-full"></div>Already redeemed voucher</li>
+                  <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-400 rounded-full"></div>Technical issues</li>
                 </ul>
                 <p className="mt-3">
                   Contact:{' '}
