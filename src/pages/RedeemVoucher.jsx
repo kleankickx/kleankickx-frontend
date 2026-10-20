@@ -1,14 +1,15 @@
+// src/pages/RedeemVoucher.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
-import { 
-  FaGift, FaCheckCircle, FaArrowRight, 
-  FaSpinner, FaQrcode, FaCopy, FaTimes,
+import {
+  FaGift, FaCheckCircle, FaArrowRight,
+  FaSpinner, FaCopy, FaTimes,
   FaShoppingBag, FaExclamationTriangle,
-  FaCalendarAlt, FaUserFriends, FaSearch,
-  FaKey, FaTag, FaClock
+  FaUserFriends, FaSearch,
+  FaKey, FaClock
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
@@ -19,28 +20,27 @@ const RedeemVoucher = () => {
   const [verifying, setVerifying] = useState(false);
   const [voucherDetails, setVoucherDetails] = useState(null);
   const [error, setError] = useState('');
-  
+
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useContext(AuthContext);
   const { addToCart, cart } = useContext(CartContext);
 
-  // Check for code in URL params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlCode = params.get('apply_voucher');
     const token = params.get('token');
-    
+
     if (urlCode) {
       setCode(urlCode);
       if (urlCode.trim().length >= 8) {
         handleVerifyVoucher(urlCode, null);
       }
     }
-    
     if (token) {
       handleVerifyVoucher(null, token);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   const handleVerifyVoucher = async (voucherCode = null, token = null) => {
@@ -55,19 +55,15 @@ const RedeemVoucher = () => {
 
     try {
       const requestData = {};
-      if (voucherCode) {
-        requestData.voucher_code = voucherCode.trim().toUpperCase();
-      }
-      if (token) {
-        requestData.token = token;
-      }
+      if (voucherCode) requestData.voucher_code = voucherCode.trim().toUpperCase();
+      if (token) requestData.token = token;
 
       const response = await api.post('/api/vouchers/redeem/', requestData);
 
       if (response.data.error) {
         let errorMsg = response.data.error;
         let errorDetails = response.data.details || '';
-        
+
         if (response.data.error === 'This voucher has already been redeemed') {
           errorMsg = 'Already redeemed';
           if (response.data.voucher?.redeemed_by) {
@@ -78,9 +74,8 @@ const RedeemVoucher = () => {
         } else if (response.data.error === 'This voucher has been cancelled') {
           errorMsg = 'Cancelled';
         }
-        
+
         setError(errorDetails ? `${errorMsg}. ${errorDetails}` : errorMsg);
-        
         toast.error(
           <div className="flex items-center">
             <FaTimes className="mr-2 text-red-500" />
@@ -106,19 +101,13 @@ const RedeemVoucher = () => {
         </div>,
         { autoClose: 3000 }
       );
-
     } catch (error) {
       console.error('Voucher verification error:', error);
-      
       let errorMsg = 'Unable to verify voucher';
-      if (error.response?.status === 404) {
-        errorMsg = 'Invalid voucher code';
-      } else if (error.response?.data?.error) {
-        errorMsg = error.response.data.error;
-      }
-      
+      if (error.response?.status === 404) errorMsg = 'Invalid voucher code';
+      else if (error.response?.data?.error) errorMsg = error.response.data.error;
+
       setError(errorMsg);
-      
       toast.error(
         <div className="flex items-center">
           <FaExclamationTriangle className="mr-2 text-red-500" />
@@ -131,101 +120,71 @@ const RedeemVoucher = () => {
     }
   };
 
-  const handleRedeemToCart = () => {
+  const handleRedeemToCart = async () => {
     if (!voucherDetails) return;
 
     setLoading(true);
-    
     try {
       if (!isAuthenticated) {
         toast.info('Please sign in to redeem your voucher');
-        navigate('/auth/login', { 
-          state: { 
-            from: '/redeem',
-            voucherCode: code 
-          } 
+        navigate('/auth/login', {
+          state: { from: '/redeem', voucherCode: code },
         });
         return;
       }
 
-      const alreadyInCart = cart.some(item => 
-        item.service_id === voucherDetails.service_id && 
-        item.voucher_code === voucherDetails.code
+      const alreadyInCart = cart.some(
+        (item) =>
+          item.is_voucher_redeem &&
+          item.voucher_code === voucherDetails.code
       );
-
       if (alreadyInCart) {
         toast.info('This voucher is already in your cart');
         navigate('/cart');
         return;
       }
 
-      const fetchServiceDetails = async () => {
-        try {
-          const serviceResponse = await api.get(`/api/services/${voucherDetails.service_id}/`);
-          const service = serviceResponse.data;
-          
-          addToCart(
-            voucherDetails.service_id, 
-            service.name || voucherDetails.service_name, 
-            0,
-            1,
-            {
-              is_voucher_redeem: true,
-              voucher_code: voucherDetails.code,
-              voucher_value: voucherDetails.value,
-              voucher_id: voucherDetails.id,
-              service_type: service.service_type,
-              included_quantity: service.included_quantity || 1,
-              is_bundle_service: service.service_type?.startsWith('PACKAGE_') || false,
-              original_price: service.price,
-            }
-          );
+      // Fetch service so backend sees correct service_type/included_quantity.
+      let service = null;
+      try {
+        const serviceResponse = await api.get(
+          `/api/services/${voucherDetails.service_id}/`
+        );
+        service = serviceResponse.data;
+      } catch (err) {
+        console.warn('Could not load service details, using voucher payload:', err);
+      }
 
-          toast.success(
-            <div className="flex items-center">
-              <FaCheckCircle className="mr-2 text-green-500" />
-              <p className="font-medium">{service.name} added to your cart!</p>
-            </div>
-          );
-
-          setTimeout(() => {
-            navigate('/cart');
-          }, 1500);
-
-        } catch (error) {
-          console.error('Error fetching service details:', error);
-          
-          addToCart(
-            voucherDetails.service_id, 
-            voucherDetails.service_name, 
-            0,
-            1,
-            {
-              is_voucher_redeem: true,
-              voucher_code: voucherDetails.code,
-              voucher_value: voucherDetails.value,
-              voucher_id: voucherDetails.id
-            }
-          );
-
-          toast.success(
-            <div className="flex items-center">
-              <FaCheckCircle className="mr-2 text-green-500" />
-              {voucherDetails.service_name} added to your cart!
-            </div>
-          );
-
-          setTimeout(() => {
-            navigate('/cart');
-          }, 1500);
-        }
+      const serviceData = {
+        name: service?.name || voucherDetails.service_name,
+        price: 0,
+        service_type: service?.service_type,
+        included_quantity: service?.included_quantity || 1,
+        is_voucher_redeem: true,
+        voucher_code: voucherDetails.code,
+        voucher_id: voucherDetails.id,
+        voucher_value: voucherDetails.value,
+        original_price: service?.price ?? voucherDetails.value,
       };
 
-      fetchServiceDetails();
+      // ✅ Correct 3-arg call: (serviceId, quantity, serviceData)
+      await addToCart(voucherDetails.service_id, 1, serviceData);
 
+      toast.success(
+        <div className="flex items-center">
+          <FaCheckCircle className="mr-2 text-green-500" />
+          <p className="font-medium">{serviceData.name} added to your cart!</p>
+        </div>
+      );
+
+      setTimeout(() => navigate('/cart'), 1200);
     } catch (error) {
       console.error('Redeem error:', error);
-      toast.error('Failed to add voucher to cart');
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.detail ||
+        'Failed to add voucher to cart';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -237,18 +196,15 @@ const RedeemVoucher = () => {
       setCode(text);
       toast.success('Code pasted!');
       setTimeout(() => handleVerifyVoucher(text), 300);
-    } catch (err) {
+    } catch {
       toast.error('Unable to paste from clipboard');
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (voucherDetails) {
-      handleRedeemToCart();
-    } else {
-      handleVerifyVoucher(code);
-    }
+    if (voucherDetails) handleRedeemToCart();
+    else handleVerifyVoucher(code);
   };
 
   const formatDate = (dateString) => {
@@ -256,7 +212,7 @@ const RedeemVoucher = () => {
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -306,7 +262,6 @@ const RedeemVoucher = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Code Input */}
                 <div>
                   <div className="relative">
                     <div className="flex items-center gap-3">
@@ -331,8 +286,7 @@ const RedeemVoucher = () => {
                         Paste
                       </button>
                     </div>
-                    
-                    {/* Error Message */}
+
                     <AnimatePresence>
                       {error && (
                         <motion.div
@@ -351,7 +305,6 @@ const RedeemVoucher = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="space-y-4">
                   <button
                     type="submit"
@@ -401,7 +354,6 @@ const RedeemVoucher = () => {
                 </div>
               </form>
 
-              {/* Tips */}
               <div className="mt-8 pt-6 border-t border-gray-100">
                 <h4 className="font-medium text-gray-900 mb-3">Tips for success:</h4>
                 <ul className="space-y-2 text-sm text-gray-600">
@@ -422,9 +374,8 @@ const RedeemVoucher = () => {
             </div>
           </motion.div>
 
-          {/* Right Column - Details/Instructions */}
+          {/* Right Column */}
           <div className="space-y-6">
-            {/* Voucher Details or Instructions */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -446,7 +397,7 @@ const RedeemVoucher = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="p-6">
                     <div className="space-y-4">
                       <div className="p-4 bg-green-50 rounded-xl">
@@ -457,7 +408,7 @@ const RedeemVoucher = () => {
                           Cleaning service included
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="text-sm text-gray-500 mb-1">Value</div>
@@ -472,7 +423,7 @@ const RedeemVoucher = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                         <div className="flex items-center gap-3">
                           <FaCheckCircle className="text-blue-500" />
@@ -499,45 +450,31 @@ const RedeemVoucher = () => {
                         <p className="text-gray-600">Simple 3-step process</p>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-6">
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">
-                          1
-                        </div>
+                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">1</div>
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-1">Enter Code</h4>
-                          <p className="text-sm text-gray-600">
-                            Type or paste your unique 12-character voucher code
-                          </p>
+                          <p className="text-sm text-gray-600">Type or paste your unique 12-character voucher code</p>
                         </div>
                       </div>
-                      
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">
-                          2
-                        </div>
+                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">2</div>
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-1">Verify & Add</h4>
-                          <p className="text-sm text-gray-600">
-                            We'll verify your code and add the service to cart
-                          </p>
+                          <p className="text-sm text-gray-600">We'll verify your code and add the service to cart</p>
                         </div>
                       </div>
-                      
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">
-                          3
-                        </div>
+                        <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">3</div>
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-1">Book Service</h4>
-                          <p className="text-sm text-gray-600">
-                            Complete checkout to schedule your cleaning appointment
-                          </p>
+                          <p className="text-sm text-gray-600">Complete checkout to schedule your cleaning appointment</p>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="mt-8 pt-6 border-t border-gray-100">
                       <div className="flex items-center gap-3 text-sm text-gray-600">
                         <FaClock className="text-gray-400" />
@@ -549,7 +486,6 @@ const RedeemVoucher = () => {
               )}
             </motion.div>
 
-            {/* Quick Actions */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -566,7 +502,6 @@ const RedeemVoucher = () => {
                   <div className="text-xs text-gray-500">See all cleaning options</div>
                 </div>
               </button>
-              
               <button
                 onClick={() => navigate('/account/vouchers')}
                 className="p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all flex items-center justify-center gap-3"
@@ -579,7 +514,6 @@ const RedeemVoucher = () => {
               </button>
             </motion.div>
 
-            {/* Help Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -612,11 +546,8 @@ const RedeemVoucher = () => {
                   </li>
                 </ul>
                 <p className="mt-3">
-                  Contact: {' '}
-                  <a 
-                    href="mailto:support@kleankickx.com" 
-                    className="text-blue-700 font-medium underline"
-                  >
+                  Contact:{' '}
+                  <a href="mailto:support@kleankickx.com" className="text-blue-700 font-medium underline">
                     support@kleankickx.com
                   </a>
                 </p>
