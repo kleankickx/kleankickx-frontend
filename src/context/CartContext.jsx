@@ -1,24 +1,16 @@
 // src/context/CartContext.jsx
 import React, {
-  createContext,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useContext,
+  createContext, useState, useEffect, useCallback, useRef, useContext,
 } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
 import api from "../api";
 import { trackEvent } from "../utils/analytics";
+
 export const CartContext = createContext();
 
 const emptyCart = {
-  id: null,
-  items: [],
-  total: 0,
-  item_count: 0,
-  currency: "GHS",
+  id: null, items: [], total: 0, item_count: 0, currency: "GHS",
 };
 
 export const CartProvider = ({ children }) => {
@@ -28,7 +20,6 @@ export const CartProvider = ({ children }) => {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
 
-  // cartRef always holds the latest server-confirmed cart state.
   const cartRef = useRef(cartData);
   const initialLoadDone = useRef(false);
   const loadingRef = useRef(false);
@@ -38,23 +29,13 @@ export const CartProvider = ({ children }) => {
     setCartData(data);
   }, []);
 
-  // ─── Load cart from server ───────────────────────────────────────────────
   const loadCart = useCallback(async () => {
-    // Skip cart loading for partners
     if (isPartner) {
-      console.log("[CartContext] Partner account - skipping cart loading");
       setCart(emptyCart);
       return emptyCart;
     }
-
-    if (loadingRef.current) {
-      console.log("[CartContext] Load already in progress, skipping");
-      return cartRef.current;
-    }
-
+    if (loadingRef.current) return cartRef.current;
     loadingRef.current = true;
-    console.log("[CartContext] Loading cart…");
-
     try {
       const response = await api.get("/api/cart/");
       if (response.data) {
@@ -71,150 +52,174 @@ export const CartProvider = ({ children }) => {
     }
   }, [setCart, isPartner]);
 
-  // ─── Initial load on mount ───────────────────────────────────────────────
   useEffect(() => {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
-
-    console.log("[CartContext] Initial load starting…");
     setLoading(true);
     loadCart()
-      .then(() => {
-        console.log("[CartContext] Initial load complete");
-        setInitialized(true);
-      })
-      .catch(() => {
-        setInitialized(true);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .then(() => setInitialized(true))
+      .catch(() => setInitialized(true))
+      .finally(() => setLoading(false));
   }, [loadCart]);
 
-  // ─── Reload on auth change ───────────────────────────────────────────────
   useEffect(() => {
     if (!initialized) return;
-    console.log("[CartContext] Auth changed, reloading cart");
     loadCart();
   }, [isAuthenticated, initialized, isPartner, loadCart]);
 
-  // ─── addToCart ───────────────────────────────────────────────────────────
+  // ─── addToCart ─────────────────────────────────────────────────────────
+  // Signature: addToCart(serviceId, quantity = 1, serviceData = null)
+  // serviceData may include voucher fields.
   const addToCart = useCallback(
     async (serviceId, quantity = 1, serviceData = null) => {
-      // Skip for partners
       if (isPartner) {
-        console.log("[CartContext] Partner account - cannot add to cart");
         toast.info("Partners order directly from wholesale catalog", {
-          position: "top-right",
-          autoClose: 3000,
+          position: "top-right", autoClose: 3000,
         });
         return null;
       }
 
+      // Defensive: catch legacy 5-arg callers
+      if (typeof quantity === "string" && isNaN(Number(quantity))) {
+        console.error(
+          "[CartContext.addToCart] quantity is a non-numeric string:",
+          quantity,
+          "— correct signature is addToCart(serviceId, quantity, serviceData)"
+        );
+        throw new Error("addToCart called with wrong arguments");
+      }
+
+      const qty = Math.max(1, parseInt(quantity, 10) || 1);
       const currentCart = cartRef.current;
 
-      // Optimistic update for instant UI feedback
-      if (serviceData && currentCart) {
-        const existingIndex = currentCart.items.findIndex(
+      // Guard duplicate voucher in cart
+      if (serviceData?.is_voucher_redeem && serviceData?.voucher_code) {
+        const alreadyInCart = (currentCart.items || []).some(
           (item) =>
-            item.service_id === serviceId || item.service?.id === serviceId
+            item.is_voucher_redeem &&
+            item.voucher_code === serviceData.voucher_code
         );
+        if (alreadyInCart) {
+          toast.info("This voucher is already in your cart");
+          return currentCart;
+        }
+      }
+
+      // Optimistic UI
+      if (serviceData && currentCart) {
+        const existingIndex = (currentCart.items || []).findIndex(
+          (item) =>
+            item.service_id === serviceId ||
+            item.service?.id === serviceId ||
+            item.service === serviceId
+        );
+
+        const price = Number(serviceData.price) || 0;
 
         if (existingIndex >= 0) {
           const updatedItems = [...currentCart.items];
           updatedItems[existingIndex] = {
             ...updatedItems[existingIndex],
-            quantity: updatedItems[existingIndex].quantity + quantity,
+            quantity: updatedItems[existingIndex].quantity + qty,
           };
           setCartData({
             ...currentCart,
             items: updatedItems,
-            item_count: currentCart.item_count + quantity,
-            total: currentCart.total + serviceData.price * quantity,
+            item_count: (currentCart.item_count || 0) + qty,
+            total: (currentCart.total || 0) + price * qty,
           });
         } else {
           const tempItem = {
             id: `temp-${Date.now()}`,
             service_id: serviceId,
             service: serviceData,
-            quantity,
-            unit_price: serviceData.price,
-            total: serviceData.price * quantity,
+            service_name: serviceData.name,
+            quantity: qty,
+            unit_price: price,
+            total: price * qty,
+            is_voucher_redeem: !!serviceData.is_voucher_redeem,
+            voucher_code: serviceData.voucher_code,
+            voucher_id: serviceData.voucher_id,
+            voucher_value: serviceData.voucher_value,
+            original_price: serviceData.original_price,
           };
           setCartData({
             ...currentCart,
-            items: [...currentCart.items, tempItem],
-            item_count: currentCart.item_count + quantity,
-            total: currentCart.total + serviceData.price * quantity,
+            items: [...(currentCart.items || []), tempItem],
+            item_count: (currentCart.item_count || 0) + qty,
+            total: (currentCart.total || 0) + price * qty,
           });
         }
       }
 
       try {
-        const response = await api.post("/api/cart/add/", {
-          service_id: serviceId,
-          quantity,
-        });
+        const payload = { service_id: serviceId, quantity: qty };
+
+        // Forward voucher metadata to the backend
+        if (serviceData?.is_voucher_redeem) {
+          payload.is_voucher_redeem = true;
+          payload.voucher_code = serviceData.voucher_code;
+          payload.voucher_id = serviceData.voucher_id;
+          if (serviceData.voucher_value != null) {
+            payload.voucher_value = serviceData.voucher_value;
+          }
+          if (serviceData.original_price != null) {
+            payload.original_price = serviceData.original_price;
+          }
+        }
+
+        const response = await api.post("/api/cart/add/", payload);
         setCart(response.data);
+
         if (serviceData) {
           trackEvent("add_to_cart", {
             currency: "GHS",
-            value: serviceData.price * quantity,
-            items: [
-              {
-                item_id: String(serviceId),
-                item_name: serviceData.name,
-                item_category:
-                  serviceData.service_type || "Cleaning",
-                price: serviceData.price,
-                quantity,
-              },
-            ],
+            value: (Number(serviceData.price) || 0) * qty,
+            items: [{
+              item_id: String(serviceId),
+              item_name: serviceData.name || "Service",
+              item_category: serviceData.service_type || "Cleaning",
+              price: Number(serviceData.price) || 0,
+              quantity: qty,
+            }],
           });
         }
         return response.data;
-      } catch (error) {
-        console.error("Add to cart failed:", error);
+      } catch (err) {
+        console.error("Add to cart failed:", err);
         await loadCart();
-        throw error;
+        throw err;
       }
     },
     [loadCart, setCart, isPartner]
   );
 
-  // ─── updateQuantity ──────────────────────────────────────────────────────
   const updateQuantity = useCallback(
     async (itemId, newQuantity) => {
-      // Skip for partners
-      if (isPartner) {
-        console.log("[CartContext] Partner account - cannot update cart");
-        return;
-      }
-
+      if (isPartner) return;
       const currentCart = cartRef.current;
-      const itemIndex = currentCart.items.findIndex((item) => item.id === itemId);
+      const itemIndex = (currentCart.items || []).findIndex((i) => i.id === itemId);
       if (itemIndex === -1) return;
 
       const oldItem = currentCart.items[itemIndex];
+      // Voucher items are always free — don't change price
+      const pricePerItem = oldItem.is_voucher_redeem
+        ? 0
+        : oldItem.unit_price || (oldItem.total || 0) / (oldItem.quantity || 1);
       const oldQuantity = oldItem.quantity;
       const oldTotal = currentCart.total;
-      const pricePerItem = oldItem.unit_price || oldItem.total / oldItem.quantity;
       const quantityDiff = newQuantity - oldQuantity;
       const newTotal = Math.max(0, oldTotal + quantityDiff * pricePerItem);
 
-      // Optimistic update
       setCartData((prev) => {
         const updatedItems = [...prev.items];
-        if (newQuantity <= 0) {
-          updatedItems.splice(itemIndex, 1);
-        } else {
-          updatedItems[itemIndex] = { ...oldItem, quantity: newQuantity };
-        }
+        if (newQuantity <= 0) updatedItems.splice(itemIndex, 1);
+        else updatedItems[itemIndex] = { ...oldItem, quantity: newQuantity };
         return {
           ...prev,
           items: updatedItems,
           total: newTotal,
-          item_count: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
+          item_count: updatedItems.reduce((s, i) => s + i.quantity, 0),
         };
       });
 
@@ -226,97 +231,60 @@ export const CartProvider = ({ children }) => {
         }
         cartRef.current = {
           ...cartRef.current,
-          items:
-            newQuantity <= 0
-              ? cartRef.current.items.filter((i) => i.id !== itemId)
-              : cartRef.current.items.map((i) =>
-                  i.id === itemId ? { ...i, quantity: newQuantity } : i
-                ),
+          items: newQuantity <= 0
+            ? cartRef.current.items.filter((i) => i.id !== itemId)
+            : cartRef.current.items.map((i) =>
+                i.id === itemId ? { ...i, quantity: newQuantity } : i
+              ),
           total: newTotal,
         };
-      } catch (error) {
-        console.error("Quantity update failed:", error);
-        setCartData((prev) => {
-          const revertedItems = [...prev.items];
-          const idx = revertedItems.findIndex((i) => i.id === itemId);
-          if (idx !== -1) {
-            revertedItems[idx] = { ...oldItem, quantity: oldQuantity };
-          } else {
-            revertedItems.splice(itemIndex, 0, oldItem);
-          }
-          return {
-            ...prev,
-            items: revertedItems,
-            total: oldTotal,
-            item_count: revertedItems.reduce((sum, item) => sum + item.quantity, 0),
-          };
-        });
+      } catch (err) {
+        console.error("Quantity update failed:", err);
         await loadCart();
       }
     },
     [loadCart, isPartner]
   );
 
-  // ─── removeFromCart ──────────────────────────────────────────────────────
   const removeFromCart = useCallback(
     async (itemId) => {
-      // Skip for partners
-      if (isPartner) {
-        console.log("[CartContext] Partner account - cannot remove from cart");
-        return;
-      }
-
+      if (isPartner) return;
       const currentCart = cartRef.current;
-      const itemToRemove = currentCart.items.find((item) => item.id === itemId);
+      const itemToRemove = currentCart.items.find((i) => i.id === itemId);
       if (!itemToRemove) return;
 
-      const updatedItems = currentCart.items.filter((item) => item.id !== itemId);
-      const newTotal = Math.max(
-        0,
-        currentCart.total - itemToRemove.unit_price * itemToRemove.quantity
-      );
+      const updatedItems = currentCart.items.filter((i) => i.id !== itemId);
+      const lineTotal = itemToRemove.is_voucher_redeem
+        ? 0
+        : (Number(itemToRemove.unit_price) || 0) * itemToRemove.quantity;
+      const newTotal = Math.max(0, currentCart.total - lineTotal);
       const newCount = currentCart.item_count - itemToRemove.quantity;
 
       const optimistic = {
-        ...currentCart,
-        items: updatedItems,
-        total: newTotal,
-        item_count: newCount,
+        ...currentCart, items: updatedItems, total: newTotal, item_count: newCount,
       };
       setCartData(optimistic);
 
       try {
         await api.delete(`/api/cart/items/${itemId}/`);
         cartRef.current = optimistic;
-      } catch (error) {
-        console.error("Remove from cart failed:", error);
+      } catch (err) {
+        console.error("Remove from cart failed:", err);
         setCartData(currentCart);
       }
     },
     [isPartner]
   );
 
-  // ─── clearCart ───────────────────────────────────────────────────────────
   const clearCart = useCallback(async () => {
-    // Skip for partners
-    if (isPartner) {
-      console.log("[CartContext] Partner account - cannot clear cart");
-      return;
-    }
-
+    if (isPartner) return;
     await api.post("/api/cart/clear/");
     setCart(emptyCart);
   }, [setCart, isPartner]);
 
-  // ─── Image actions ───────────────────────────────────────────────────────
   const addImageToCartItem = useCallback(
     async (itemId, imageBase64) => {
-      // Skip for partners
-      if (isPartner) {
-        console.log("[CartContext] Partner account - cannot add image to cart");
-        return;
-      }
-
+      if (isPartner) return;
       await api.post(`/api/cart/items/${itemId}/add-image/`, {
         image_base64: imageBase64,
       });
@@ -327,29 +295,16 @@ export const CartProvider = ({ children }) => {
 
   const removeImageFromCartItem = useCallback(
     async (itemId) => {
-      // Skip for partners
-      if (isPartner) {
-        console.log("[CartContext] Partner account - cannot remove image from cart");
-        return;
-      }
-
+      if (isPartner) return;
       await api.delete(`/api/cart/items/${itemId}/remove-image/`);
       await loadCart();
     },
     [loadCart, isPartner]
   );
 
-  // ─── mergeGuestCart ──────────────────────────────────────────────────────
   const mergeGuestCart = useCallback(
     async (guestCartId = null) => {
-      if (!isAuthenticated) return null;
-      
-      // Skip for partners
-      if (isPartner) {
-        console.log("[CartContext] Partner account - skipping cart merge");
-        return null;
-      }
-      
+      if (!isAuthenticated || isPartner) return null;
       const payload = guestCartId ? { guest_cart_id: guestCartId } : {};
       const response = await api.post("/api/cart/merge-guest/", payload);
       await loadCart();
@@ -358,16 +313,11 @@ export const CartProvider = ({ children }) => {
     [loadCart, isAuthenticated, isPartner]
   );
 
-  // ─── refreshCart ─────────────────────────────────────────────────────────
   const refreshCart = useCallback(() => {
-    if (isPartner) {
-      console.log("[CartContext] Partner account - skipping cart refresh");
-      return Promise.resolve(emptyCart);
-    }
+    if (isPartner) return Promise.resolve(emptyCart);
     return loadCart();
   }, [loadCart, isPartner]);
 
-  // ─── Helper functions ────────────────────────────────────────────────────
   const getCartItemCount = useCallback(() => {
     if (isPartner) return 0;
     return cartData.item_count || 0;
@@ -394,7 +344,6 @@ export const CartProvider = ({ children }) => {
     [isPartner]
   );
 
-  // ─── Context value ───────────────────────────────────────────────────────
   const value = {
     cart: isPartner ? [] : cartData.items,
     cartMeta: isPartner ? emptyCart : cartData,
@@ -415,9 +364,7 @@ export const CartProvider = ({ children }) => {
     getImageBase64,
   };
 
-  return (
-    <CartContext.Provider value={value}>{children}</CartContext.Provider>
-  );
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
 export default CartProvider;

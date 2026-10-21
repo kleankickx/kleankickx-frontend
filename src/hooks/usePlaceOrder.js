@@ -95,6 +95,7 @@ const transformCartItemsForOrder = (cartItems) => {
             imageBase64: item.image_base64 || item.imageBase64 || null,
             is_voucher_redeem: item.is_voucher_redeem || false,
             voucher_code: item.voucher_code || null,
+            voucher_id: item.voucher_id,
             is_free_signup_service: item.is_free_signup_service || false,
             service_type: item.service_type || null,
             included_quantity: item.included_quantity || 1,
