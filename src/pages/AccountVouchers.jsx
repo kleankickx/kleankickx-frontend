@@ -1,58 +1,39 @@
 // src/pages/AccountVouchers.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
-import { 
-  FaGift, FaCopy, FaCheckCircle, FaClock, 
-  FaUser, FaSpinner,
-  FaArrowRight, FaShoppingBag, FaTag
+import {
+  FaGift, FaCopy, FaCheck, FaClock, FaSpinner,
+  FaArrowRight, FaShoppingBag, FaTag,
 } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 
 const AccountVouchers = () => {
-    const [vouchers, setVouchers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [copiedCode, setCopiedCode] = useState(null);
-    const location = useLocation();
-    const navigate = useNavigate();
-  
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+  const [vouchers, setVouchers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [copiedCode, setCopiedCode] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useContext(AuthContext);
 
   useEffect(() => {
-    // Check for payment success message in URL
     const params = new URLSearchParams(location.search);
-    const paymentStatus = params.get('payment_status');
-    const orderNumber = params.get('order');
-    
-    if (paymentStatus === 'success' && orderNumber) {
-      toast.success(
-        <div className="flex items-center">
-          <FaCheckCircle className="mr-2 text-green-500" />
-          Payment successful! Your vouchers have been created.
-        </div>
-      );
-      
-      // Clear the URL parameters
-      const newUrl = '/account/vouchers';
-      window.history.replaceState({}, document.title, newUrl);
+    if (params.get('payment_status') === 'success' && params.get('order')) {
+      toast.success('Payment successful — your vouchers are ready.');
+      window.history.replaceState({}, document.title, '/account/vouchers');
     }
-    
     fetchUserVouchers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   const fetchUserVouchers = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await api.get(`/api/vouchers/user-vouchers/`);
-      
-      setVouchers(response.data);
+      const { data } = await api.get('/api/vouchers/user-vouchers/');
+      setVouchers(data);
     } catch (error) {
-      console.error('Error fetching vouchers:', error);
-      
       if (error.response?.status === 401) {
-        toast.error('Please login to view your vouchers');
+        toast.error('Please sign in to view your vouchers');
         navigate('/login');
       } else {
         toast.error('Failed to load vouchers');
@@ -62,288 +43,281 @@ const AccountVouchers = () => {
     }
   };
 
-  const copyToClipboard = (code) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    toast.success(`Copied: ${code}`);
-    
-    setTimeout(() => {
-      setCopiedCode(null);
-    }, 2000);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const getDaysRemaining = (validUntil) => {
-    const now = new Date();
-    const validDate = new Date(validUntil);
-    const diffTime = validDate - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
-
-  const getStatusBadge = (status, validUntil) => {
-    const daysRemaining = getDaysRemaining(validUntil);
-    
-    if (status === 'REDEEMED') {
-      return { 
-        color: 'bg-blue-100 text-blue-800', 
-        text: 'Redeemed',
-        icon: FaCheckCircle 
-      };
-    } else if (status === 'EXPIRED' || daysRemaining <= 0) {
-      return { 
-        color: 'bg-gray-100 text-gray-800', 
-        text: 'Expired',
-        icon: FaClock 
-      };
-    } else if (daysRemaining <= 7) {
-      return { 
-        color: 'bg-amber-100 text-amber-800', 
-        text: `Expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`,
-        icon: FaClock 
-      };
-    } else {
-      return { 
-        color: 'bg-green-100 text-green-800', 
-        text: 'Active',
-        icon: FaCheckCircle 
-      };
+  const copyToClipboard = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 1800);
+    } catch {
+      toast.error('Could not copy code');
     }
   };
 
+  const formatDate = (d) =>
+    new Date(d).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+
+  const daysRemaining = (validUntil) =>
+    Math.max(0, Math.ceil((new Date(validUntil) - new Date()) / 86400000));
+
+  const statusOf = (voucher) => {
+    const days = daysRemaining(voucher.valid_until);
+    if (voucher.status === 'REDEEMED') return { key: 'redeemed', label: 'Redeemed' };
+    if (voucher.status === 'EXPIRED' || days <= 0) return { key: 'expired', label: 'Expired' };
+    if (days <= 7) return { key: 'expiring', label: `${days}d left` };
+    return { key: 'active', label: 'Active' };
+  };
+
+  const activeVouchers = vouchers.filter((v) => statusOf(v).key !== 'redeemed' && statusOf(v).key !== 'expired');
+  const pastVouchers = vouchers.filter((v) => statusOf(v).key === 'redeemed' || statusOf(v).key === 'expired');
+
+  // ── Loading ─────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <FaSpinner className="animate-spin text-4xl text-green-600 mx-auto mb-4" /> {/* Changed to green */}
-          <p className="text-gray-600">Loading your vouchers...</p>
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="flex flex-col items-center gap-3 text-neutral-500">
+          <FaSpinner className="animate-spin text-2xl" />
+          <p className="text-sm">Loading your vouchers…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Vouchers</h1>
-              <p className="text-gray-600 mt-2">
-                {vouchers.length === 0 
-                  ? "You don't have any vouchers yet"
-                  : `You have ${vouchers.length} voucher${vouchers.length !== 1 ? 's' : ''}`
-                }
-              </p>
-            </div>
-            <Link
-              to="/vouchers"
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center gap-2" // Changed to green gradient
-            >
-              <FaGift />
-              Buy More Vouchers
-            </Link>
-          </div>
-        </div>
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
 
-        {/* Success Banner */}
-        {location.search.includes('payment_status=success') && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg"> {/* Changed to green */}
-            <div className="flex items-center">
-              <FaCheckCircle className="text-green-500 mr-3" size={24} />
-              <div>
-                <h3 className="font-bold text-green-800">Payment Successful!</h3>
-                <p className="text-green-700">Your vouchers have been created. Check your email for the codes.</p>
-              </div>
-            </div>
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 tracking-tight">
+              Vouchers
+            </h1>
+            <p className="text-neutral-500 mt-1 text-sm">
+              {vouchers.length === 0
+                ? 'No vouchers yet.'
+                : `${vouchers.length} total · ${activeVouchers.length} active`}
+            </p>
           </div>
-        )}
 
+          <Link
+            to="/vouchers"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg
+                       bg-neutral-900 text-white text-sm font-medium
+                       hover:bg-neutral-800 transition-colors
+                       self-start sm:self-auto"
+          >
+            <FaGift className="text-xs" />
+            Buy vouchers
+          </Link>
+        </header>
+
+        {/* ── Empty state ─────────────────────────────────────────── */}
         {vouchers.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
-            <div className="max-w-md mx-auto">
-              <div className="w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6"> {/* Changed to green */}
-                <FaGift className="text-4xl text-green-600" /> {/* Changed to green */}
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">No Vouchers Yet</h3>
-              <p className="text-gray-600 mb-8">
-                Purchase vouchers to gift cleaning services to friends and family, or redeem them for your own sneakers!
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  to="/vouchers"
-                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2" // Changed to green
-                >
-                  <FaGift />
-                  Browse Vouchers
-                </Link>
-                <Link
-                  to="/services"
-                  className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <FaShoppingBag />
-                  Book Cleaning
-                </Link>
-              </div>
+          <div className="rounded-2xl border border-dashed border-neutral-200 bg-white py-20 px-6 text-center">
+            <div className="mx-auto w-14 h-14 rounded-full bg-neutral-50 flex items-center justify-center mb-5">
+              <FaGift className="text-neutral-400" size={22} />
+            </div>
+            <h3 className="text-lg font-medium text-neutral-900 mb-1">No vouchers yet</h3>
+            <p className="text-sm text-neutral-500 max-w-sm mx-auto mb-6">
+              Purchase a voucher to gift a cleaning — or redeem one for yourself.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                to="/vouchers"
+                className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
+              >
+                Browse vouchers
+              </Link>
+              <Link
+                to="/services"
+                className="px-4 py-2 rounded-lg border border-neutral-200 text-neutral-700 text-sm font-medium hover:bg-neutral-50 transition-colors"
+              >
+                Book cleaning
+              </Link>
             </div>
           </div>
         ) : (
           <>
-            {/* Active Vouchers */}
-            <div className="mb-10">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Active Vouchers</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {vouchers
-                  .filter(v => v.status === 'ACTIVE' && getDaysRemaining(v.valid_until) > 0)
-                  .map((voucher) => {
-                    const statusBadge = getStatusBadge(voucher.status, voucher.valid_until);
-                    const StatusIcon = statusBadge.icon;
-                    
+            {/* ── Active vouchers ─────────────────────────────────── */}
+            {activeVouchers.length > 0 && (
+              <section className="mb-12">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
+                    Active
+                  </h2>
+                  <span className="text-xs text-neutral-400">
+                    {activeVouchers.length}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeVouchers.map((voucher) => {
+                    const status = statusOf(voucher);
+                    const isCopied = copiedCode === voucher.code;
+
                     return (
-                      <div key={voucher.id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 text-white"> {/* Changed to green */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <FaTag />
-                              <span className="font-bold">{voucher.voucher_type}</span>
+                      <article
+                        key={voucher.id}
+                        className="group relative bg-white rounded-xl
+                                   ring-1 ring-neutral-200 hover:ring-neutral-300
+                                   transition-all overflow-hidden"
+                      >
+                        {/* Header row */}
+                        <div className="p-5 pb-4 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 text-neutral-500 text-xs mb-1">
+                              <FaTag size={9} />
+                              <span className="truncate">{voucher.voucher_type}</span>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
-                              <StatusIcon className="inline mr-1" size={12} />
-                              {statusBadge.text}
-                            </span>
+                            <h3 className="text-base font-medium text-neutral-900 truncate">
+                              {voucher.service_name || 'Cleaning voucher'}
+                            </h3>
                           </div>
+                          <StatusPill status={status} />
                         </div>
 
-                        <div className="p-6">
-                          {/* Voucher Code */}
-                          <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Voucher Code
-                            </label>
-                            <div className="flex items-center">
-                              <code className="flex-1 bg-gray-50 px-4 py-3 rounded-lg font-mono text-lg font-bold text-gray-900 border border-gray-200">
-                                {voucher.code}
-                              </code>
-                              <button
-                                onClick={() => copyToClipboard(voucher.code)}
-                                className="ml-3 p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                                title="Copy to clipboard"
-                              >
-                                <FaCopy className={copiedCode === voucher.code ? 'text-green-600' : 'text-gray-600'} /> {/* Changed to green */}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Details */}
-                          <div className="space-y-3 mb-6">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <FaClock className="mr-2 flex-shrink-0" />
-                              <span>Valid until: {formatDate(voucher.valid_until)}</span>
-                            </div>
-                            
-                            <div className="flex items-center text-sm text-gray-600">
-                              <FaUser className="mr-2 flex-shrink-0" />
-                              <span>Value: ₵{voucher.purchase_price}</span>
-                            </div>
-                            
-                            {voucher.service_name && (
-                              <div className="text-sm text-gray-600">
-                                <span className="font-medium">Service:</span> {voucher.service_name}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Action Button - Removed share button */}
+                        {/* Code block */}
+                        <div className="px-5 pb-4">
                           <button
-                            onClick={() => navigate(`/redeem?apply_voucher=${voucher.code}`)}
-                            className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2" // Changed to green
+                            type="button"
+                            onClick={() => copyToClipboard(voucher.code)}
+                            className="w-full flex items-center justify-between gap-3
+                                       px-3.5 py-2.5 rounded-lg bg-neutral-50
+                                       border border-dashed border-neutral-200
+                                       hover:bg-neutral-100 transition-colors text-left"
+                            aria-label={`Copy voucher code ${voucher.code}`}
                           >
-                            Redeem This Voucher
-                            <FaArrowRight />
+                            <code className="font-mono text-sm font-semibold tracking-wider text-neutral-900 truncate">
+                              {voucher.code}
+                            </code>
+                            {isCopied ? (
+                              <FaCheck className="text-emerald-600 shrink-0" size={12} />
+                            ) : (
+                              <FaCopy className="text-neutral-400 group-hover:text-neutral-600 shrink-0 transition-colors" size={12} />
+                            )}
                           </button>
                         </div>
-                      </div>
+
+                        {/* Dashed divider — ticket feel */}
+                        <div className="relative px-5">
+                          <div className="border-t border-dashed border-neutral-200" />
+                        </div>
+
+                        {/* Footer meta + CTA */}
+                        <div className="p-5 pt-4">
+                          <dl className="flex items-center justify-between text-xs text-neutral-500 mb-4">
+                            <div>
+                              <dt className="sr-only">Value</dt>
+                              <dd className="font-medium text-neutral-900 text-sm">
+                                ₵{Number(voucher.purchase_price).toFixed(2)}
+                              </dd>
+                            </div>
+                            <div className="text-right">
+                              <dt className="text-neutral-400">Expires</dt>
+                              <dd>{formatDate(voucher.valid_until)}</dd>
+                            </div>
+                          </dl>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(`/redeem?apply_voucher=${voucher.code}`)
+                            }
+                            className="w-full inline-flex items-center justify-center gap-2
+                                       py-2.5 rounded-lg bg-neutral-900 text-white
+                                       text-sm font-medium hover:bg-neutral-800
+                                       transition-colors"
+                          >
+                            Redeem
+                            <FaArrowRight size={10} />
+                          </button>
+                        </div>
+                      </article>
                     );
                   })}
-              </div>
-            </div>
+                </div>
+              </section>
+            )}
 
-            {/* Redeemed/Expired Vouchers */}
-            {vouchers.some(v => v.status !== 'ACTIVE' || getDaysRemaining(v.valid_until) <= 0) && (
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Redeemed & Expired Vouchers</h2>
-                <div className="bg-white rounded-xl shadow overflow-hidden">
+            {/* ── Past vouchers ──────────────────────────────────── */}
+            {pastVouchers.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
+                    Past
+                  </h2>
+                  <span className="text-xs text-neutral-400">{pastVouchers.length}</span>
+                </div>
+
+                <div className="bg-white rounded-xl ring-1 ring-neutral-200 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Voucher Code
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Valid Until
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Redeemed On
-                          </th>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs font-medium text-neutral-500 bg-neutral-50/60">
+                          <th className="px-5 py-3 font-medium">Code</th>
+                          <th className="px-5 py-3 font-medium">Type</th>
+                          <th className="px-5 py-3 font-medium">Status</th>
+                          <th className="px-5 py-3 font-medium hidden sm:table-cell">Valid until</th>
+                          <th className="px-5 py-3 font-medium hidden md:table-cell">Redeemed</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {vouchers
-                          .filter(v => v.status !== 'ACTIVE' || getDaysRemaining(v.valid_until) <= 0)
-                          .map((voucher) => {
-                            const statusBadge = getStatusBadge(voucher.status, voucher.valid_until);
-                            
-                            return (
-                              <tr key={voucher.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <code className="font-mono text-sm text-gray-900">
-                                    {voucher.code}
-                                  </code>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {voucher.voucher_type}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
-                                    {statusBadge.text}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {formatDate(voucher.valid_until)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {voucher.redeemed_at ? formatDate(voucher.redeemed_at) : '—'}
-                                </td>
-                              </tr>
-                            );
-                          })}
+                      <tbody className="divide-y divide-neutral-100">
+                        {pastVouchers.map((voucher) => {
+                          const status = statusOf(voucher);
+                          return (
+                            <tr key={voucher.id} className="hover:bg-neutral-50/60 transition-colors">
+                              <td className="px-5 py-3">
+                                <code className="font-mono text-xs text-neutral-700">
+                                  {voucher.code}
+                                </code>
+                              </td>
+                              <td className="px-5 py-3 text-neutral-700">
+                                {voucher.voucher_type}
+                              </td>
+                              <td className="px-5 py-3">
+                                <StatusPill status={status} />
+                              </td>
+                              <td className="px-5 py-3 text-neutral-500 hidden sm:table-cell">
+                                {formatDate(voucher.valid_until)}
+                              </td>
+                              <td className="px-5 py-3 text-neutral-500 hidden md:table-cell">
+                                {voucher.redeemed_at ? formatDate(voucher.redeemed_at) : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
-              </div>
+              </section>
             )}
           </>
         )}
       </div>
     </div>
+  );
+};
+
+// ── Small status pill component ────────────────────────────────────────────
+const StatusPill = ({ status }) => {
+  const styles = {
+    active:   { dot: 'bg-emerald-500', text: 'text-emerald-700', ring: 'ring-emerald-200', bg: 'bg-emerald-50' },
+    expiring: { dot: 'bg-amber-500',   text: 'text-amber-700',   ring: 'ring-amber-200',   bg: 'bg-amber-50' },
+    redeemed: { dot: 'bg-neutral-400', text: 'text-neutral-600', ring: 'ring-neutral-200', bg: 'bg-neutral-50' },
+    expired:  { dot: 'bg-neutral-300', text: 'text-neutral-500', ring: 'ring-neutral-200', bg: 'bg-neutral-50' },
+  };
+  const s = styles[status.key] || styles.active;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full
+                  text-[11px] font-medium ${s.text} ${s.bg} ring-1 ${s.ring} shrink-0`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} aria-hidden="true" />
+      {status.label}
+    </span>
   );
 };
 
