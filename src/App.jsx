@@ -67,7 +67,8 @@ const ConditionalNavbar = () => {
   
   // Routes where no navbar should be shown (auth pages)
   const hideNavbarOn = [
-    '/auth/login', 
+    '/auth/login',
+    '/', 
     '/auth/register', 
     '/auth/confirm-email/', 
     '/auth/verify-email', 
