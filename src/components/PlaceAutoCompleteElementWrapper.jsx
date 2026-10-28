@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import REGION_CONFIG from '../utils/regionConfig';
 import { toast } from 'react-toastify';
 import { FaSpinner } from 'react-icons/fa';
-import axios from 'axios';
+import api from '../api';
 
 const AVAILABLE_REGIONS = Object.keys(REGION_CONFIG);
 
@@ -62,35 +62,16 @@ const PlaceAutocompleteElementWrapper = ({
     );
   };
 
-  // Fetch Zippy pickup times
+  // Fetch Zippy pickup times (proxied by the backend, which holds the Zippy credentials)
   const fetchZippyPickupTimes = async () => {
     try {
-      const response = await axios.get('https://merchant-api-test.zippy.com.gh/configs', {
-        auth: {
-          username: import.meta.env.VITE_ZIPPY_USERNAME,
-          password: import.meta.env.VITE_ZIPPY_PASSWORD
-        },
-        timeout: 10000
-      });
-      
-      const pickupTimes = response.data?.data?.pickupTimes;
-      if (!pickupTimes) {
-        throw new Error('No pickup times in response');
-      }
-      
-      const dateKeys = Object.keys(pickupTimes);
-      if (dateKeys.length === 0) {
-        throw new Error('No dates available');
-      }
-      
-      const firstDateKey = dateKeys[0];
-      const firstDayTimeSlots = pickupTimes[firstDateKey];
-      
-      if (!firstDayTimeSlots || firstDayTimeSlots.length === 0) {
+      const response = await api.get('/api/orders/zippy/pickup-time/', { timeout: 15000 });
+
+      const firstPickupTime = response.data?.pickup_time;
+      if (!firstPickupTime) {
         throw new Error('No time slots available');
       }
-      
-      const firstPickupTime = firstDayTimeSlots[0];
+
       return {
         value: firstPickupTime.value,
         label: firstPickupTime.label || firstPickupTime.value,
@@ -105,25 +86,21 @@ const PlaceAutocompleteElementWrapper = ({
   // Fetch delivery pricing from Zippy
   const fetchZippyPricing = async (pickupLat, pickupLng, pickupTimeValue) => {
     try {
-      const response = await axios.get('https://merchant-api-test.zippy.com.gh/delivery-times', {
-        auth: {
-          username: import.meta.env.VITE_ZIPPY_USERNAME,
-          password: import.meta.env.VITE_ZIPPY_PASSWORD
-        },
+      // The backend quotes exactly what checkout will charge (incl. the fallback fee).
+      const response = await api.get('/api/orders/zippy/quote/', {
         params: {
-          pickupTime: pickupTimeValue,
-          weight: 1,
-          senderLocation: `${pickupLat},${pickupLng}`,
-          receiverLocation: "5.632553, -0.224377"
+          lat: pickupLat,
+          lng: pickupLng,
+          pickup_time: pickupTimeValue || undefined
         },
-        timeout: 10000
+        timeout: 15000
       });
-      
-      const pricingData = response.data?.data;
-      if (pricingData && pricingData.length > 0 && pricingData[0]?.totalPrice) {
-        return pricingData[0].totalPrice;
+
+      const price = Number(response.data?.price);
+      if (price > 0) {
+        return price;
       }
-      
+
       throw new Error('No pricing data available');
     } catch (error) {
       console.error('Zippy Pricing API Error - Using fallback price:', error);
