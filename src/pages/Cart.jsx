@@ -931,7 +931,7 @@ const Cart = () => {
                                       </div>
                                       {voucherDetails[item.service_id]?.valid_until && <div className="text-xs text-emerald-600">Expires: {formatDate(voucherDetails[item.service_id].valid_until)}</div>}
                                     </div>
-                                    {item.voucher_value && <div className="mt-2 text-sm text-emerald-700"><span className="font-medium">Original Value:</span> ₵{item.voucher_value}</div>}
+                                    {item.voucher_value && <div className="mt-2 text-sm text-emerald-700"><span className="font-medium">Voucher Value:</span> ₵{item.voucher_value}</div>}
                                   </div>
                                 )}
                               </div>
