@@ -23,7 +23,7 @@ import {
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import Logo from '../assets/klean_logo.webp';
+import Logo from '../assets/logo2.png';
 
 const Navbar = () => {
   // Get cart data from context
@@ -207,7 +207,7 @@ const Navbar = () => {
               </div>
               <button
                 onClick={handleCloseBanner}
-                className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
+                className="text-white hover:text-green-100 transition-colors flex-shrink-0 cursor-pointer"
                 aria-label="Close banner"
               >
                 <svg
@@ -226,11 +226,11 @@ const Navbar = () => {
         </div>
       )}
 
-      <nav className="bg-gray-800 text-white py-4 shadow-md">
+      <nav className="bg-white text-gray-900 py-3 shadow-sm border-b border-gray-200">
         <div className="flex justify-between items-center px-4 lg:px-8 xl:px-12 gap-6">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
-            <img src={Logo} alt="KleanKickx" className="w-28 object-cover" />
+            <img src={Logo} alt="KleanKickx" className="h-12 w-auto object-contain" />
           </NavLink>
 
           {/* Desktop Navigation */}
@@ -246,8 +246,8 @@ const Navbar = () => {
                       className={({ isActive }) =>
                         `flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
                           isActive
-                            ? 'bg-gray-700 text-green-400'
-                            : 'hover:bg-gray-700 hover:text-green-300'
+                            ? 'bg-green-50 text-green-700'
+                            : 'hover:bg-gray-100 hover:text-green-700'
                         }`
                       }
                     >
@@ -263,8 +263,8 @@ const Navbar = () => {
                     onClick={() => toggleDropdown(group.label)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
                       activeDropdown === group.label
-                        ? 'bg-gray-700 text-green-400'
-                        : 'hover:bg-gray-700 hover:text-green-300'
+                        ? 'bg-green-50 text-green-700'
+                        : 'hover:bg-gray-100 hover:text-green-700'
                     }`}
                   >
                     <span>{group.label}</span>
@@ -279,7 +279,7 @@ const Navbar = () => {
                   {/* Dropdown Menu */}
                   {activeDropdown === group.label && (
                     <div
-                      className="absolute left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 py-2"
+                      className="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50 py-2"
                       ref={dropdownRef}
                     >
                       {group.items.map((item) => (
@@ -292,8 +292,8 @@ const Navbar = () => {
                               item.highlight
                                 ? 'bg-gradient-to-r from-green-600 to-primary text-white mx-2 rounded-md hover:opacity-90'
                                 : isActive
-                                ? 'bg-gray-700 text-green-400'
-                                : 'hover:bg-gray-700 text-gray-200'
+                                ? 'bg-green-50 text-green-700'
+                                : 'hover:bg-gray-100 text-gray-700'
                             }`
                           }
                         >
@@ -315,7 +315,7 @@ const Navbar = () => {
             {/* Cart - Smooth display without disappearing */}
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
@@ -345,9 +345,9 @@ const Navbar = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen((p) => !p)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
                 >
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center">
                     <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
                   </div>
                   <span className="truncate max-w-[120px] font-medium">
@@ -363,7 +363,7 @@ const Navbar = () => {
 
                 {isDropdownOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2"
+                    className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2"
                     ref={dropdownRef}
                   >
                     <div className="space-y-1">
@@ -373,9 +373,9 @@ const Navbar = () => {
                           navigate('/account/vouchers');
                           setIsDropdownOpen(false);
                         }}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
                       >
-                        <FontAwesomeIcon icon={faGift} className="w-4 h-4 text-purple-400" />
+                        <FontAwesomeIcon icon={faGift} className="w-4 h-4 text-purple-500" />
                         <span>My Vouchers</span>
                       </button>
                       <button
@@ -384,22 +384,22 @@ const Navbar = () => {
                           navigate('/change-password');
                           setIsDropdownOpen(false);
                         }}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
                       >
-                        <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-400" />
+                        <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-500" />
                         <span>Change Password</span>
                       </button>
                       <button
                         onClick={handleReferralRoute}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors"
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
                       >
-                        <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-400" />
+                        <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-500" />
                         <span>Referrals</span>
                       </button>
-                      <div className="border-t border-gray-700 my-2" />
+                      <div className="border-t border-gray-200 my-2" />
                       <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
+                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-red-500/10 text-red-600 hover:text-red-700 transition-colors"
                       >
                         <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
                         <span>Logout</span>
@@ -412,13 +412,13 @@ const Navbar = () => {
               <div className="flex items-center gap-3">
                 <NavLink
                   to="/auth/login"
-                  className="px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Login
                 </NavLink>
                 <NavLink
                   to="/auth/register"
-                  className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
                   Register
                 </NavLink>
@@ -431,7 +431,7 @@ const Navbar = () => {
             {/* Cart for mobile */}
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
@@ -456,7 +456,7 @@ const Navbar = () => {
             </button>
 
             <button
-              className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer mobile-menu-trigger"
+              className="text-2xl p-2 hover:bg-gray-100 rounded-lg cursor-pointer mobile-menu-trigger"
               onClick={() => setIsMobileMenuOpen((p) => !p)}
               aria-label="Menu"
             >
@@ -476,7 +476,7 @@ const Navbar = () => {
         {/* Mobile side drawer - slides in from the left */}
         <div
           ref={mobileMenuRef}
-          className={`fixed top-0 left-0 z-50 h-full w-4/5 max-w-sm bg-gray-800 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
+          className={`fixed top-0 left-0 z-50 h-full w-4/5 max-w-sm bg-white text-gray-900 shadow-xl transform transition-transform duration-300 ease-out lg:hidden ${
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -484,10 +484,10 @@ const Navbar = () => {
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <NavLink to="/" onClick={closeMobileMenu}>
-                <img src={Logo} alt="KleanKickx" className="w-24" />
+                <img src={Logo} alt="KleanKickx" className="h-10 w-auto object-contain" />
               </NavLink>
               <button
-                className="text-2xl p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+                className="text-2xl p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
                 onClick={closeMobileMenu}
                 aria-label="Close menu"
               >
@@ -508,29 +508,29 @@ const Navbar = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <FontAwesomeIcon icon={faShoppingCart} className="text-xl text-green-400" />
+                      <FontAwesomeIcon icon={faShoppingCart} className="text-xl text-green-600" />
                       <div>
                         <p className="font-semibold">{cartItemCount} item(s) in cart</p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-gray-500">
                           Total: ₵{cartMeta?.total?.toFixed(2) || '0.00'}
                         </p>
                       </div>
                     </div>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
+                    <FontAwesomeIcon icon={faChevronRight} className="text-gray-500" />
                   </div>
                 </div>
               )}
 
               {/* User Info */}
               {isAuthenticated && (
-                <div className="p-4 bg-gray-700/50 rounded-lg">
+                <div className="p-4 bg-gray-100 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center">
                       <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
                     </div>
                     <div>
                       <p className="font-semibold">{userDisplayName}</p>
-                      <p className="text-sm text-gray-400 truncate max-w-[200px]">
+                      <p className="text-sm text-gray-500 truncate max-w-[200px]">
                         {user?.email}
                       </p>
                     </div>
@@ -543,7 +543,7 @@ const Navbar = () => {
                 {navGroups
                   .filter(group => !group.authOnly || (group.authOnly && isAuthenticated))
                   .map((group) => (
-                    <div key={group.label} className="border-b border-gray-700/50 last:border-0">
+                    <div key={group.label} className="border-b border-gray-200 last:border-0">
                       {group.simple ? (
                         <NavLink
                           to={group.to}
@@ -551,8 +551,8 @@ const Navbar = () => {
                           className={({ isActive }) =>
                             `flex items-center gap-3 px-4 py-3.5 rounded-lg transition-colors ${
                               isActive
-                                ? 'bg-gray-700 text-green-400'
-                                : 'hover:bg-gray-700'
+                                ? 'bg-green-50 text-green-700'
+                                : 'hover:bg-gray-100'
                             }`
                           }
                         >
@@ -564,8 +564,8 @@ const Navbar = () => {
                             onClick={() => toggleMobileAccordion(group.label)}
                             className={`flex items-center justify-between w-full px-4 py-3.5 rounded-lg transition-colors ${
                               mobileAccordion === group.label
-                                ? 'bg-gray-700 text-green-400'
-                                : 'hover:bg-gray-700'
+                                ? 'bg-green-50 text-green-700'
+                                : 'hover:bg-gray-100'
                             }`}
                           >
                             <div className="flex items-center gap-3">
@@ -580,7 +580,7 @@ const Navbar = () => {
                           </button>
 
                           {mobileAccordion === group.label && (
-                            <div className="ml-4 pl-4 border-l border-gray-700 space-y-1 py-2">
+                            <div className="ml-4 pl-4 border-l border-gray-200 space-y-1 py-2">
                               {group.items.map((item) => (
                                 <NavLink
                                   key={item.to}
@@ -591,14 +591,14 @@ const Navbar = () => {
                                       item.highlight
                                         ? 'bg-gradient-to-r from-green-600 to-primary text-white hover:opacity-90'
                                         : isActive
-                                        ? 'bg-gray-700/50 text-green-400'
-                                        : 'hover:bg-gray-700/50'
+                                        ? 'bg-green-50 text-green-700'
+                                        : 'hover:bg-gray-100'
                                     }`
                                   }
                                 >
                                   <span>{item.label}</span>
                                   {item.highlight && (
-                                    <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded-full">
+                                    <span className="ml-auto text-xs bg-white/30 px-2 py-1 rounded-full">
                                       New
                                     </span>
                                   )}
@@ -614,23 +614,23 @@ const Navbar = () => {
 
               {/* User Actions for Mobile */}
               {isAuthenticated && (
-                <div className="space-y-2 pt-4 border-t border-gray-700/50">
+                <div className="space-y-2 pt-4 border-t border-gray-200">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate('/change-password');
                       closeMobileMenu();
                     }}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-left"
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
                   >
-                    <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-400" />
+                    <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-500" />
                     <span>Change Password</span>
                   </button>
                   <button
                     onClick={handleReferralRoute}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-left"
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
                   >
-                    <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-400" />
+                    <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-500" />
                     <span>Referrals</span>
                   </button>
                 </div>
@@ -638,20 +638,20 @@ const Navbar = () => {
             </div>
 
             {/* Footer Actions */}
-            <div className="pt-6 border-t border-gray-700/50 space-y-4">
+            <div className="pt-6 border-t border-gray-200 space-y-4">
               {!isAuthenticated && (
                 <div className="flex flex-col gap-3">
                   <NavLink
                     to="/auth/login"
                     onClick={closeMobileMenu}
-                    className="px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-center"
+                    className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-center"
                   >
                     Login
                   </NavLink>
                   <NavLink
                     to="/auth/register"
                     onClick={closeMobileMenu}
-                    className="px-4 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition-colors text-center font-medium"
+                    className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center font-medium"
                   >
                     Register
                   </NavLink>
@@ -661,7 +661,7 @@ const Navbar = () => {
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                  className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg bg-red-50 text-red-600 hover:bg-red-500/20 transition-colors"
                 >
                   <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
                   <span>Logout</span>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 
 const Home = () => {
   // --- State & Refs ---
@@ -213,7 +214,7 @@ const Home = () => {
   const bundleIndex = bundleKeys.indexOf(String(bundleSelection));
 
   return (
-    <div className="antialiased">
+    <div className="antialiased kk-home">
       <style>{`
         :root{
           --paper:#F7F9F6;--ink:#0A0B0A;--muted:#4D564C;--line:#D9DFD7;--card:#FFFFFF;
@@ -225,15 +226,10 @@ const Home = () => {
           --spring:cubic-bezier(.2,1.25,.3,1);
           --swift:cubic-bezier(.77,0,.18,1);
         }
-        @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-          --paper:#0E110E;--ink:#EEF2EC;--muted:#A3AEA1;--line:#283028;--card:#151915;--green:#2E9A2E;--green-ink:#FFFFFF;--tint:#152315;
-          --band:#050605;--band-fg:#F2F5F0;--band-muted:#A3AEA1;--band-line:#232823;--band-green:#55C455;color-scheme:dark}}
-        :root[data-theme="dark"]{
-          --paper:#0E110E;--ink:#EEF2EC;--muted:#A3AEA1;--line:#283028;--card:#151915;--green:#2E9A2E;--green-ink:#FFFFFF;--tint:#152315;
-          --band:#050605;--band-fg:#F2F5F0;--band-muted:#A3AEA1;--band-line:#232823;--band-green:#55C455;color-scheme:dark}
         *{box-sizing:border-box}
         html{scroll-behavior:smooth}
-        body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+        body{background:var(--paper)}
+        .kk-home{color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
         body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--paper)}
         a{color:inherit}
         :focus-visible{outline:3px solid var(--green);outline-offset:3px;border-radius:2px}
@@ -255,17 +251,6 @@ const Home = () => {
         .btn.light{border-color:#fff;color:#fff}
         .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
 
-        /* header */
-        header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-        .bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:12px}
-        .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
-        .logo svg{width:30px;height:30px;flex:none}
-        .logo .kmark-k{fill:var(--ink)}
-        .logo span{font-family:var(--display);font-size:27px;line-height:1;letter-spacing:.01em}
-        nav{display:flex;gap:24px;align-items:center}
-        nav a.l{text-decoration:none;font-weight:500;font-size:15px;color:var(--muted)}
-        nav a.l:hover{color:var(--ink)}
-        @media (max-width:900px){nav a.l{display:none}}
 
         /* ===== hero slideshow ===== */
         .show{position:relative;height:clamp(560px,80vh,820px);overflow:hidden;background:#000;color:#fff;touch-action:pan-y}
@@ -490,7 +475,7 @@ const Home = () => {
         .sdgs b{font-family:var(--display);font-weight:400;color:var(--band-green);font-size:18px;margin-right:8px}
         @media (max-width:860px){.contact{grid-template-columns:1fr}}
         footer .wrap{padding-block:30px;display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between;color:var(--muted);font-size:14px}
-        footer nav{gap:20px;flex-wrap:wrap}
+        footer nav{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
         footer nav a{text-decoration:none;color:var(--muted)}
 
         @media (prefers-reduced-motion:reduce){
@@ -501,31 +486,6 @@ const Home = () => {
           .js .ba .after:not(.in) img{clip-path:none}
         }
       `}</style>
-
-      {/* SVG Sprite */}
-      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-        <symbol id="kmark" viewBox="0 0 1080 1080">
-          <circle cx="298" cy="256" r="122" fill="#1A7A1A" />
-          <polygon className="kmark-k" points="113,1013 345,1013 500,763 655,1013 975,1013 588,617 975,136 475,136" />
-        </symbol>
-      </svg>
-
-      <header>
-        <div className="wrap bar">
-          <a className="logo" href="#top" aria-label="KleanKickx home">
-            <svg aria-hidden="true"><use href="#kmark" /></svg>
-            <span>KLEANKICK<span className="x">X</span></span>
-          </a>
-          <nav aria-label="Main">
-            <a className="l" href="#services">Services</a>
-            <a className="l" href="#bundles">Bundles</a>
-            <a className="l" href="#how">How it works</a>
-            <a className="l" href="#care">Klean tips</a>
-            <a className="l" href="#contact">Contact</a>
-            <a className="btn go sm" href="https://kleankickx.com/services" target="_blank" rel="noopener">Schedule a Klean</a>
-          </nav>
-        </div>
-      </header>
 
       <main id="top">
         {/* HERO SLIDESHOW */}
@@ -596,9 +556,9 @@ const Home = () => {
                   <p className="sub">{slide.sub}</p>
                   {index === 2 && (
                     <div className="ctas">
-                      <a className="btn go" href="https://kleankickx.com/services" target="_blank" rel="noopener">
+                      <Link className="btn go" to="/services">
                         Schedule a Klean <span className="ar" aria-hidden="true">→</span>
-                      </a>
+                      </Link>
                       <a className="btn light" href="#bundles">See bundles</a>
                     </div>
                   )}
@@ -731,10 +691,10 @@ const Home = () => {
               <p>Priced per pair, in GHS, taxes included. Drop off at the studio or request pickup and delivery (fees apply). New here? Your first Standard Klean is on us.</p>
             </div>
             <div className="svcs rv">
-              <article className="svc free"><span className="flag">New users</span><span className="time mono">Delivered in 72h</span><h3>Free Signup Klean</h3><p>A complimentary Standard Klean for new users. One per account.</p><div className="price">FREE</div><a className="btn go sm" href="https://kleankickx.com/services" target="_blank" rel="noopener">Sign up to claim</a></article>
-              <article className="svc"><span className="time mono">Delivered in 72h</span><h3>Standard Klean</h3><p>Thorough cleaning of the entire shoe, removing dirt, dust and everyday grime. Ideal for regular care.</p><div className="price">₵50<small>/ pair</small></div><a className="btn sm" href="https://kleankickx.com/services" target="_blank" rel="noopener">Book Standard</a></article>
-              <article className="svc"><span className="flag">Next day</span><span className="time mono">Delivered next day</span><h3>Priority Klean</h3><p>For sneakerheads who want professional care without the wait. Your pair jumps the queue.</p><div className="price">₵70<small>/ pair</small></div><a className="btn sm" href="https://kleankickx.com/services" target="_blank" rel="noopener">Book Priority</a></article>
-              <article className="svc"><span className="time mono">Delivered in 72h</span><h3>Deep Klean</h3><p>An intensive process for stubborn stains and deeply embedded dirt. For pairs that need a real restoration.</p><div className="price">₵80<small>/ pair</small></div><a className="btn sm" href="https://kleankickx.com/services" target="_blank" rel="noopener">Book Deep</a></article>
+              <article className="svc free"><span className="flag">New users</span><span className="time mono">Delivered in 72h</span><h3>Free Signup Klean</h3><p>A complimentary Standard Klean for new users. One per account.</p><div className="price">FREE</div><Link className="btn go sm" to="/services">Sign up to claim</Link></article>
+              <article className="svc"><span className="time mono">Delivered in 72h</span><h3>Standard Klean</h3><p>Thorough cleaning of the entire shoe, removing dirt, dust and everyday grime. Ideal for regular care.</p><div className="price">₵50<small>/ pair</small></div><Link className="btn sm" to="/services">Book Standard</Link></article>
+              <article className="svc"><span className="flag">Next day</span><span className="time mono">Delivered next day</span><h3>Priority Klean</h3><p>For sneakerheads who want professional care without the wait. Your pair jumps the queue.</p><div className="price">₵70<small>/ pair</small></div><Link className="btn sm" to="/services">Book Priority</Link></article>
+              <article className="svc"><span className="time mono">Delivered in 72h</span><h3>Deep Klean</h3><p>An intensive process for stubborn stains and deeply embedded dirt. For pairs that need a real restoration.</p><div className="price">₵80<small>/ pair</small></div><Link className="btn sm" to="/services">Book Deep</Link></article>
             </div>
 
             {/* BUNDLE PICKER */}
@@ -781,9 +741,9 @@ const Home = () => {
                     ? `Save ₵${bundleSelection * 50 - selectedBundle.total} vs single pairs`
                     : 'Standard price'}
                 </span>
-                <a className="btn go" href="https://kleankickx.com/services" target="_blank" rel="noopener">
+                <Link className="btn go" to="/services">
                   {selectedBundle.label} <span className="ar" aria-hidden="true">→</span>
-                </a>
+                </Link>
               </div>
             </div>
             <p className="note">We count in pairs: one pair is a left and a right shoe. Pay by Mobile Money, card, bank transfer, Paystack or cash.</p>
@@ -794,7 +754,7 @@ const Home = () => {
                 <div className="eyebrow mono">Gift vouchers</div>
                 <h3>Give the gift of fresh kicks.</h3>
                 <p>Pick a voucher, pay securely, and it lands in their inbox instantly. Valid for 6 months.</p>
-                <a className="btn go" href="https://kleankickx.com" target="_blank" rel="noopener">Buy a voucher <span className="ar" aria-hidden="true">→</span></a>
+                <Link className="btn go" to="/vouchers">Buy a voucher <span className="ar" aria-hidden="true">→</span></Link>
               </div>
               <ul className="vouchers">
                 <li><span className="v-n">Standard Klean</span><span className="v-p">1 pair</span><b>₵50</b></li>
@@ -892,7 +852,7 @@ const Home = () => {
                 <h3>Sneakerheads &amp; everyday wearers</h3>
                 <p>From your grails to your daily beaters, premium care that keeps them looking right.</p>
                 <ul><li>Free first Standard Klean</li><li>Next-day Priority Klean when you can't wait</li><li>Pickup and delivery in Accra</li></ul>
-                <a className="btn go" href="https://kleankickx.com/services" target="_blank" rel="noopener">Schedule a Klean <span className="ar" aria-hidden="true">→</span></a>
+                <Link className="btn go" to="/services">Schedule a Klean <span className="ar" aria-hidden="true">→</span></Link>
               </article>
               <article className="aud biz">
                 <span className="mono x">Teams &amp; businesses</span>
@@ -913,7 +873,7 @@ const Home = () => {
                 <div className="eyebrow mono">Get in touch</div>
                 <h2 id="ctT" style={{ color: 'var(--band-fg)' }}>Leave your sneakers <span>in our care.</span></h2>
                 <div className="ctas">
-                  <a className="btn go" href="https://kleankickx.com/services" target="_blank" rel="noopener">Schedule a Klean <span className="ar" aria-hidden="true">→</span></a>
+                  <Link className="btn go" to="/services">Schedule a Klean <span className="ar" aria-hidden="true">→</span></Link>
                 </div>
               </div>
               <div className="cards">
