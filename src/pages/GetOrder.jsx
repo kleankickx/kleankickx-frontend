@@ -217,7 +217,7 @@ const CoveredBadge = ({ item }) => {
     const isVoucher = item.is_voucher_redeem;
     return (
         <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-            isVoucher ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
+            isVoucher ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
         }`}>
             {isVoucher ? <FaGift className="w-3 h-3" /> : <FaTag className="w-3 h-3" />}
             {item.covered_label}
@@ -289,7 +289,7 @@ const OrderItemCard = ({ item, onImageClick }) => {
                                 GHS {parseFloat(item.full_value).toFixed(2)}
                             </p>
                         )}
-                        <p className={`text-base font-semibold ${item.is_voucher_redeem ? 'text-purple-700' : 'text-emerald-600'}`}>
+                        <p className={`text-base font-semibold ${item.is_voucher_redeem ? 'text-green-700' : 'text-amber-700'}`}>
                             {item.is_voucher_redeem ? 'Paid with voucher' : 'FREE'}
                         </p>
                     </>
@@ -895,13 +895,13 @@ const GetOrder = () => {
                                 </span>
                             )}
                             {order?.coverage?.has_voucher && (
-                                <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                                <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-medium">
                                     <FaGift className="mr-1" />
                                     Voucher Order
                                 </span>
                             )}
                             {order?.coverage?.has_free_item && (
-                                <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
+                                <span className="inline-flex items-center px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-medium">
                                     <FaTag className="mr-1" />
                                     Free Signup Service
                                 </span>
@@ -1160,7 +1160,7 @@ const GetOrder = () => {
                                         </div>
 
                                         {coverage?.has_voucher && (
-                                            <div className="flex justify-between text-purple-700">
+                                            <div className="flex justify-between text-green-700">
                                                 <span className="flex items-center gap-1">
                                                     <FaGift className="w-3 h-3" />
                                                     Paid with voucher
@@ -1171,7 +1171,7 @@ const GetOrder = () => {
                                         )}
 
                                         {coverage?.has_free_item && (
-                                            <div className="flex justify-between text-emerald-600">
+                                            <div className="flex justify-between text-amber-700">
                                                 <span className="flex items-center gap-1">
                                                     <FaTag className="w-3 h-3" />
                                                     Free signup service
