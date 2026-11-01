@@ -43,6 +43,22 @@ const buildSessionHeader = () => {
 };
 
 // =========================
+// SITE STATUS (maintenance mode)
+// =========================
+export const MAINTENANCE_EVENT = "kleankickx:maintenance";
+
+// Plain axios: no session warm-up or token refresh. The token, when present,
+// lets the backend say whether a staff member may use the site anyway.
+export const fetchSiteStatus = async () => {
+  const token = localStorage.getItem("access_token");
+  const response = await axios.get(`${baseURL}/api/status/`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    timeout: 10000,
+  });
+  return response.data;
+};
+
+// =========================
 // TOKEN MANAGEMENT
 // =========================
 let isRefreshing = false;
@@ -236,6 +252,12 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+
+    // Site under maintenance: MaintenanceGate swaps in the maintenance page
+    if (error.response?.status === 503 && error.response.data?.status === "maintenance") {
+      window.dispatchEvent(new CustomEvent(MAINTENANCE_EVENT, { detail: error.response.data }));
+      return Promise.reject(error);
+    }
 
     // Persist session ID even from error responses (middleware still sets it)
     const sid = error.response?.headers?.["x-session-id"];
