@@ -30,7 +30,8 @@ import {
   FaShippingFast,
   FaUserCheck,
   FaTrashAlt,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaGift
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
@@ -210,9 +211,24 @@ const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
     );
 };
 
+// Badge for an item paid by a voucher or the free signup offer
+const CoveredBadge = ({ item }) => {
+    if (!item.covered_label) return null;
+    const isVoucher = item.is_voucher_redeem;
+    return (
+        <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+            isVoucher ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
+        }`}>
+            {isVoucher ? <FaGift className="w-3 h-3" /> : <FaTag className="w-3 h-3" />}
+            {item.covered_label}
+        </span>
+    );
+};
+
 // Order Item Card
 const OrderItemCard = ({ item, onImageClick }) => {
     const hasPhoto = item.image_url || item.photo;
+    const isCovered = Boolean(item.covered_label);
 
     return (
         <motion.div
@@ -238,7 +254,8 @@ const OrderItemCard = ({ item, onImageClick }) => {
                 <div className="flex-1 min-w-0">
                     <h4 className="text-base font-medium text-gray-900 truncate">{item.service.name}</h4>
                     <p className="text-xs text-gray-500 mt-1">Quantity: {item.quantity}</p>
-                    
+                    <CoveredBadge item={item} />
+
                     {/* Item Photo (Customer Uploaded) */}
                     {hasPhoto && (
                         <div className="mt-3">
@@ -265,12 +282,27 @@ const OrderItemCard = ({ item, onImageClick }) => {
             </div>
             
             <div className="text-right w-full sm:w-auto sm:min-w-[120px]">
-                <p className="text-base font-semibold text-gray-900">
-                    GHS {parseFloat(item.total_price || item.unit_price * item.quantity).toFixed(2)}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                    GHS {parseFloat(item.unit_price || item.price).toFixed(2)} each
-                </p>
+                {isCovered ? (
+                    <>
+                        {parseFloat(item.full_value) > 0 && (
+                            <p className="text-xs text-gray-400 line-through">
+                                GHS {parseFloat(item.full_value).toFixed(2)}
+                            </p>
+                        )}
+                        <p className={`text-base font-semibold ${item.is_voucher_redeem ? 'text-purple-700' : 'text-emerald-600'}`}>
+                            {item.is_voucher_redeem ? 'Paid with voucher' : 'FREE'}
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <p className="text-base font-semibold text-gray-900">
+                            GHS {parseFloat(item.total_price || item.unit_price * item.quantity).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            GHS {parseFloat(item.unit_price || item.price).toFixed(2)} each
+                        </p>
+                    </>
+                )}
                 
                 {/* Photo Status Badge */}
                 {!hasPhoto && (
@@ -782,6 +814,10 @@ const GetOrder = () => {
         });
     };
 
+    // What vouchers / the free signup offer paid for (their items are stored at GHS 0)
+    const coverage = order?.coverage;
+    const isCovered = Boolean(coverage?.has_voucher || coverage?.has_free_item);
+
     const getPaymentStatusDisplay = (status) => {
         const statusConfig = {
             SUCCESS: {
@@ -803,6 +839,10 @@ const GetOrder = () => {
             PARTIAL_REFUND: {
                 text: 'Partial Refund',
                 colorClasses: 'bg-blue-100 text-blue-800',
+            },
+            COVERED: {
+                text: order?.coverage?.has_voucher ? 'Paid with voucher' : 'Free',
+                colorClasses: 'bg-emerald-100 text-emerald-800',
             },
             DEFAULT: {
                 text: 'N/A',
@@ -852,6 +892,18 @@ const GetOrder = () => {
                                 <span className="inline-flex items-center px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
                                     <FaHandsHelping className="mr-1" />
                                     Self-Handled
+                                </span>
+                            )}
+                            {order?.coverage?.has_voucher && (
+                                <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                                    <FaGift className="mr-1" />
+                                    Voucher Order
+                                </span>
+                            )}
+                            {order?.coverage?.has_free_item && (
+                                <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
+                                    <FaTag className="mr-1" />
+                                    Free Signup Service
                                 </span>
                             )}
                             {order?.status === 'CANCELLED' && (
@@ -1102,8 +1154,35 @@ const GetOrder = () => {
                                     <div className="space-y-4">
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Subtotal</span>
-                                            <span className="font-medium">GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
+                                            <span className="font-medium">
+                                                GHS {parseFloat(isCovered ? coverage.items_value : (order.subtotal || order.total)).toFixed(2)}
+                                            </span>
                                         </div>
+
+                                        {coverage?.has_voucher && (
+                                            <div className="flex justify-between text-purple-700">
+                                                <span className="flex items-center gap-1">
+                                                    <FaGift className="w-3 h-3" />
+                                                    Paid with voucher
+                                                    {coverage.voucher_codes?.length > 0 && ` (${coverage.voucher_codes.join(', ')})`}
+                                                </span>
+                                                <span className="font-medium">-GHS {parseFloat(coverage.voucher_total).toFixed(2)}</span>
+                                            </div>
+                                        )}
+
+                                        {coverage?.has_free_item && (
+                                            <div className="flex justify-between text-emerald-600">
+                                                <span className="flex items-center gap-1">
+                                                    <FaTag className="w-3 h-3" />
+                                                    Free signup service
+                                                </span>
+                                                <span className="font-medium">
+                                                    {parseFloat(coverage.free_total) > 0
+                                                        ? `-GHS ${parseFloat(coverage.free_total).toFixed(2)}`
+                                                        : 'FREE'}
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {order.discounts_applied?.map((discount, index) => {
                                             const isRedeemedPoints = discount.discount_type === "redeemed_points";
@@ -1152,9 +1231,9 @@ const GetOrder = () => {
                                         <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
                                             <span className="font-semibold text-lg">Total Amount</span>
                                             <div className="text-right">
-                                                {order.discounts_applied?.length > 0 && (
+                                                {(order.discounts_applied?.length > 0 || isCovered) && (
                                                     <div className="text-sm text-gray-400 line-through mb-1">
-                                                        GHS {(parseFloat(order.subtotal) +
+                                                        GHS {(parseFloat(isCovered ? coverage.items_value : order.subtotal) +
                                                             (order.is_self_handled ? 0 : parseFloat(order.delivery_cost || 0)) +
                                                             (order.is_self_handled ? 0 : parseFloat(order.pickup_cost || 0))).toFixed(2)}
                                                     </div>
@@ -1165,6 +1244,15 @@ const GetOrder = () => {
                                             </div>
                                         </div>
                                         
+                                        {coverage?.payment_note && (
+                                            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                                <p className="text-xs text-emerald-700">
+                                                    <FaCheckCircle className="inline mr-1" />
+                                                    {coverage.payment_note}
+                                                </p>
+                                            </div>
+                                        )}
+
                                         {/* Self-Handled Note */}
                                         {order.is_self_handled && order.status !== 'CANCELLED' && (
                                             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
