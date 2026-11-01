@@ -45,6 +45,7 @@ import PartnerRoute from './components/PartnerRoute';
 import PartnerInvoices from './pages/PartnerInvoices';
 import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
 import KleanKickxLegal from './pages/KleanKickxLegal';
+import MaintenanceGate from './components/MaintenanceGate';
 
 
 // Loading component
@@ -318,12 +319,14 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Router basename="/">
-        <AuthProvider>
-          <CartProvider>
-            <ScrollToTop />
-            <AppContent />
-          </CartProvider>
-        </AuthProvider>
+        <MaintenanceGate>
+          <AuthProvider>
+            <CartProvider>
+              <ScrollToTop />
+              <AppContent />
+            </CartProvider>
+          </AuthProvider>
+        </MaintenanceGate>
       </Router>
     </GoogleOAuthProvider>
   );
