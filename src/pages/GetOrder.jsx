@@ -40,6 +40,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '../components/Footer';
 import api from '../api';
 import { trackPurchase } from '../utils/analytics';
+import OrderStatusStepper from '../components/OrderStatusStepper';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
@@ -1008,6 +1009,18 @@ const GetOrder = () => {
                             transition={{ duration: 0.5 }}
                             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
                         >
+                            {/* Order progress (cancelled orders show the banner above instead) */}
+                            {order.status !== 'CANCELLED' && (
+                                <div className="lg:col-span-3">
+                                    <OrderStatusStepper
+                                        status={order.status}
+                                        isSelfHandled={order.is_self_handled}
+                                        createdAt={order.created_at}
+                                        updatedAt={order.updated_at}
+                                    />
+                                </div>
+                            )}
+
                             {/* Main Content */}
                             <div className="lg:col-span-2 space-y-6">
                                 {/* Customer & Order Info */}
