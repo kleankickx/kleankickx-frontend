@@ -1,58 +1,40 @@
 import React from 'react';
 import {
-  FaReceipt,
-  FaClipboardCheck,
+  FaInfoCircle,
+  FaSpinner,
   FaTruck,
-  FaUserCheck,
   FaBroom,
   FaCheckDouble,
-  FaShippingFast,
-  FaHandsHelping,
+  FaCalendarAlt,
+  FaCheckCircle,
   FaCheck,
 } from 'react-icons/fa';
 
 /*
- * Order progress, from placing the order to getting the sneakers back.
- * Statuses have no timestamps of their own, so only "Placed" shows a date
- * and the current step shows when the order was last updated.
+ * Order progress: one step per order status, in the order the backend moves
+ * through them (Order.STATUS_CHOICES; Cancelled is shown as a banner instead).
+ * Statuses have no timestamps of their own, so the first step shows when the
+ * order was placed and the current step when it was last updated.
  */
-const stepsFor = (isSelfHandled) =>
-  [
-    { status: 'PENDING', label: 'Order placed', hint: 'Waiting for payment', icon: FaReceipt },
-    { status: 'PROCESSING', label: 'Confirmed', hint: 'We are preparing your order', icon: FaClipboardCheck },
-    isSelfHandled
-      ? { status: 'PICKUP', label: 'Drop-off', hint: 'Bring your sneakers to us', icon: FaUserCheck }
-      : { status: 'PICKUP', label: 'Pickup', hint: 'A rider is collecting your sneakers', icon: FaTruck },
-    { status: 'CLEANING_ONGOING', label: 'Cleaning', hint: 'Your sneakers are being cleaned', icon: FaBroom },
-    {
-      status: 'CLEANING_COMPLETED',
-      label: isSelfHandled ? 'Ready' : 'Cleaned',
-      hint: isSelfHandled ? 'Ready for you to collect' : 'Cleaning done',
-      icon: FaCheckDouble,
-    },
-    !isSelfHandled && {
-      status: 'SCHEDULED_FOR_DELIVERY',
-      label: 'Out for delivery',
-      hint: 'On its way back to you',
-      icon: FaShippingFast,
-    },
-    isSelfHandled
-      ? { status: 'DELIVERED', label: 'Collected', hint: 'You collected your sneakers', icon: FaHandsHelping }
-      : { status: 'DELIVERED', label: 'Delivered', hint: 'Your sneakers are back with you', icon: FaCheck },
-  ].filter(Boolean);
+const STEPS = [
+  { status: 'PENDING', label: 'Pending', hint: 'Order received, awaiting confirmation', icon: FaInfoCircle },
+  { status: 'PROCESSING', label: 'Processing', hint: 'We are preparing your order', icon: FaSpinner },
+  { status: 'PICKUP', label: 'Pickup', hint: 'Your sneakers are being picked up', icon: FaTruck },
+  { status: 'CLEANING_ONGOING', label: 'Cleaning Ongoing', hint: 'Your sneakers are being cleaned', icon: FaBroom },
+  { status: 'CLEANING_COMPLETED', label: 'Cleaning Completed', hint: 'Cleaning is done', icon: FaCheckDouble },
+  { status: 'SCHEDULED_FOR_DELIVERY', label: 'Scheduled for Delivery', hint: 'Delivery is booked', icon: FaCalendarAlt },
+  { status: 'DELIVERED', label: 'Delivered', hint: 'Your sneakers are back with you', icon: FaCheckCircle },
+];
 
 const formatDate = (value) =>
   value
     ? new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : null;
 
-export default function OrderStatusStepper({ status, isSelfHandled = false, createdAt, updatedAt }) {
-  const steps = stepsFor(isSelfHandled);
+export default function OrderStatusStepper({ status, createdAt, updatedAt }) {
+  const steps = STEPS;
   const key = status?.toUpperCase();
-  // A self-handled order should never be "out for delivery"; treat it as the step before.
-  let current = steps.findIndex((s) => s.status === key);
-  if (current === -1 && key === 'SCHEDULED_FOR_DELIVERY') current = steps.findIndex((s) => s.status === 'CLEANING_COMPLETED');
-  if (current === -1) current = 0;
+  const current = Math.max(0, steps.findIndex((s) => s.status === key));
   const finished = key === 'DELIVERED';
 
   const stateOf = (index) => (index < current || (finished && index === current) ? 'done' : index === current ? 'current' : 'upcoming');

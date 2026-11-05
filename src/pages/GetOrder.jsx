@@ -1014,7 +1014,6 @@ const GetOrder = () => {
                                 <div className="lg:col-span-3">
                                     <OrderStatusStepper
                                         status={order.status}
-                                        isSelfHandled={order.is_self_handled}
                                         createdAt={order.created_at}
                                         updatedAt={order.updated_at}
                                     />
