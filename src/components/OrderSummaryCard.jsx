@@ -1,5 +1,20 @@
-import { FaTags, FaGift, FaUserFriends, FaStar, FaInfoCircle, FaHandHolding } from 'react-icons/fa';
+import { FaTags, FaGift, FaUserFriends, FaStar, FaHandHolding } from 'react-icons/fa';
+import { card, money } from './checkoutUi';
 
+const Row = ({ label, value, className = 'text-gray-600', valueClass = 'text-gray-900', note }) => (
+  <div>
+    <div className={`flex justify-between gap-4 text-sm ${className}`}>
+      <span className="flex items-center gap-2 min-w-0">{label}</span>
+      <span className={`font-medium whitespace-nowrap ${valueClass}`}>{value}</span>
+    </div>
+    {note && <p className="text-xs text-gray-500 mt-0.5 ml-5">{note}</p>}
+  </div>
+);
+
+/*
+ * Items, discounts, fees and total. `bare` drops the card frame and heading,
+ * for the collapsible summary on small screens.
+ */
 const OrderSummaryCard = ({
   cart,
   appliedPromotion,
@@ -19,212 +34,107 @@ const OrderSummaryCard = ({
   useSame,
   totalWithoutDiscounts,
   total,
-  isSelfHandled = false, // Add this with default value
+  isSelfHandled = false,
+  bare = false,
 }) => {
-  return (
-    // Order Summary Card
-    <div id="order-summary" className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xl">
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-xl font-semibold flex items-center">
-          <FaTags className="mr-2 text-primary" />  
-          Order Summary
-        </h2>
-        
-        {/* Promo Applied Badge */}
-        {appliedPromotion && (
-          <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-            <FaTags className="mr-1" />
-            Promo Applied
-          </div>
-        )}
-        
-        {/* Self-Handled Badge */}
-        {isSelfHandled && (
-          <div className="flex items-start justify-center bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm">
-            <FaHandHolding className="mr-1" />
-            <span>Self-Handled</span>
-          </div>
-        )}
-      </div>
+  const hasDiscount = canUseSignup || canUseReferral || canUseRedeemedPoints || appliedPromotion;
+  const itemCount = cart.reduce((n, item) => n + (item.quantity || 0), 0);
+  const fee = (value) => (value ? money(value) : 'Set address');
+  const pickupValue = useSame ? deliveryFee : pickupFee;
 
-      <div className="p-6">
-        {/* Cart Items List */}
-        <div className="divide-y divide-gray-200">
-          {cart.map((item) => (
-            <div key={item.service_id} className="py-4 first:pt-0 last:pb-0">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium text-gray-900">{item.service_name}</p>
-                  <p className="text-sm text-gray-500 mt-1">Quantity: {item.quantity}</p>
-                </div>
-                <p className="font-medium text-gray-900">
-                  GHS {(item.quantity * item.unit_price).toFixed(2)}
-                </p>
-              </div>
+  const content = (
+    <>
+      {/* Items */}
+      <ul className="divide-y divide-gray-100">
+        {cart.map((item) => (
+          <li key={item.service_id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-700 flex-shrink-0">
+                {item.quantity}×
+              </span>
+              <p className="text-sm font-medium text-gray-900">{item.service_name}</p>
             </div>
-          ))}
-        </div>
+            <p className="text-sm font-medium text-gray-900 whitespace-nowrap">{money(item.quantity * item.unit_price)}</p>
+          </li>
+        ))}
+      </ul>
 
-        {/* Pricing Breakdown */}
-        <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
-          
-          {/* Subtotal */}
-          <div className="flex justify-between">
-            <p className="text-gray-600">Subtotal</p>
-            <p className="font-medium">GHS {subtotal.toFixed(2)}</p>
-          </div>
-          
-          {/* Signup Discount */}
-          {canUseSignup && signupDiscount && (
-            <div className="bg-green-50 rounded-lg p-3 -mx-1">
-              <div className="flex justify-between items-center">
-                <span className="text-green-700 font-medium flex items-center capitalize">
-                  <FaGift className="mr-2" />
-                  {signupDiscount.discount_type}
-                </span>
-                <span className="text-green-700 font-medium">-GHS {signupDiscountAmount.toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-green-600 mt-1 ml-6">
-                {signupDiscount.percentage}% off your order
-              </div>
-            </div>
-          )}
-
-          {/* Referral Discount */}
-          {canUseReferral && referralDiscount && (
-            <div className="bg-blue-50 rounded-lg p-3 -mx-1">
-              <div className="flex justify-between items-center">
-                <span className="text-blue-700 font-medium flex items-center capitalize">
-                  <FaUserFriends className="mr-2" />
-                  {referralDiscount.discount_type}
-                </span>
-                <span className="text-blue-700 font-medium">-GHS {referralDiscountAmount.toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-blue-600 mt-1 ml-6">
-                {referralDiscount.percentage}% off your order
-              </div>
-            </div>
-          )}
-
-          {/* Redeemed Points Discount */}
-          {canUseRedeemedPoints && redeemedPointsDiscount && (
-            <div className="bg-amber-50 rounded-lg p-3 -mx-1">
-              <div className="flex justify-between items-center">
-                <span className="text-amber-700 font-medium flex items-center">
-                  <FaStar className="mr-2" />
-                  Redeemed Points Discount
-                </span>
-                <span className="text-amber-700 font-medium">-GHS {redeemedPointsDiscountAmount.toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-amber-600 mt-1 ml-6">
-                {redeemedPointsDiscount.percentage}% off your order ({redeemedPointsDiscount.points_redeemed} points redeemed)
-              </div>
-            </div>
-          )}
-
-          {/* Auto-applied Promotion Discount */}
-          {appliedPromotion && (
-            <div className="bg-purple-50 rounded-lg p-3 -mx-1">
-              <div className="flex justify-between items-center">
-                <span className="text-purple-700 font-medium flex items-center">
-                  <FaTags className="mr-2" />
-                  Special Promotion
-                </span>
-                <span className="text-purple-700 font-medium">-GHS {promoDiscountAmount.toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-purple-600 mt-1 ml-6">
-                {appliedPromotion.discount_percentage}% off your order
-              </div>
-            </div>
-          )}
-
-          {/* Fees Section - Conditional based on self-handled */}
-          {isSelfHandled ? (
-            <div className="bg-green-50 rounded-lg p-3 -mx-1">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-green-700 items-start font-medium flex items-center">
-                  <FaHandHolding className="mr-2" />
-                  Self-Handled Service
-                </span>
-                <span className="text-green-700 font-medium">GHS 0.00</span>
-              </div>
-              <div className="text-xs text-green-600 ml-6">
-                No pickup or delivery fees (you'll handle these yourself)
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Delivery Fee */}
-              <div className="flex justify-between pt-2">
-                <p className="text-gray-600">Delivery Fee</p>
-                <p className="font-medium">
-                  {deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--'}
-                </p>
-              </div>
-
-              {/* Pickup Fee */}
-              <div className="flex justify-between">
-                <p className="text-gray-600">Pickup Fee</p>
-                <p className="font-medium">
-                  {/* Uses delivery cost if useSame is true, otherwise uses pickup cost */}
-                  {useSame 
-                    ? (deliveryFee ? `GHS ${parseFloat(deliveryFee).toFixed(2)}` : '--') 
-                    : (pickupFee ? `GHS ${parseFloat(pickupFee).toFixed(2)}` : '--')
-                  }
-                </p>
-              </div>
-            </>
-          )}
-
-          {/* FINAL TOTAL */}
-          <div className="flex justify-between pt-4 mt-3 border-t border-gray-200">
-            <p className="text-lg font-semibold">Total Amount</p>
-            <div className="text-right">
-              {/* Strike-through price if any discount is applied */}
-              {(canUseSignup || canUseReferral || canUseRedeemedPoints || appliedPromotion) && (
-                <div className="text-sm text-gray-400 line-through">GHS {totalWithoutDiscounts}</div>
-              )}
-              <p className="text-xl font-bold text-primary">
-                GHS {total}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* --- Information Banners --- */}
-
-        {isSelfHandled && (
-          <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-sm text-yellow-700 flex items-start border border-yellow-200">
-            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-            <span>
-              <strong>Self-Handled Service:</strong> You'll bring items to our facility and pick them up when ready. 
-              Please contact us at <strong>+233 53 627 8834</strong> for facility location and hours.
-            </span>
-          </div>
-        )}
+      {/* Breakdown */}
+      <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
+        <Row label="Subtotal" value={money(subtotal)} />
 
         {canUseSignup && signupDiscount && (
-          <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700 flex items-start">
-            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-            <span>Your {signupDiscount.percentage}% sign-up discount has been applied!</span>
-          </div>
+          <Row
+            label={<><FaGift className="w-3 h-3 flex-shrink-0" aria-hidden="true" /><span className="capitalize truncate">{signupDiscount.discount_type}</span></>}
+            value={`-${money(signupDiscountAmount)}`}
+            className="text-green-700"
+            valueClass="text-green-700"
+            note={`${signupDiscount.percentage}% off`}
+          />
         )}
-
+        {canUseReferral && referralDiscount && (
+          <Row
+            label={<><FaUserFriends className="w-3 h-3 flex-shrink-0" aria-hidden="true" /><span className="capitalize truncate">{referralDiscount.discount_type}</span></>}
+            value={`-${money(referralDiscountAmount)}`}
+            className="text-blue-700"
+            valueClass="text-blue-700"
+            note={`${referralDiscount.percentage}% off`}
+          />
+        )}
         {canUseRedeemedPoints && redeemedPointsDiscount && (
-          <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm text-amber-700 flex items-start">
-            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-            <span>Your {redeemedPointsDiscount.percentage}% redeemed points discount has been applied!</span>
-          </div>
+          <Row
+            label={<><FaStar className="w-3 h-3 flex-shrink-0" aria-hidden="true" />Points discount</>}
+            value={`-${money(redeemedPointsDiscountAmount)}`}
+            className="text-amber-700"
+            valueClass="text-amber-700"
+            note={`${redeemedPointsDiscount.percentage}% off · ${redeemedPointsDiscount.points_redeemed} points`}
+          />
+        )}
+        {appliedPromotion && (
+          <Row
+            label={<><FaTags className="w-3 h-3 flex-shrink-0" aria-hidden="true" />Promotion</>}
+            value={`-${money(promoDiscountAmount)}`}
+            className="text-purple-700"
+            valueClass="text-purple-700"
+            note={`${appliedPromotion.discount_percentage}% off today`}
+          />
         )}
 
-        {appliedPromotion && (
-          <div className="mt-4 p-3 bg-purple-50 rounded-lg text-sm text-purple-700 flex items-start">
-            <FaInfoCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />
-            <span>Special promotion applied! You save {appliedPromotion.discount_percentage}% on your order.</span>
-          </div>
+        {isSelfHandled ? (
+          <Row
+            label={<><FaHandHolding className="w-3 h-3 flex-shrink-0" aria-hidden="true" />Drop-off & collect</>}
+            value="Free"
+            valueClass="text-primary"
+          />
+        ) : (
+          <>
+            <Row label="Pickup fee" value={fee(pickupValue)} valueClass={pickupValue ? 'text-gray-900' : 'text-gray-400'} />
+            <Row label="Delivery fee" value={fee(deliveryFee)} valueClass={deliveryFee ? 'text-gray-900' : 'text-gray-400'} />
+          </>
         )}
       </div>
-    </div>
+
+      {/* Total */}
+      <div className="mt-4 pt-4 border-t border-gray-200 flex items-end justify-between gap-4">
+        <span className="text-base font-semibold text-gray-900">Total</span>
+        <div className="text-right">
+          {hasDiscount && <p className="text-xs text-gray-400 line-through">{money(totalWithoutDiscounts)}</p>}
+          <p className="text-2xl font-bold text-gray-900 tracking-tight">{money(total)}</p>
+        </div>
+      </div>
+    </>
+  );
+
+  if (bare) return content;
+
+  return (
+    <section id="order-summary" className={card} aria-labelledby="summary-title">
+      <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6 pb-4">
+        <h2 id="summary-title" className="text-lg font-semibold text-gray-900">Order summary</h2>
+        <span className="text-sm text-gray-500">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
+      </div>
+      <div className="px-5 sm:px-6 pb-5 sm:pb-6">{content}</div>
+    </section>
   );
 };
 

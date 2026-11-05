@@ -63,7 +63,7 @@ export default function CheckoutStepper({ step, onStepClick }) {
   const progress = (active / (all.length - 1)) * 100;
 
   return (
-    <nav aria-label="Checkout progress" className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-5 sm:px-8">
+    <nav aria-label="Checkout progress" className="bg-white rounded-2xl border border-gray-200 shadow-sm px-2 py-4 sm:px-6 sm:py-5">
       <ol className="relative flex">
         {/* Track and animated fill, from the first circle centre (12.5%) to the last (87.5%) */}
         <span aria-hidden="true" className="absolute top-5 left-[12.5%] right-[12.5%] h-0.5 -translate-y-1/2 bg-gray-200 rounded-full" />
