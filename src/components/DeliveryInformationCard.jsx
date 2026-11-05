@@ -27,7 +27,7 @@ const DeliveryInformationCard = (props) => {
         </h2>
       </div>
       
-      <div className="p-6 space-y-5 h-full max-h-[290px] overflow-y-auto">
+      <div className={`p-6 space-y-5 ${props.fullHeight ? "" : "h-full max-h-[290px] overflow-y-auto"}`}>
         {/* Self-Handled Option */}
         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <label className="flex items-center cursor-pointer group">
