@@ -1,5 +1,25 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../api';
+
+// Photo at the top of a homepage service card. `images` is null while loading.
+const ServicePhoto = ({ images, kind, alt }) => {
+  const src = images?.[kind] || (kind === 'free' ? images?.standard : '');
+  return (
+    <div className={`pic ${images === null ? 'loading' : ''}`}>
+      {src ? (
+        <img src={src} alt={alt} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+      ) : (
+        images !== null && (
+          <svg viewBox="0 0 64 40" aria-hidden="true">
+            <path d="M4 30c0-3 2-5 5-5h14l9-12c1-1 3-2 4-1l6 5c2 1 4 2 6 2h6c3 0 6 3 6 6v5H4z" fill="currentColor" />
+            <rect x="4" y="33" width="56" height="4" rx="2" fill="currentColor" opacity=".55" />
+          </svg>
+        )
+      )}
+    </div>
+  );
+};
 
 const Home = () => {
   // --- State & Refs ---
@@ -87,6 +107,31 @@ const Home = () => {
       isStore: true,
     },
   ];
+
+  // --- Service photos, from the same list the Services page uses ---
+  const [serviceImages, setServiceImages] = useState(null); // null while loading
+  useEffect(() => {
+    let alive = true;
+    api
+      .get('/api/services/public/')
+      .then(({ data }) => {
+        if (!alive || !Array.isArray(data)) return;
+        // Shortest matching name wins, so "Standard Klean" beats a bundle that mentions it
+        const pick = (test) =>
+          data
+            .filter((svc) => svc.image && test(svc))
+            .sort((a, b) => a.name.length - b.name.length)[0]?.image || '';
+        const named = (word) => (svc) => !svc.is_free_signup_service && svc.name?.toLowerCase().includes(word);
+        setServiceImages({
+          free: pick((svc) => svc.is_free_signup_service),
+          standard: pick(named('standard')),
+          priority: pick(named('priority')),
+          deep: pick(named('deep')),
+        });
+      })
+      .catch(() => alive && setServiceImages({}));
+    return () => { alive = false; };
+  }, []);
 
   // --- Slideshow Logic ---
   const goToSlide = useCallback((index) => {
@@ -389,6 +434,15 @@ const Home = () => {
         .svc .price{margin-top:auto;font-family:var(--display);font-size:46px;line-height:1;font-variant-numeric:tabular-nums;padding-top:8px}
         .svc .price small{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.06em;margin-left:6px}
         .svc .btn{align-self:flex-start}
+        .svc .pic{margin:-26px -22px 8px;aspect-ratio:4/3;overflow:hidden;background:var(--line);display:grid;place-items:center;color:rgba(0,0,0,.18)}
+        .svc.free .pic{background:rgba(0,0,0,.06)}
+        .svc .pic img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s var(--spring)}
+        .svc:hover .pic img{transform:scale(1.06)}
+        .svc .pic svg{width:44%;height:auto}
+        .svc .pic.loading{background:linear-gradient(90deg,var(--line) 0%,rgba(255,255,255,.6) 50%,var(--line) 100%);background-size:200% 100%;animation:svcShimmer 1.4s linear infinite}
+        @keyframes svcShimmer{to{background-position:-200% 0}}
+        .svc .flag{z-index:2}
+        .svc .btn{margin-top:4px}
         .flag{position:absolute;top:-1px;right:-1px;background:var(--green);color:var(--green-ink);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px}
         @media (max-width:1000px){.svcs{grid-template-columns:1fr 1fr}}
         @media (max-width:540px){.svcs{grid-template-columns:1fr}}
@@ -702,10 +756,10 @@ const Home = () => {
               <p>Priced per pair, in GHS, taxes included. Drop off at the studio or request pickup and delivery (fees apply). New here? Your first Standard Klean is on us.</p>
             </div>
             <div className="svcs rv">
-              <article className="svc free"><span className="flag">New users</span><span className="time mono">Delivered in 72h</span><h3>Free Signup Klean</h3><p>A complimentary Standard Klean for new users. One per account.</p><div className="price">FREE</div><Link className="btn go sm" to="/services">Sign up to claim</Link></article>
-              <article className="svc"><span className="time mono">Delivered in 72h</span><h3>Standard Klean</h3><p>Thorough cleaning of the entire shoe, removing dirt, dust and everyday grime. Ideal for regular care.</p><div className="price">₵50<small>/ pair</small></div><Link className="btn sm" to="/services">Book Standard</Link></article>
-              <article className="svc"><span className="flag">Next day</span><span className="time mono">Delivered next day</span><h3>Priority Klean</h3><p>For sneakerheads who want professional care without the wait. Your pair jumps the queue.</p><div className="price">₵70<small>/ pair</small></div><Link className="btn sm" to="/services">Book Priority</Link></article>
-              <article className="svc"><span className="time mono">Delivered in 72h</span><h3>Deep Klean</h3><p>An intensive process for stubborn stains and deeply embedded dirt. For pairs that need a real restoration.</p><div className="price">₵80<small>/ pair</small></div><Link className="btn sm" to="/services">Book Deep</Link></article>
+              <article className="svc free"><span className="flag">New users</span><ServicePhoto images={serviceImages} kind="free" alt="Sneakers after a Standard Klean" /><span className="time mono">Delivered in 72h</span><h3>Free Signup Klean</h3><p>A complimentary Standard Klean for new users. One per account.</p><div className="price">FREE</div><Link className="btn go sm" to="/services">Sign up to claim</Link></article>
+              <article className="svc"><ServicePhoto images={serviceImages} kind="standard" alt="Standard Klean" /><span className="time mono">Delivered in 72h</span><h3>Standard Klean</h3><p>Thorough cleaning of the entire shoe, removing dirt, dust and everyday grime. Ideal for regular care.</p><div className="price">₵50<small>/ pair</small></div><Link className="btn sm" to="/services">Book Standard</Link></article>
+              <article className="svc"><span className="flag">Next day</span><ServicePhoto images={serviceImages} kind="priority" alt="Priority Klean" /><span className="time mono">Delivered next day</span><h3>Priority Klean</h3><p>For sneakerheads who want professional care without the wait. Your pair jumps the queue.</p><div className="price">₵70<small>/ pair</small></div><Link className="btn sm" to="/services">Book Priority</Link></article>
+              <article className="svc"><ServicePhoto images={serviceImages} kind="deep" alt="Deep Klean" /><span className="time mono">Delivered in 72h</span><h3>Deep Klean</h3><p>An intensive process for stubborn stains and deeply embedded dirt. For pairs that need a real restoration.</p><div className="price">₵80<small>/ pair</small></div><Link className="btn sm" to="/services">Book Deep</Link></article>
             </div>
 
             {/* BUNDLE PICKER */}
