@@ -39,6 +39,29 @@ import { usePlaceOrder } from '../hooks/usePlaceOrder';
 import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
 import api from '../api';
+import CheckoutStepper, { CHECKOUT_STEPS } from '../components/CheckoutStepper';
+import { FaArrowLeft, FaArrowRight, FaPen, FaHandHolding, FaMapMarkerAlt, FaUser } from 'react-icons/fa';
+
+// One block on the review step, with an Edit link back to its step
+const ReviewRow = ({ icon: Icon, title, onEdit, children }) => (
+  <div className="flex items-start gap-4 p-5">
+    <span className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary flex-shrink-0">
+      <Icon className="w-4 h-4" aria-hidden="true" />
+    </span>
+    <div className="flex-1 min-w-0">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
+      {children}
+    </div>
+    <button
+      type="button"
+      onClick={onEdit}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline cursor-pointer"
+    >
+      <FaPen className="w-3 h-3" aria-hidden="true" />
+      Edit
+    </button>
+  </div>
+);
 
 const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, user, discounts } = useContext(AuthContext);
@@ -249,6 +272,46 @@ const Checkout = () => {
     }
   };
 
+  // --- Steps ---
+  const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [stepError, setStepError] = useState('');
+  const [shakeKey, setShakeKey] = useState(0);
+
+  // What is still missing on a step; empty when the step is complete.
+  const missingFor = (index) => {
+    if (index === 0) return isPhoneValid ? '' : 'Enter a valid Ghana phone number to continue.';
+    if (index === 1) {
+      if (isSelfHandled) return '';
+      if (!pickup) return 'Choose a pickup address to continue.';
+      if (!delivery && !useSame) return 'Choose a delivery address, or use the pickup address.';
+    }
+    return '';
+  };
+
+  const goToStep = (next) => {
+    if (next === step || next < 0 || next >= CHECKOUT_STEPS.length) return;
+    // Moving forward needs every step before it complete.
+    for (let i = step; i < next; i++) {
+      const missing = missingFor(i);
+      if (missing) {
+        if (i !== step) setStep(i);
+        setStepError(missing);
+        setShakeKey((key) => key + 1);
+        return;
+      }
+    }
+    setStepError('');
+    setDirection(next > step ? 1 : -1);
+    setStep(next);
+    document.getElementById('checkout-steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Clear the step's error once it is fixed.
+  useEffect(() => {
+    if (stepError && !missingFor(step)) setStepError('');
+  }, [isPhoneValid, pickup, delivery, useSame, isSelfHandled]);
+
   // Persist delivery and pickup regions to localStorage
   useEffect(() => {
     localStorage.setItem('deliveryRegion', deliveryRegion);
@@ -409,6 +472,8 @@ const Checkout = () => {
     setShowAlert(true);
   }, [paymentView]);
 
+  const stepAnimation = direction > 0 ? 'checkout-step-forward' : 'checkout-step-back';
+
   // Show loading state while checking pending order
   if (checkingPendingOrder) {
     return (
@@ -489,127 +554,156 @@ const Checkout = () => {
               </div>
             </div>
           ) : (
-            /* Checkout Content - Only show when loading is complete AND cart has items */
-            <div> 
-              <div className="">
-                <div className={`mb-6 ${paymentView ? 'hidden' : ''}`}>
-                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Complete Your Order</h1>
-                  <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
-                </div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <div className="py-6">
-                    {/* Main Grid Layout */}
-                    <div className="flex flex-col xl:flex-row gap-6 w-full">
-                      
-                      {/* Left Column - Forms (2/3 width on large screens) */}
-                      <div className="flex-1 space-y-6 order-2 xl:order-1">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Personal Information - Top Left */}
-                          <div className="lg:col-span-1">
-                            <PersonalInformationCard
-                              phoneNumber={phoneNumber}
-                              isPhoneValid={isPhoneValid}
-                              handlePhoneChange={handlePhoneChange}
-                              user={user}
-                            />
-                          </div>
+            /* Checkout: one step at a time, summary alongside on large screens */
+            <div id="checkout-steps" className="scroll-mt-24">
+              <div className="mb-6">
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Checkout</h1>
+                <p className="text-gray-600 mt-1">{CHECKOUT_STEPS[step].hint}</p>
+              </div>
 
-                          {/* Delivery Information - Top Right */}
-                          <div className="lg:col-span-1">
-                            <div className="">
-                              <DeliveryInformationCard
-                                useSame={useSame}
-                                setUseSame={setUseSame}
-                                handlePlaceSelect={handlePlaceSelect}
-                                setActiveInput={setActiveInput}
-                                paymentView={paymentView}
-                                delivery={delivery}
-                                deliveryInputValue={deliveryInputValue}
-                                deliveryRegion={deliveryRegion}
-                                pickup={pickup}
-                                pickupInputValue={pickupInputValue}
-                                pickupRegion={pickupRegion}
-                                pickupTime={pickupTime}
-                                setPickupTime={setPickupTime}
-                                isSelfHandled={isSelfHandled}
-                                setIsSelfHandled={setIsSelfHandled}
-                              />
-                            </div>
-                          </div>
-                        </div>
+              <CheckoutStepper step={step} onStepClick={goToStep} />
 
-                        {/* Promotions Card - Above Payment on mobile */}
-                        <div className="block xl:hidden">
-                          {availablePromotions.length > 0 && (
-                            <div className="mb-6">
-                              <PromotionCard
-                                appliedPromotion={appliedPromotion}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="block lg:hidden">
-                          <OrderSummaryCard 
-                            cart={cart}
-                            appliedPromotion={appliedPromotion}
-                            useSame={useSame}
-                            {...summary} 
-                          />
-                        </div>
-
-                        {/* Payment Card - Full width below */}
-                        <div className="lg:col-span-2">
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                          >
-                            <PaymentCard
-                              total={summary.total}
-                              handlePayment={onPayment}
-                              placing={placing}
-                              cartLength={cart.length}
-                              pickup={pickup}
-                              useSame={useSame}
-                              delivery={delivery}
-                              isPhoneValid={isPhoneValid}
-                              pickupTime={pickupTime}
-                              isSelfHandled={isSelfHandled} 
-                            />
-                          </motion.div>
-                        </div>
-                      </div>
-
-                      {/* Right Column - Order Summary & Promotions (1/3 width) */}
-                      <div className="xl:w-1/3 space-y-6 order-3 xl:order-1">
-                        {/* Promotions Card - Desktop only */}
-                        {availablePromotions.length > 0 && (
-                          <div className="hidden xl:block">
-                            <PromotionCard
-                              appliedPromotion={appliedPromotion}
-                            />
-                          </div>
-                        )}
-                        {/* Order Summary Card - Desktop */}
-                        <div className="hidden lg:block">
-                          <OrderSummaryCard 
-                            cart={cart}
-                            appliedPromotion={appliedPromotion}
-                            useSame={useSame}
-                            isSelfHandled={isSelfHandled} 
-                            {...summary} 
-                          />
-                        </div>
-                      </div>
-                    </div>
+              <div className="flex flex-col lg:flex-row gap-6 mt-6 items-start">
+                <div className="flex-1 min-w-0 w-full">
+                  {/* Steps stay mounted (hidden when inactive) so addresses and inputs keep their state */}
+                  <div hidden={step !== 0} className={step === 0 ? stepAnimation : ''}>
+                    <PersonalInformationCard
+                      phoneNumber={phoneNumber}
+                      isPhoneValid={isPhoneValid}
+                      handlePhoneChange={handlePhoneChange}
+                      user={user}
+                    />
                   </div>
-                </motion.div>
+
+                  <div hidden={step !== 1} className={step === 1 ? stepAnimation : ''}>
+                    <DeliveryInformationCard
+                      fullHeight
+                      useSame={useSame}
+                      setUseSame={setUseSame}
+                      handlePlaceSelect={handlePlaceSelect}
+                      setActiveInput={setActiveInput}
+                      paymentView={paymentView}
+                      delivery={delivery}
+                      deliveryInputValue={deliveryInputValue}
+                      deliveryRegion={deliveryRegion}
+                      pickup={pickup}
+                      pickupInputValue={pickupInputValue}
+                      pickupRegion={pickupRegion}
+                      pickupTime={pickupTime}
+                      setPickupTime={setPickupTime}
+                      isSelfHandled={isSelfHandled}
+                      setIsSelfHandled={setIsSelfHandled}
+                    />
+                  </div>
+
+                  <div hidden={step !== 2} className={`space-y-6 ${step === 2 ? stepAnimation : ''}`}>
+                    {/* Review what was entered, with a way back to each step */}
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-xl divide-y divide-gray-100">
+                      <ReviewRow icon={FaUser} title="Your details" onEdit={() => goToStep(0)}>
+                        <p className="text-gray-900 font-medium">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'You'}</p>
+                        <p className="text-gray-500 text-sm">{user?.email}</p>
+                        <p className="text-gray-500 text-sm">{phoneNumber}</p>
+                      </ReviewRow>
+                      <ReviewRow icon={isSelfHandled ? FaHandHolding : FaMapMarkerAlt} title="Pickup & delivery" onEdit={() => goToStep(1)}>
+                        {isSelfHandled ? (
+                          <p className="text-gray-700 text-sm">You'll drop off and collect your sneakers yourself — no pickup or delivery fees.</p>
+                        ) : (
+                          <dl className="text-sm space-y-1.5">
+                            <div className="flex gap-2"><dt className="text-gray-500 w-16 flex-shrink-0">Pickup</dt><dd className="text-gray-900">{pickup?.address || '—'}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500 w-16 flex-shrink-0">Delivery</dt><dd className="text-gray-900">{useSame ? 'Same as pickup' : delivery?.address || '—'}</dd></div>
+                          </dl>
+                        )}
+                      </ReviewRow>
+                    </div>
+
+                    {/* Summary sits here on small screens; it is in the side column on large ones */}
+                    <div className="lg:hidden space-y-6">
+                      {availablePromotions.length > 0 && <PromotionCard appliedPromotion={appliedPromotion} />}
+                      <OrderSummaryCard
+                        cart={cart}
+                        appliedPromotion={appliedPromotion}
+                        useSame={useSame}
+                        isSelfHandled={isSelfHandled}
+                        {...summary}
+                      />
+                    </div>
+
+                    <PaymentCard
+                      total={summary.total}
+                      handlePayment={onPayment}
+                      placing={placing}
+                      cartLength={cart.length}
+                      pickup={pickup}
+                      useSame={useSame}
+                      delivery={delivery}
+                      isPhoneValid={isPhoneValid}
+                      pickupTime={pickupTime}
+                      isSelfHandled={isSelfHandled}
+                    />
+                  </div>
+
+                  {/* Step error */}
+                  {stepError && (
+                    <motion.p
+                      key={shakeKey}
+                      role="alert"
+                      initial={{ x: 0 }}
+                      animate={{ x: [0, -8, 8, -6, 6, 0] }}
+                      transition={{ duration: 0.4 }}
+                      className="mt-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    >
+                      <FaExclamationTriangle className="flex-shrink-0" aria-hidden="true" />
+                      {stepError}
+                    </motion.p>
+                  )}
+
+                  {/* Step navigation */}
+                  <div className="mt-6 flex items-center justify-between gap-3">
+                    {step === 0 ? (
+                      <Link
+                        to="/cart"
+                        className="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <FaArrowLeft className="w-3 h-3" aria-hidden="true" />
+                        Back to cart
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => goToStep(step - 1)}
+                        className="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <FaArrowLeft className="w-3 h-3" aria-hidden="true" />
+                        Back
+                      </button>
+                    )}
+
+                    {step < CHECKOUT_STEPS.length - 1 && (
+                      <motion.button
+                        type="button"
+                        onClick={() => goToStep(step + 1)}
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="group inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-primary text-white text-sm font-semibold shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                      >
+                        Continue to {CHECKOUT_STEPS[step + 1].label.toLowerCase()}
+                        <FaArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Side column on large screens: promotion and order summary on every step */}
+                <aside className="hidden lg:block w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 space-y-6 lg:sticky lg:top-24">
+                  {availablePromotions.length > 0 && <PromotionCard appliedPromotion={appliedPromotion} />}
+                  <OrderSummaryCard
+                    cart={cart}
+                    appliedPromotion={appliedPromotion}
+                    useSame={useSame}
+                    isSelfHandled={isSelfHandled}
+                    {...summary}
+                  />
+                </aside>
               </div>
             </div>
           )}
