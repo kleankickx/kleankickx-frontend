@@ -1,3 +1,5 @@
+// src/pages/GetOrder.jsx
+
 import React, { useEffect, useState, useContext } from 'react';
 import {
   FaShoppingCart,
@@ -28,7 +30,8 @@ import {
   FaShippingFast,
   FaUserCheck,
   FaTrashAlt,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaGift
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
@@ -36,6 +39,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '../components/Footer';
 import api from '../api';
+import { trackPurchase } from '../utils/analytics';
+import OrderStatusStepper from '../components/OrderStatusStepper';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
@@ -207,9 +212,24 @@ const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
     );
 };
 
+// Badge for an item paid by a voucher or the free signup offer
+const CoveredBadge = ({ item }) => {
+    if (!item.covered_label) return null;
+    const isVoucher = item.is_voucher_redeem;
+    return (
+        <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+            isVoucher ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
+        }`}>
+            {isVoucher ? <FaGift className="w-3 h-3" /> : <FaTag className="w-3 h-3" />}
+            {item.covered_label}
+        </span>
+    );
+};
+
 // Order Item Card
 const OrderItemCard = ({ item, onImageClick }) => {
     const hasPhoto = item.image_url || item.photo;
+    const isCovered = Boolean(item.covered_label);
 
     return (
         <motion.div
@@ -235,7 +255,8 @@ const OrderItemCard = ({ item, onImageClick }) => {
                 <div className="flex-1 min-w-0">
                     <h4 className="text-base font-medium text-gray-900 truncate">{item.service.name}</h4>
                     <p className="text-xs text-gray-500 mt-1">Quantity: {item.quantity}</p>
-                    
+                    <CoveredBadge item={item} />
+
                     {/* Item Photo (Customer Uploaded) */}
                     {hasPhoto && (
                         <div className="mt-3">
@@ -262,12 +283,27 @@ const OrderItemCard = ({ item, onImageClick }) => {
             </div>
             
             <div className="text-right w-full sm:w-auto sm:min-w-[120px]">
-                <p className="text-base font-semibold text-gray-900">
-                    GHS {parseFloat(item.total_price || item.unit_price * item.quantity).toFixed(2)}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                    GHS {parseFloat(item.unit_price || item.price).toFixed(2)} each
-                </p>
+                {isCovered ? (
+                    <>
+                        {parseFloat(item.full_value) > 0 && (
+                            <p className="text-xs text-gray-400 line-through">
+                                GHS {parseFloat(item.full_value).toFixed(2)}
+                            </p>
+                        )}
+                        <p className={`text-base font-semibold ${item.is_voucher_redeem ? 'text-green-700' : 'text-amber-700'}`}>
+                            {item.is_voucher_redeem ? 'Paid with voucher' : 'FREE'}
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <p className="text-base font-semibold text-gray-900">
+                            GHS {parseFloat(item.total_price || item.unit_price * item.quantity).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            GHS {parseFloat(item.unit_price || item.price).toFixed(2)} each
+                        </p>
+                    </>
+                )}
                 
                 {/* Photo Status Badge */}
                 {!hasPhoto && (
@@ -473,6 +509,64 @@ const RegularAddressCard = ({ type, address, cost }) => (
     </div>
 );
 
+// Discount Badge Component
+const DiscountBadge = ({ order, discount, percentage }) => {
+    const colorMap = {
+        "redeemed_points": {
+            bgFrom: "from-blue-50",
+            bgTo: "to-blue-50",
+            border: "border-blue-200",
+            iconBg: "bg-blue-100",
+            iconText: "text-blue-600",
+            titleText: "text-blue-800",
+            text: "text-blue-600",
+            amountText: "text-blue-700",
+        },
+        "referral": {
+            bgFrom: "from-purple-50",
+            bgTo: "to-purple-50",
+            border: "border-purple-200",
+            iconBg: "bg-purple-100",
+            iconText: "text-purple-600",
+            titleText: "text-purple-800",
+            text: "text-purple-600",
+            amountText: "text-purple-700",
+        },
+        "default": {
+            bgFrom: "from-green-50",
+            bgTo: "to-emerald-50",
+            border: "border-emerald-200",
+            iconBg: "bg-emerald-100",
+            iconText: "text-emerald-600",
+            titleText: "text-emerald-800",
+            text: "text-emerald-600",
+            amountText: "text-emerald-700",
+        },
+    };
+
+    const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
+    const formattedDiscountType = discount.discount_type.replace('_', ' ');
+    
+    return (
+        <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
+            <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
+                <FaTag className={`${colorScheme.iconText} text-lg`} />
+            </div>
+            <div className="flex-1">
+                <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
+                    {formattedDiscountType} Discount
+                </p>
+                <p className={`text-xs ${colorScheme.text}`}>
+                    {percentage}% discount applied
+                </p>
+            </div>
+            <div className={`${colorScheme.amountText} font-bold`}>
+                -GHS {parseFloat(order.subtotal * percentage / 100).toFixed(2)}
+            </div>
+        </div>
+    );
+};
+
 // Main Component
 const GetOrder = () => {
     const [order, setOrder] = useState(null);
@@ -546,6 +640,53 @@ const GetOrder = () => {
         return (paymentStatus === 'PENDING' || paymentStatus === 'FAILED') && 
                orderStatus !== 'CANCELLED';
     };
+
+    // GA4 Purchase Tracking - Client-side fallback
+    useEffect(() => {
+        // Send GA4 purchase event when order loads and payment is successful
+        // This serves as a fallback in case webhook didn't fire
+        if (order && order.payment_status === 'SUCCESS' && order.status !== 'CANCELLED') {
+            // Check if we've already tracked this order in this session
+            const trackedKey = `ga4_tracked_${order.reference_code}`;
+            if (!sessionStorage.getItem(trackedKey)) {
+                
+                // Prepare items from order
+                const items = (order.items || []).map(item => ({
+                    item_id: String(item.service?.id || item.service_id),
+                    item_name: item.service?.name || item.service_name,
+                    item_category: item.service?.service_type || 'Cleaning',
+                    price: parseFloat(item.unit_price || item.price),
+                    quantity: item.quantity,
+                }));
+                
+                if (items.length > 0) {
+                    // Get coupon from discounts if any
+                    let coupon = null;
+                    if (order.discounts_applied) {
+                        const promoDiscount = order.discounts_applied.find(d => d.type === 'promotion');
+                        if (promoDiscount) coupon = promoDiscount.promotion_code;
+                    }
+                    
+                    // Track purchase (duplicate prevention - GA4 deduplicates by transaction_id)
+                    const trackingResult = trackPurchase({
+                        transaction_id: order.reference_code,
+                        value: parseFloat(order.total_amount || order.total),
+                        currency: 'GHS',
+                        items: items,
+                        payment_type: order.payment_method || 'paystack',
+                        shipping: parseFloat(order.delivery_cost || 0) + parseFloat(order.pickup_cost || 0),
+                        coupon: coupon,
+                    });
+                    
+                    if (trackingResult) {
+                        // Mark as tracked
+                        sessionStorage.setItem(trackedKey, 'true');
+                        console.log('GA4 purchase event sent from order page for:', order.reference_code);
+                    }
+                }
+            }
+        }
+    }, [order]);
 
     useEffect(() => {
         const paymentStatus = searchParams.get('payment');
@@ -674,61 +815,9 @@ const GetOrder = () => {
         });
     };
 
-    const colorMap = {
-        "redeemed_points": {
-            bgFrom: "from-blue-50",
-            bgTo: "to-blue-50",
-            border: "border-blue-200",
-            iconBg: "bg-blue-100",
-            iconText: "text-blue-600",
-            titleText: "text-blue-800",
-            text: "text-blue-600",
-            amountText: "text-blue-700",
-        },
-        "referral": {
-            bgFrom: "from-purple-50",
-            bgTo: "to-purple-50",
-            border: "border-purple-200",
-            iconBg: "bg-purple-100",
-            iconText: "text-purple-600",
-            titleText: "text-purple-800",
-            text: "text-purple-600",
-            amountText: "text-purple-700",
-        },
-        "default": {
-            bgFrom: "from-green-50",
-            bgTo: "to-emerald-50",
-            border: "border-emerald-200",
-            iconBg: "bg-emerald-100",
-            iconText: "text-emerald-600",
-            titleText: "text-emerald-800",
-            text: "text-emerald-600",
-            amountText: "text-emerald-700",
-        },
-    };
-
-    const DiscountBadge = ({ order, discount, percentage }) => {
-        const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
-        const formattedDiscountType = discount.discount_type.replace('_', ' ');
-        return (
-            <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
-                <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
-                    <FaTag className={`${colorScheme.iconText} text-lg`} />
-                </div>
-                <div className="flex-1">
-                    <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
-                        {formattedDiscountType} Discount
-                    </p>
-                    <p className={`text-xs ${colorScheme.text}`}>
-                        {percentage}% discount applied
-                    </p>
-                </div>
-                <div className={`${colorScheme.amountText} font-bold`}>
-                    -GHS {parseFloat(order.subtotal * percentage / 100).toFixed(2)}
-                </div>
-            </div>
-        );
-    };
+    // What vouchers / the free signup offer paid for (their items are stored at GHS 0)
+    const coverage = order?.coverage;
+    const isCovered = Boolean(coverage?.has_voucher || coverage?.has_free_item);
 
     const getPaymentStatusDisplay = (status) => {
         const statusConfig = {
@@ -751,6 +840,10 @@ const GetOrder = () => {
             PARTIAL_REFUND: {
                 text: 'Partial Refund',
                 colorClasses: 'bg-blue-100 text-blue-800',
+            },
+            COVERED: {
+                text: order?.coverage?.has_voucher ? 'Paid with voucher' : 'Free',
+                colorClasses: 'bg-emerald-100 text-emerald-800',
             },
             DEFAULT: {
                 text: 'N/A',
@@ -800,6 +893,18 @@ const GetOrder = () => {
                                 <span className="inline-flex items-center px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
                                     <FaHandsHelping className="mr-1" />
                                     Self-Handled
+                                </span>
+                            )}
+                            {order?.coverage?.has_voucher && (
+                                <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-medium">
+                                    <FaGift className="mr-1" />
+                                    Voucher Order
+                                </span>
+                            )}
+                            {order?.coverage?.has_free_item && (
+                                <span className="inline-flex items-center px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-medium">
+                                    <FaTag className="mr-1" />
+                                    Free Signup Service
                                 </span>
                             )}
                             {order?.status === 'CANCELLED' && (
@@ -904,6 +1009,17 @@ const GetOrder = () => {
                             transition={{ duration: 0.5 }}
                             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
                         >
+                            {/* Order progress (cancelled orders show the banner above instead) */}
+                            {order.status !== 'CANCELLED' && (
+                                <div className="lg:col-span-3">
+                                    <OrderStatusStepper
+                                        status={order.status}
+                                        createdAt={order.created_at}
+                                        updatedAt={order.updated_at}
+                                    />
+                                </div>
+                            )}
+
                             {/* Main Content */}
                             <div className="lg:col-span-2 space-y-6">
                                 {/* Customer & Order Info */}
@@ -1050,8 +1166,35 @@ const GetOrder = () => {
                                     <div className="space-y-4">
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Subtotal</span>
-                                            <span className="font-medium">GHS {parseFloat(order.subtotal || order.total).toFixed(2)}</span>
+                                            <span className="font-medium">
+                                                GHS {parseFloat(isCovered ? coverage.items_value : (order.subtotal || order.total)).toFixed(2)}
+                                            </span>
                                         </div>
+
+                                        {coverage?.has_voucher && (
+                                            <div className="flex justify-between text-green-700">
+                                                <span className="flex items-center gap-1">
+                                                    <FaGift className="w-3 h-3" />
+                                                    Paid with voucher
+                                                    {coverage.voucher_codes?.length > 0 && ` (${coverage.voucher_codes.join(', ')})`}
+                                                </span>
+                                                <span className="font-medium">-GHS {parseFloat(coverage.voucher_total).toFixed(2)}</span>
+                                            </div>
+                                        )}
+
+                                        {coverage?.has_free_item && (
+                                            <div className="flex justify-between text-amber-700">
+                                                <span className="flex items-center gap-1">
+                                                    <FaTag className="w-3 h-3" />
+                                                    Free signup service
+                                                </span>
+                                                <span className="font-medium">
+                                                    {parseFloat(coverage.free_total) > 0
+                                                        ? `-GHS ${parseFloat(coverage.free_total).toFixed(2)}`
+                                                        : 'FREE'}
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {order.discounts_applied?.map((discount, index) => {
                                             const isRedeemedPoints = discount.discount_type === "redeemed_points";
@@ -1100,9 +1243,9 @@ const GetOrder = () => {
                                         <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
                                             <span className="font-semibold text-lg">Total Amount</span>
                                             <div className="text-right">
-                                                {order.discounts_applied?.length > 0 && (
+                                                {(order.discounts_applied?.length > 0 || isCovered) && (
                                                     <div className="text-sm text-gray-400 line-through mb-1">
-                                                        GHS {(parseFloat(order.subtotal) +
+                                                        GHS {(parseFloat(isCovered ? coverage.items_value : order.subtotal) +
                                                             (order.is_self_handled ? 0 : parseFloat(order.delivery_cost || 0)) +
                                                             (order.is_self_handled ? 0 : parseFloat(order.pickup_cost || 0))).toFixed(2)}
                                                     </div>
@@ -1113,6 +1256,15 @@ const GetOrder = () => {
                                             </div>
                                         </div>
                                         
+                                        {coverage?.payment_note && (
+                                            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                                <p className="text-xs text-emerald-700">
+                                                    <FaCheckCircle className="inline mr-1" />
+                                                    {coverage.payment_note}
+                                                </p>
+                                            </div>
+                                        )}
+
                                         {/* Self-Handled Note */}
                                         {order.is_self_handled && order.status !== 'CANCELLED' && (
                                             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">

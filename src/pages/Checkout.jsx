@@ -39,6 +39,32 @@ import { usePlaceOrder } from '../hooks/usePlaceOrder';
 import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
 import api from '../api';
+import CheckoutStepper, { CHECKOUT_STEPS } from '../components/CheckoutStepper';
+import { FaArrowLeft, FaArrowRight, FaPen, FaHandHolding, FaMapMarkerAlt, FaUser, FaChevronDown, FaLock, FaShoppingBag } from 'react-icons/fa';
+import { AnimatePresence } from 'framer-motion';
+import { btnPrimary, btnSecondary, btnIcon, card, money } from '../components/checkoutUi';
+
+// One block on the review step, with an Edit button back to its step
+const ReviewRow = ({ icon: Icon, title, onEdit, children }) => (
+  <div className="flex items-start gap-3 sm:gap-4 p-4 sm:p-5">
+    <span className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary flex-shrink-0">
+      <Icon className="w-4 h-4" aria-hidden="true" />
+    </span>
+    <div className="flex-1 min-w-0">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">{title}</h3>
+      {children}
+    </div>
+    <button
+      type="button"
+      onClick={onEdit}
+      aria-label={`Edit ${title.toLowerCase()}`}
+      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex-shrink-0"
+    >
+      <FaPen className="w-3 h-3" aria-hidden="true" />
+      <span className="hidden sm:inline">Edit</span>
+    </button>
+  </div>
+);
 
 const Checkout = () => {
   const { refreshToken, setAccessToken, setRefreshToken, logout, user, discounts } = useContext(AuthContext);
@@ -241,13 +267,55 @@ const Checkout = () => {
   );
 
   const handlePhoneChange = (e) => {
-    let input = e.target.value;
-   
-    if (input.length <= 10) {
+    const input = e.target.value.replace(/[^\d\s+]/g, '');
+    const digits = input.replace(/\D/g, '');
+    // Up to 10 digits locally (024…), or 12 with the 233 country code
+    if (digits.length <= (digits.startsWith('233') ? 12 : 10)) {
       setPhoneNumber(input);
       setIsPhoneValid(validateGhanaPhone(input));
     }
   };
+
+  // --- Steps ---
+  const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [stepError, setStepError] = useState('');
+  const [shakeKey, setShakeKey] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
+  // What is still missing on a step; empty when the step is complete.
+  const missingFor = (index) => {
+    if (index === 0) return isPhoneValid ? '' : 'Enter a valid Ghana phone number to continue.';
+    if (index === 1) {
+      if (isSelfHandled) return '';
+      if (!pickup) return 'Choose a pickup address to continue.';
+      if (!delivery && !useSame) return 'Choose a delivery address, or use the pickup address.';
+    }
+    return '';
+  };
+
+  const goToStep = (next) => {
+    if (next === step || next < 0 || next >= CHECKOUT_STEPS.length) return;
+    // Moving forward needs every step before it complete.
+    for (let i = step; i < next; i++) {
+      const missing = missingFor(i);
+      if (missing) {
+        if (i !== step) setStep(i);
+        setStepError(missing);
+        setShakeKey((key) => key + 1);
+        return;
+      }
+    }
+    setStepError('');
+    setDirection(next > step ? 1 : -1);
+    setStep(next);
+    document.getElementById('checkout-steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Clear the step's error once it is fixed.
+  useEffect(() => {
+    if (stepError && !missingFor(step)) setStepError('');
+  }, [isPhoneValid, pickup, delivery, useSame, isSelfHandled]);
 
   // Persist delivery and pickup regions to localStorage
   useEffect(() => {
@@ -409,6 +477,8 @@ const Checkout = () => {
     setShowAlert(true);
   }, [paymentView]);
 
+  const stepAnimation = direction > 0 ? 'checkout-step-forward' : 'checkout-step-back';
+
   // Show loading state while checking pending order
   if (checkingPendingOrder) {
     return (
@@ -424,7 +494,7 @@ const Checkout = () => {
   return (
     <GoogleMapsProvider onLoad={() => console.log('Google Maps API loaded successfully!')}>
       <div className="bg-gray-50 min-h-screen">
-        <div className="lg:px-18 px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
           
           {/* Show loading spinner while loading data */}
           {loading ? (
@@ -489,127 +559,206 @@ const Checkout = () => {
               </div>
             </div>
           ) : (
-            /* Checkout Content - Only show when loading is complete AND cart has items */
-            <div> 
-              <div className="">
-                <div className={`mb-6 ${paymentView ? 'hidden' : ''}`}>
-                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Complete Your Order</h1>
-                  <p className="text-gray-600 mt-2">Review your items and provide delivery information</p>
-                </div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <div className="py-6">
-                    {/* Main Grid Layout */}
-                    <div className="flex flex-col xl:flex-row gap-6 w-full">
-                      
-                      {/* Left Column - Forms (2/3 width on large screens) */}
-                      <div className="flex-1 space-y-6 order-2 xl:order-1">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Personal Information - Top Left */}
-                          <div className="lg:col-span-1">
-                            <PersonalInformationCard
-                              phoneNumber={phoneNumber}
-                              isPhoneValid={isPhoneValid}
-                              handlePhoneChange={handlePhoneChange}
-                              user={user}
-                            />
-                          </div>
+            /* Checkout: one step at a time, summary alongside on large screens */
+            <div id="checkout-steps" className="scroll-mt-24 pb-28 lg:pb-0">
+              <div className="mb-5 sm:mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Checkout</h1>
+                <p className="text-sm sm:text-base text-gray-500 mt-1">{CHECKOUT_STEPS[step].hint}</p>
+              </div>
 
-                          {/* Delivery Information - Top Right */}
-                          <div className="lg:col-span-1">
-                            <div className="">
-                              <DeliveryInformationCard
-                                useSame={useSame}
-                                setUseSame={setUseSame}
-                                handlePlaceSelect={handlePlaceSelect}
-                                setActiveInput={setActiveInput}
-                                paymentView={paymentView}
-                                delivery={delivery}
-                                deliveryInputValue={deliveryInputValue}
-                                deliveryRegion={deliveryRegion}
-                                pickup={pickup}
-                                pickupInputValue={pickupInputValue}
-                                pickupRegion={pickupRegion}
-                                pickupTime={pickupTime}
-                                setPickupTime={setPickupTime}
-                                isSelfHandled={isSelfHandled}
-                                setIsSelfHandled={setIsSelfHandled}
-                              />
+              <CheckoutStepper step={step} onStepClick={goToStep} />
+
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] gap-6 lg:gap-8 mt-6 items-start">
+                <div className="min-w-0 space-y-4">
+                  {/* Small screens: summary folds open above the step */}
+                  <div className={`${card} lg:hidden overflow-hidden`}>
+                    <button
+                      type="button"
+                      onClick={() => setSummaryOpen((open) => !open)}
+                      aria-expanded={summaryOpen}
+                      aria-controls="mobile-summary"
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-medium text-primary">
+                        <FaShoppingBag className="w-4 h-4" aria-hidden="true" />
+                        {summaryOpen ? 'Hide' : 'Show'} order summary
+                        <FaChevronDown className={`w-3 h-3 transition-transform duration-300 ${summaryOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                      </span>
+                      <span className="text-base font-bold text-gray-900">{money(summary.total)}</span>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {summaryOpen && (
+                        <motion.div
+                          id="mobile-summary"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+                            <div className="pt-4">
+                              <OrderSummaryCard bare cart={cart} appliedPromotion={appliedPromotion} useSame={useSame} isSelfHandled={isSelfHandled} {...summary} />
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  {availablePromotions.length > 0 && (
+                    <div className="lg:hidden">
+                      <PromotionCard appliedPromotion={appliedPromotion} />
+                    </div>
+                  )}
 
-                        {/* Promotions Card - Above Payment on mobile */}
-                        <div className="block xl:hidden">
-                          {availablePromotions.length > 0 && (
-                            <div className="mb-6">
-                              <PromotionCard
-                                appliedPromotion={appliedPromotion}
-                              />
+                  {/* Steps stay mounted (hidden when inactive) so addresses and inputs keep their state */}
+                  <div hidden={step !== 0} className={step === 0 ? stepAnimation : ''}>
+                    <PersonalInformationCard
+                      phoneNumber={phoneNumber}
+                      isPhoneValid={isPhoneValid}
+                      handlePhoneChange={handlePhoneChange}
+                      user={user}
+                    />
+                  </div>
+
+                  <div hidden={step !== 1} className={step === 1 ? stepAnimation : ''}>
+                    <DeliveryInformationCard
+                      useSame={useSame}
+                      setUseSame={setUseSame}
+                      handlePlaceSelect={handlePlaceSelect}
+                      setActiveInput={setActiveInput}
+                      paymentView={paymentView}
+                      delivery={delivery}
+                      deliveryInputValue={deliveryInputValue}
+                      deliveryRegion={deliveryRegion}
+                      pickup={pickup}
+                      pickupInputValue={pickupInputValue}
+                      pickupRegion={pickupRegion}
+                      pickupTime={pickupTime}
+                      setPickupTime={setPickupTime}
+                      isSelfHandled={isSelfHandled}
+                      setIsSelfHandled={setIsSelfHandled}
+                    />
+                  </div>
+
+                  <div hidden={step !== 2} className={`space-y-4 ${step === 2 ? stepAnimation : ''}`}>
+                    <section className={`${card} divide-y divide-gray-100`} aria-label="Review your order">
+                      <ReviewRow icon={FaUser} title="Your details" onEdit={() => goToStep(0)}>
+                        <p className="text-gray-900 font-medium truncate">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'You'}</p>
+                        <p className="text-gray-500 text-sm truncate">{user?.email}</p>
+                        <p className="text-gray-500 text-sm">{phoneNumber}</p>
+                      </ReviewRow>
+                      <ReviewRow icon={isSelfHandled ? FaHandHolding : FaMapMarkerAlt} title="Pickup & delivery" onEdit={() => goToStep(1)}>
+                        {isSelfHandled ? (
+                          <>
+                            <p className="text-gray-900 font-medium">Drop off & collect</p>
+                            <p className="text-gray-500 text-sm">At our Achimota Golf Hills workshop · no pickup or delivery fees</p>
+                          </>
+                        ) : (
+                          <dl className="text-sm space-y-2">
+                            <div>
+                              <dt className="text-gray-500">Pickup</dt>
+                              <dd className="text-gray-900 font-medium break-words">{pickup?.address || '—'}</dd>
                             </div>
-                          )}
-                        </div>
-
-                        <div className="block lg:hidden">
-                          <OrderSummaryCard 
-                            cart={cart}
-                            appliedPromotion={appliedPromotion}
-                            useSame={useSame}
-                            {...summary} 
-                          />
-                        </div>
-
-                        {/* Payment Card - Full width below */}
-                        <div className="lg:col-span-2">
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                          >
-                            <PaymentCard
-                              total={summary.total}
-                              handlePayment={onPayment}
-                              placing={placing}
-                              cartLength={cart.length}
-                              pickup={pickup}
-                              useSame={useSame}
-                              delivery={delivery}
-                              isPhoneValid={isPhoneValid}
-                              pickupTime={pickupTime}
-                              isSelfHandled={isSelfHandled} 
-                            />
-                          </motion.div>
-                        </div>
-                      </div>
-
-                      {/* Right Column - Order Summary & Promotions (1/3 width) */}
-                      <div className="xl:w-1/3 space-y-6 order-3 xl:order-1">
-                        {/* Promotions Card - Desktop only */}
-                        {availablePromotions.length > 0 && (
-                          <div className="hidden xl:block">
-                            <PromotionCard
-                              appliedPromotion={appliedPromotion}
-                            />
-                          </div>
+                            <div>
+                              <dt className="text-gray-500">Delivery</dt>
+                              <dd className="text-gray-900 font-medium break-words">{useSame ? 'Same as pickup' : delivery?.address || '—'}</dd>
+                            </div>
+                          </dl>
                         )}
-                        {/* Order Summary Card - Desktop */}
-                        <div className="hidden lg:block">
-                          <OrderSummaryCard 
-                            cart={cart}
-                            appliedPromotion={appliedPromotion}
-                            useSame={useSame}
-                            isSelfHandled={isSelfHandled} 
-                            {...summary} 
-                          />
-                        </div>
+                      </ReviewRow>
+                    </section>
+
+                    <PaymentCard />
+                  </div>
+
+                  {/* Step error */}
+                  {stepError && (
+                    <motion.p
+                      key={shakeKey}
+                      role="alert"
+                      initial={{ x: 0 }}
+                      animate={{ x: [0, -8, 8, -6, 6, 0] }}
+                      transition={{ duration: 0.4 }}
+                      className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    >
+                      <FaExclamationTriangle className="flex-shrink-0" aria-hidden="true" />
+                      {stepError}
+                    </motion.p>
+                  )}
+
+                  {/* Step buttons. Large screens: under the step. Small screens: a bar fixed to the bottom. */}
+                  <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:z-auto lg:border-0 lg:bg-transparent lg:backdrop-blur-none lg:p-0 lg:pt-2">
+                    <div className="flex items-center gap-3">
+                      {step === 0 ? (
+                        <Link to="/cart" className={`${btnIcon} lg:hidden`} aria-label="Back to cart">
+                          <FaArrowLeft className="w-4 h-4" aria-hidden="true" />
+                        </Link>
+                      ) : (
+                        <button type="button" onClick={() => goToStep(step - 1)} className={`${btnIcon} lg:hidden`} aria-label="Back">
+                          <FaArrowLeft className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      )}
+                      {step === 0 ? (
+                        <Link to="/cart" className={`${btnSecondary} hidden lg:inline-flex`}>
+                          <FaArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                          Back to cart
+                        </Link>
+                      ) : (
+                        <button type="button" onClick={() => goToStep(step - 1)} className={`${btnSecondary} hidden lg:inline-flex`}>
+                          <FaArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                          Back
+                        </button>
+                      )}
+
+                      {/* Total, on small screens only (the summary column shows it on large ones) */}
+                      <div className="lg:hidden min-w-0 mr-auto">
+                        <p className="text-xs text-gray-500 leading-none">Total</p>
+                        <p className="text-base font-bold text-gray-900 truncate">{money(summary.total)}</p>
                       </div>
+
+                      {step < CHECKOUT_STEPS.length - 1 ? (
+                        <button type="button" onClick={() => goToStep(step + 1)} className={`${btnPrimary} group lg:ml-auto`}>
+                          <span className="sm:hidden">Continue</span>
+                          <span className="hidden sm:inline">Continue to {CHECKOUT_STEPS[step + 1].label.toLowerCase()}</span>
+                          <FaArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onPayment}
+                          disabled={placing}
+                          className={`${btnPrimary} lg:ml-auto lg:min-w-[240px]`}
+                        >
+                          {placing ? (
+                            <>
+                              <FaSpinner className="w-4 h-4 animate-spin" aria-hidden="true" />
+                              Processing…
+                            </>
+                          ) : (
+                            <>
+                              <FaLock className="w-3.5 h-3.5" aria-hidden="true" />
+                              <span className="sm:hidden">Pay now</span>
+                              <span className="hidden sm:inline">Pay {money(summary.total)}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
+
+                {/* Side column on large screens: promotion and order summary on every step */}
+                <aside className="hidden lg:block space-y-4 lg:sticky lg:top-24">
+                  {availablePromotions.length > 0 && <PromotionCard appliedPromotion={appliedPromotion} />}
+                  <OrderSummaryCard
+                    cart={cart}
+                    appliedPromotion={appliedPromotion}
+                    useSame={useSame}
+                    isSelfHandled={isSelfHandled}
+                    {...summary}
+                  />
+                </aside>
               </div>
             </div>
           )}

@@ -1,92 +1,44 @@
-import React from 'react';
-import { FaInfoCircle, FaGift } from 'react-icons/fa';
+import { FaTags } from 'react-icons/fa';
 
-// --- Placeholder/Example Data Definition ---
-// NOTE: In a real application, you would pass the appliedPromotion object as a prop.
-// This is a placeholder for the default image URL when appliedPromotion.image is null.
-const PromotionPlaceholder = "https://placehold.co/112x128/9CA3AF/FFFFFF?text=PROMO"; 
-
-
+// Today's promotion, applied automatically at checkout
 const PromotionCard = ({ appliedPromotion }) => {
+  if (!appliedPromotion) return null;
 
-  // Function to format the date to a simple, localized string (e.g., 9/29/2025)
-  const formatEndDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (e) {
-      return 'Invalid Date';
-    }
-  };
+  const endDate = appliedPromotion.end_date
+    ? new Date(appliedPromotion.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null;
 
   return (
-    <div className="rounded-xl shadow-xl bg-white border border-gray-200 overflow-hidden">
-      
-      {/* Card Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50">
-        <div className="flex items-center">
-          {/* Icon for Promotion */}
-          <FaGift className="mr-2 text-primary" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Today's Special Offer</h3>
-          </div>
-        </div>
-        
-        {/* Discount Badge (Conditional) */}
-        {appliedPromotion && appliedPromotion.discount_percentage && (
-          <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
-            -{appliedPromotion.discount_percentage}% OFF
-          </div>
+    <section
+      aria-label="Today's promotion"
+      className="relative overflow-hidden rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4 sm:p-5"
+    >
+      <div className="flex items-center gap-4">
+        {appliedPromotion.image ? (
+          <img src={appliedPromotion.image} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+        ) : (
+          <span className="flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 text-purple-700 flex-shrink-0">
+            <FaTags className="w-5 h-5" aria-hidden="true" />
+          </span>
         )}
-      </div>
-      
-      {/* Card Body and Promotion Display */}
-      <div className="px-6 py-4">
-        {/* Coupon Ticket Style Wrapper */}
-        <div className="relative bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200 overflow-hidden">
-          
-          {/* Main ticket content (Flex layout for image and text) */}
-          <div className="flex">
-            
-            {/* Image section */}
-            <div className="relative p-4">
-              <img 
-                src={appliedPromotion?.image || PromotionPlaceholder} 
-                alt="Promotion" 
-                className="w-28 h-32 rounded-lg border-2 border-gray-100 object-cover" 
-              />
-            </div>
-
-            {/* Content section */}
-            <div className="flex-1 p-4 pr-6">
-              <h4 className="font-bold text-gray-900 uppercase tracking-wide text-lg">
-                {appliedPromotion ? appliedPromotion.name : 'No active promotions at the moment'}
-              </h4>
-              
-              {appliedPromotion && appliedPromotion.description && (
-                <p className="text-gray-600 mt-2 text-sm leading-relaxed line-clamp-3">
-                  {appliedPromotion.description}
-                </p>
-              )}
-            </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-gray-900 truncate">{appliedPromotion.name}</p>
+            {appliedPromotion.discount_percentage && (
+              <span className="text-xs font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5">
+                -{appliedPromotion.discount_percentage}%
+              </span>
+            )}
           </div>
-
-          {/* Corner accents for the coupon look */}
-          <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
-          <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-gray-300 rounded-tr-lg"></div>
-          <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-gray-300 rounded-bl-lg"></div>
-          <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-gray-300 rounded-br-lg"></div>
+          {appliedPromotion.description && (
+            <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{appliedPromotion.description}</p>
+          )}
+          <p className="text-xs text-purple-700 mt-1">
+            Applied automatically{endDate ? ` · ends ${endDate}` : ''}
+          </p>
         </div>
-        
-        {/* Expiration Date (Conditional) */}
-        {appliedPromotion && appliedPromotion.end_date && (
-          <div className="mt-4 text-xs text-gray-500 flex items-center">
-            <FaInfoCircle className="mr-1" />
-            Valid until: {formatEndDate(appliedPromotion.end_date)}
-          </div>
-        )}
       </div>
-    </div>
+    </section>
   );
 };
 
