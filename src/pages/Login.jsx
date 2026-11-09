@@ -748,7 +748,7 @@ useEffect(() => {
             </Link>
           </p>
 
-          <div className="mt-4 pt-3">
+          {/* <div className="mt-4 pt-3">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
