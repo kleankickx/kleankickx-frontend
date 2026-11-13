@@ -44,6 +44,7 @@ import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
 import PartnerRoute from './components/PartnerRoute';
+import FloatingNav from './components/FloatingNav';
 import PartnerInvoices from './pages/PartnerInvoices';
 import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
 import KleanKickxLegal from './pages/KleanKickxLegal';
@@ -117,6 +118,7 @@ const AppContent = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <ConditionalNavbar />
+      <FloatingNav />
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />

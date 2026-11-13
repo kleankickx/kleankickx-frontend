@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import Footer from '../components/Footer';
@@ -21,6 +21,103 @@ const ServicePhoto = ({ images, kind, alt }) => {
         )
       )}
     </div>
+  );
+};
+
+// Hero slideshow: no labels, arrows or dots. It crossfades on its own, follows a drag or swipe,
+// leans with the pointer and drifts on scroll. Pauses on hover, while dragging and when the tab is hidden.
+const HERO_SLIDES = [
+  { src: 'images/before-after.jpg', alt: 'White sneakers caked in dirt beside the same pair after a KleanKickx clean', pos: '50% 20%' },
+  { src: 'images/market.jpg', alt: 'A trader opening a sack of secondhand sneakers beside piles of shoes at an Accra market' },
+];
+const HERO_MS = 6500;
+
+const HeroShow = ({ children }) => {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [tick, setTick] = useState(0); // restarts the progress line
+  const ref = useRef(null);
+  const showRef = useRef(null);
+  const txtRef = useRef(null);
+  const startX = useRef(null);
+  const n = HERO_SLIDES.length;
+  const go = useCallback((d) => { setI((p) => (p + d + n) % n); setTick((t) => t + 1); }, [n]);
+
+  useEffect(() => {
+    if (paused || dragging) return undefined;
+    const id = setTimeout(() => go(1), HERO_MS);
+    return () => clearTimeout(id);
+  }, [i, paused, dragging, tick, go]);
+
+  useEffect(() => {
+    const vis = () => setPaused(document.hidden);
+    document.addEventListener('visibilitychange', vis);
+    return () => document.removeEventListener('visibilitychange', vis);
+  }, []);
+
+  // Scroll drift: the photo moves slower than the page and the text lifts away
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = ref.current?.offsetHeight || 1;
+        const y = Math.min(window.scrollY, h);
+        if (showRef.current) showRef.current.style.transform = `translate3d(0,${y * 0.35}px,0)`;
+        if (txtRef.current) { txtRef.current.style.transform = `translate3d(0,${y * -0.12}px,0)`; txtRef.current.style.opacity = String(1 - (y / h) * 1.1); }
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
+  }, []);
+
+  const onDown = (e) => {
+    if (e.target.closest('a,button')) return;
+    startX.current = e.clientX; setDragging(true);
+  };
+  const onUp = (e) => {
+    if (startX.current === null) return;
+    const dx = e.clientX - startX.current;
+    startX.current = null; setDragging(false);
+    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  };
+  const onMove = (e) => {
+    if (e.pointerType !== 'mouse' || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    ref.current.style.setProperty('--px', `${((e.clientX - r.left) / r.width - 0.5) * -14}px`);
+    ref.current.style.setProperty('--py', `${((e.clientY - r.top) / r.height - 0.5) * -10}px`);
+  };
+  const onKey = (e) => { if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); };
+
+  return (
+    <section
+      ref={ref}
+      className={`hero ${dragging ? 'drag' : ''}`}
+      aria-labelledby="heroT"
+      aria-roledescription="carousel"
+      tabIndex={-1}
+      onPointerDown={onDown}
+      onPointerUp={onUp}
+      onPointerCancel={() => { startX.current = null; setDragging(false); }}
+      onPointerMove={onMove}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => { setPaused(false); setTick((t) => t + 1); }}
+      onKeyDown={onKey}
+    >
+      <div className="show" ref={showRef}>
+        {HERO_SLIDES.map((sl, k) => (
+          <div key={sl.src} className={`sl ${k === i ? 'on' : ''}`} aria-hidden={k !== i}>
+            <img src={sl.src} alt={sl.alt} draggable="false" style={sl.pos ? { objectPosition: sl.pos } : undefined}
+              fetchPriority={k === 0 ? 'high' : 'auto'} loading={k === 0 ? 'eager' : 'lazy'} />
+          </div>
+        ))}
+      </div>
+      <div className="shade"></div>
+      <div className="wrap txt" ref={txtRef}>{children}</div>
+      <span key={tick + '-' + i} className={`prog ${paused || dragging ? '' : 'run'}`} style={{ '--dur': `${HERO_MS}ms` }} aria-hidden="true"></span>
+    </section>
   );
 };
 
@@ -246,15 +343,33 @@ const Home = () => {
 
 
         /* ===== hero: one static frame ===== */
-        .hero{position:relative;min-height:clamp(540px,80vh,780px);display:flex;align-items:flex-end;background:#000;color:#fff;overflow:hidden}
-        .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
-        .hero .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.84) 0%,rgba(0,0,0,.5) 55%,rgba(0,0,0,.15) 100%),linear-gradient(0deg,rgba(0,0,0,.6),transparent 45%)}
-        .hero .txt{position:relative;width:100%;padding-block:120px 72px}
+        .hero{position:relative;min-height:clamp(560px,86vh,820px);display:flex;align-items:flex-end;background:#000;color:#fff;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none}
+        .hero.drag{cursor:grabbing}
+        .hero .show{position:absolute;inset:0;will-change:transform}
+        .hero .sl{position:absolute;inset:0;opacity:0;transition:opacity 1.4s cubic-bezier(.4,0,.2,1)}
+        .hero .sl.on{opacity:1}
+        .hero .sl img{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;object-position:50% 40%;transform:translate3d(var(--px,0),var(--py,0),0) scale(1.02);transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+        .hero .sl.on img{animation:kkb 9s cubic-bezier(.25,.1,.25,1) both}
+        @keyframes kkb{from{scale:1.08}to{scale:1}}
+        .hero .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.84) 0%,rgba(0,0,0,.5) 55%,rgba(0,0,0,.15) 100%),linear-gradient(0deg,rgba(0,0,0,.6),transparent 45%);pointer-events:none}
+        .hero .txt{position:relative;width:100%;padding-block:120px 72px;will-change:transform,opacity}
         .hero h1{font-size:clamp(56px,9vw,128px);max-width:10ch;color:#fff}
         .hero h1 span{color:#6FD46F}
         .hero .sub{font-size:clamp(17px,1.6vw,21px);color:rgba(255,255,255,.85);margin-top:22px;max-width:44ch}
+        .hero .prog{position:absolute;left:0;bottom:0;height:3px;background:#6FD46F;width:100%;transform-origin:left;transform:scaleX(0)}
+        .hero .prog.run{animation:kkprog var(--dur) linear both}
+        .hero:hover .prog.run,.hero.drag .prog.run{animation-play-state:paused}
+        @keyframes kkprog{to{transform:scaleX(1)}}
         .hero-go{padding:16px 26px;font-size:16px}
         .hero-ghost{padding:16px 24px;font-size:16px}
+        /* image wipe-in on scroll: photos open from a thin strip */
+        .kk-js .svcs:not(.in) .pic img{clip-path:inset(0 46% 0 46%)}
+        .svcs .pic img{transition:clip-path 1.2s cubic-bezier(.7,0,.2,1),transform .6s var(--spring)}
+        .svcs .svc:nth-child(2) .pic img{transition-delay:.08s}.svcs .svc:nth-child(3) .pic img{transition-delay:.16s}.svcs .svc:nth-child(4) .pic img{transition-delay:.24s}
+        /* package photo */
+        .pk-pic{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--tint);margin-bottom:18px}
+        .pk-pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kkfade .6s ease both}
+        @keyframes kkfade{from{opacity:0}to{opacity:1}}
         @media (max-width:640px){.hero .txt{padding-block:96px 44px}.hero .ctas .btn{flex:1 1 100%;justify-content:center}}
 
         /* sections reached from the navbar stop below the sticky bar */
@@ -288,7 +403,7 @@ const Home = () => {
         .head p{color:var(--muted)}
         @media (max-width:860px){.head{grid-template-columns:1fr;gap:18px}}
         .rv{transition:transform 1s cubic-bezier(.2,.8,.2,1)}
-        .js .rv:not(.in){transform:translateY(36px)}
+        .kk-js .rv:not(.in){transform:translateY(36px)}
 
         /* numbers */
         .nums{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink)}
@@ -391,7 +506,7 @@ const Home = () => {
         .ba figure:hover img{transform:scale(1.04)}
         .ba figcaption{position:absolute;left:16px;top:16px;background:#000;color:#fff;font-family:var(--mono);font-size:12px;letter-spacing:.12em;padding:6px 10px}
         .ba .after figcaption{background:var(--green)}
-        .js .ba .after:not(.in) img{clip-path:inset(0 0 0 100%)}
+        .kk-js .ba .after:not(.in) img{clip-path:inset(0 0 0 100%)}
         .ba .after img{transition:clip-path 1.3s var(--swift),transform 1.4s cubic-bezier(.2,.8,.2,1)}
         @media (max-width:560px){.ba{grid-template-columns:1fr}}
 
@@ -453,25 +568,23 @@ const Home = () => {
           html{scroll-behavior:auto}
           *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}
           .ticker .track{animation:none}
-          .js .rv:not(.in){transform:none}
-          .js .ba .after:not(.in) img{clip-path:none}
+          .kk-js .rv:not(.in){transform:none}
+          .kk-js .ba .after:not(.in) img{clip-path:none}
+          .kk-js .svcs:not(.in) .pic img{clip-path:none}
+          .hero .sl.on img{animation:none}.hero .sl{transition-duration:.01s}
         }
       `}</style>
 
       <div id="top">
         {/* HERO */}
-        <section className="hero" aria-labelledby="heroT">
-          <img src="images/before-after.jpg" alt="White sneakers caked in dirt beside the same pair after a KleanKickx clean" fetchPriority="high" />
-          <div className="shade"></div>
-          <div className="wrap txt">
-            <h1 id="heroT">Sneaker care in <span>Accra.</span></h1>
-            <p className="sub">Cleaned and restored by hand at our studio on Golf Hills St. We pick up, Klean and deliver back across Accra.</p>
-            <div className="ctas">
-              <a className="btn go hero-go" href="#services">Book a Klean <span className="ar" aria-hidden="true">→</span></a>
-              <a className="btn light hero-ghost" href="#bundles">See bundles</a>
-            </div>
+        <HeroShow>
+          <h1 id="heroT">Sneaker care in <span>Accra.</span></h1>
+          <p className="sub">Cleaned and restored by hand at our studio on Golf Hills St. We pick up, Klean and deliver back across Accra.</p>
+          <div className="ctas">
+            <a className="btn go hero-go" href="#services">Book a Klean <span className="ar" aria-hidden="true">→</span></a>
+            <a className="btn light hero-ghost" href="#bundles">See bundles</a>
           </div>
-        </section>
+        </HeroShow>
 
         {/* SERVICES & PACKAGES: second on the page so prices are one scroll away */}
         <section className="std" id="services" aria-labelledby="sT">
@@ -553,6 +666,12 @@ const Home = () => {
                 </div>
               </div>
               <div className="pk-r" aria-live="polite">
+                {selectedService?.image && (
+                  <div className="pk-pic">
+                    <img key={selectedService.image} src={selectedService.image} alt={`${selectedBundle.name}: ${bundleSelection} ${bundleSelection === 1 ? 'pair' : 'pairs'} of sneakers`}
+                      loading="lazy" onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} />
+                  </div>
+                )}
                 <div className="bname">{selectedBundle.name}</div>
                 <div className="total">₵{selectedBundle.total}</div>
                 <div className="meta">
@@ -661,8 +780,8 @@ const Home = () => {
               <p>A real Deep Klean from the studio. Midsoles brightened, grime lifted from the mesh, laces refreshed.</p>
             </div>
             <div className="ba">
-              <figure className="before"><img src="images/before.jpg" alt="Black and white sneakers before cleaning, with grey, grimy midsoles" loading="lazy" /><figcaption>BEFORE</figcaption></figure>
-              <figure className="after rv"><img src="images/after.jpg" alt="The same sneakers after a KleanKickx Deep Klean, with bright white midsoles" loading="lazy" /><figcaption>AFTER</figcaption></figure>
+              <figure className="before"><img src="images/before-after.jpg" style={{ objectPosition: '0% 50%' }} alt="White sneakers before cleaning, caked in dirt" loading="lazy" /><figcaption>BEFORE</figcaption></figure>
+              <figure className="after rv"><img src="images/before-after.jpg" style={{ objectPosition: '100% 50%' }} alt="The same sneakers after a KleanKickx clean, bright white" loading="lazy" /><figcaption>AFTER</figcaption></figure>
             </div>
           </div>
         </section>

@@ -523,7 +523,7 @@ const Checkout = () => {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-8">
                   <p className="text-yellow-800 leading-relaxed">
                     Looks like you haven't added any items to your cart yet. 
-                    Let's find some amazing cleaning services for you!
+                    Pick a Klean and it will show up here.
                   </p>
                 </div>
 
