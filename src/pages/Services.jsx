@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
@@ -12,6 +12,14 @@ import { FaCheckCircle, FaExclamationTriangle, FaGift, FaTimes } from 'react-ico
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import { trackEvent } from '../utils/analytics';
+
+// Toast shown after adding: the customer stays on this page and can keep adding.
+const AddedToast = ({ name }) => (
+  <span>
+    {name} is in your cart.{' '}
+    <Link to="/cart" style={{ fontWeight: 700, textDecoration: 'underline' }}>View cart</Link>
+  </span>
+);
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -44,11 +52,6 @@ const Services = () => {
   // Refs for service cards
   const servicesSectionRef = useRef(null);
   const serviceCardRefs = useRef({});
-
-  // Debug: Log cart to ensure it's available
-  useEffect(() => {
-    console.log('[Services] Cart from context:', cart);
-  }, [cart]);
 
   //
   useEffect(() => {
@@ -363,9 +366,7 @@ const handleAddToCart = async (service) => {
     try {
       // Add to cart first
       await addToCart(id, 1, { name, price });
-      toast.success(`Free ${name} added to cart!`);
-      // Then navigate to cart
-      navigate('/cart');
+      toast.success(<AddedToast name={`Free ${name}`} />);
     } catch (error) {
       console.error('Error adding free service:', error);
       toast.error('Failed to add free service. Please try again.');
@@ -387,8 +388,7 @@ const handleAddToCart = async (service) => {
         service_type: service.service_type,
       }
     );
-    toast.success(`${name} added to cart!`);
-    navigate('/cart');
+    toast.success(<AddedToast name={name} />);
   } catch (error) {
     console.error('Error adding service:', error);
     toast.error('Failed to add service to cart. Please try again.');
@@ -445,8 +445,8 @@ const handleAddToCart = async (service) => {
                 <FaExclamationTriangle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">Oops! Already Claimed 🎁</h3>
-                <p className="text-white/90 text-sm mt-1">Welcome back!</p>
+                <h3 className="text-xl font-bold text-white">Already claimed</h3>
+                <p className="text-white/90 text-sm mt-1">Welcome back.</p>
               </div>
             </div>
           </div>
@@ -458,11 +458,11 @@ const handleAddToCart = async (service) => {
               </div>
               
               <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                Your Free Service Has Been Claimed
+                You've used your free Standard Klean
               </h4>
               
               <p className="text-gray-600 mb-4">
-                It looks like you've already used your welcome gift:
+                This account has already claimed:
               </p>
               
               <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-4">
@@ -475,8 +475,7 @@ const handleAddToCart = async (service) => {
               </div>
               
               <p className="text-gray-600 mb-6">
-                Don't worry! You can still enjoy our premium cleaning services at great prices.
-                Check out our other amazing services below!
+                You can still book any of the services below, from ₵50 a pair.
               </p>
             </div>
             
@@ -521,7 +520,7 @@ const handleAddToCart = async (service) => {
                   You've already claimed your free service: <span className="font-bold">{freeServiceStatus.serviceName}</span>
                 </p>
                 <p className="text-green-600 text-sm mt-1">
-                  Thank you for being a valued customer! Check out our other services below.
+                  Thanks for coming back. Book your next Klean below.
                 </p>
               </div>
             </div>
@@ -538,9 +537,9 @@ const handleAddToCart = async (service) => {
                     <FaGift className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-yellow-800 font-bold text-lg">Welcome Gift! 🎁</h3>
+                    <h3 className="text-yellow-800 font-bold text-lg">Your first Klean is free</h3>
                     <p className="text-yellow-700">
-                      You're eligible for a <span className="font-bold">FREE {freeService.name}</span> as a new user!
+                      Add your <span className="font-bold">free {freeService.name}</span> to the cart. One per account.
                     </p>
                   </div>
                 </div>
@@ -548,7 +547,7 @@ const handleAddToCart = async (service) => {
                   onClick={scrollToServices}
                   className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 whitespace-nowrap shadow-md"
                 >
-                  Claim Your Free Service
+                  Claim it
                 </button>
               </div>
             </div>
@@ -566,9 +565,9 @@ const handleAddToCart = async (service) => {
               <FaGift className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-blue-800 font-bold text-lg">New User Bonus! 🎉</h3>
+              <h3 className="text-blue-800 font-bold text-lg">First Klean free</h3>
               <p className="text-blue-700">
-                Sign up today and get a <span className="font-bold">FREE {freeService.name}</span> as a welcome gift!
+                Sign up and your first <span className="font-bold">{freeService.name}</span> is free.
               </p>
             </div>
           </div>
@@ -739,7 +738,7 @@ const handleAddToCart = async (service) => {
               </div>
               {isBundle && service.perSneakerPrice && (
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">Per sneaker:</p>
+                  <p className="text-xs text-gray-500">Per pair:</p>
                   <p className="text-sm font-semibold text-green-600">
                     ₵{service.perSneakerPrice}
                   </p>
@@ -771,7 +770,7 @@ const handleAddToCart = async (service) => {
                 canClaimFreeService ? (
                   <>
                     <FaGift className="w-4 h-4" />
-                    Add to Cart to Claim Your Free Clean
+                    Add Free Klean to Cart
                   </>
                 ) : showAlreadyClaimed ? (
                   <>
@@ -793,7 +792,7 @@ const handleAddToCart = async (service) => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
-                  Add {service.included_quantity || 1}-Pair Bundle
+                  Add to Cart
                 </>
               ) : (
                 <>
@@ -823,10 +822,10 @@ const handleAddToCart = async (service) => {
           animate="visible"
         >
           <h1 className="text-white text-3xl md:text-5xl font-bold header">
-            <span className="text-primary">Schedule </span> a Klean
+            <span className="text-primary">Book </span> a Klean
           </h1>
           <p className="text-white lg:text-lg mt-[2rem] max-w-2xl">
-            At Kleankickx, we're passionate about bringing your favorite footwear back to life.
+            Every service is priced per pair. Add what you need to your cart and pay by Mobile Money or card.
           </p>
           
           <motion.button
@@ -835,7 +834,7 @@ const handleAddToCart = async (service) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <span>Browse Services</span>
+            <span>See services</span>
             <motion.svg 
               className="w-5 h-5 group-hover:translate-y-0.5 transition-transform"
               fill="none" 
@@ -863,7 +862,7 @@ const handleAddToCart = async (service) => {
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-primary mb-1">Our Services</h2>
-            <p className="text-gray-600 mb-4">Premium sneakers cleaning and restoration services.</p>
+            <p className="text-gray-600 mb-4">Sneaker cleaning and restoration in Accra, priced in GHS.</p>
             
             {renderFreeServiceBanner()}
           </div>

@@ -33,6 +33,7 @@ export const BUNDLES = [
   { name: 'Triple Threat', price: 130, pairs: 3 },
   { name: 'Clean Krew', price: 210, pairs: 5 },
   { name: 'Sneakers Squad', price: 410, pairs: 10 },
+  { name: 'VIP Klean', price: 800, pairs: 20 },
 ];
 
 export const FAQ = [
@@ -40,6 +41,7 @@ export const FAQ = [
   ['Do you pick up and deliver?', `Yes. We pick up and deliver across Accra, including ${AREAS.join(', ')}. Delivery fees apply. You can also drop off at the studio on 29 Golf Hills St.`],
   ['How long does a Klean take?', 'Standard and Deep Klean take about 72 hours. Priority Klean comes back the next day.'],
   ['How do I pay?', 'Add your services to the cart and pay by Mobile Money or card through Paystack.'],
+  ['What happens to shoes I trade in?', 'We check every pair by hand. Wearable pairs are cleaned and go back into use. Pairs past saving go to our partner KicksCTRL for material recovery, not landfill.'],
 ];
 
 const offer = (name, price, description) => ({
@@ -58,7 +60,7 @@ export const businessSchema = {
   telephone: BUSINESS.phone,
   email: BUSINESS.email,
   foundingDate: '2020',
-  priceRange: '₵50–₵410',
+  priceRange: '₵50–₵800',
   currenciesAccepted: 'GHS',
   paymentAccepted: 'Mobile Money, Card',
   address: { '@type': 'PostalAddress', streetAddress: BUSINESS.street, addressLocality: BUSINESS.city, addressRegion: BUSINESS.region, addressCountry: BUSINESS.country },
@@ -91,7 +93,8 @@ const priceList = () => `
 const areas = () => `<h2>Pickup and delivery across Accra</h2><ul>${AREAS.map((a) => `<li>${a}</li>`).join('')}</ul>`;
 const contact = () => `<h2>Studio</h2><address>${BUSINESS.street}, ${BUSINESS.city}, Ghana<br>
 <a href="tel:${BUSINESS.phone}">${BUSINESS.phoneDisplay}</a> · <a href="mailto:${BUSINESS.email}">${BUSINESS.email}</a></address>`;
-const nav = () => `<nav><a href="/">Home</a> · <a href="/services">Book a Klean</a> · <a href="/rate-and-services">Prices</a> · <a href="/about-us">About</a> · <a href="/vouchers">Gift vouchers</a></nav>`;
+const nav = () => `<nav><a href="/#services">Services</a> · <a href="/#trade-in">Trade-In</a> · <a href="/impact">Impact</a> · <a href="/studio">Studio</a> · <a href="/services">Book a Klean</a></nav>`;
+const tradeIn = () => `<h2>Trade-In</h2><p>Bring the pairs you no longer wear. We check every one by hand: wearable pairs are cleaned and go back into use, and pairs past saving go to our partner <a href="https://kicksctrl.com">KicksCTRL</a> for material recovery, not landfill.</p>`;
 const faq = () => `<h2>Questions</h2>${FAQ.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}`;
 
 // Public, indexable routes. Anything not listed here (cart, checkout, orders, account,
@@ -103,8 +106,8 @@ export const PAGES = {
     schema: [faqSchema],
     body: () => `${nav()}<h1>Sneaker cleaning and restoration in Accra</h1>
 <p>We pick up your sneakers, clean them by hand at our studio on Golf Hills St, and deliver them back. Pay by Mobile Money or card.</p>
-${priceList()}${areas()}
-<h2>How it works</h2><ol><li>Book a Klean online and choose pickup or drop-off.</li><li>Our technicians clean and restore your pair.</li><li>Your pair comes back clean, usually within 72 hours.</li></ol>
+${priceList()}${tradeIn()}${areas()}
+<h2>How it works</h2><ol><li>Add a Klean to your cart and choose pickup or drop-off at checkout.</li><li>Our technicians clean and restore your pair.</li><li>Your pair comes back clean, usually within 72 hours.</li></ol>
 ${faq()}${contact()}`,
   },
   '/services': {
@@ -117,11 +120,22 @@ ${faq()}${contact()}`,
     description: 'KleanKickx prices: Standard Klean ₵50, Priority Klean ₵70 (next day), Deep Klean ₵80. Bundles: 3 pairs ₵130, 5 pairs ₵210, 10 pairs ₵410.',
     body: () => `${nav()}<h1>Prices and services</h1>${priceList()}${faq()}${contact()}`,
   },
-  '/about-us': {
-    title: 'About KleanKickx: Sneaker Care Studio in Accra',
-    description: 'KleanKickx is a sneaker care studio at 29 Golf Hills St, Accra. Since 2020 we have cleaned and restored sneakers by hand so they stay in use for longer.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'AboutPage', url: `${SITE_URL}/about-us`, about: { '@id': `${SITE_URL}/#business` } }],
-    body: () => `${nav()}<h1>About KleanKickx</h1><p>KleanKickx started in 2020 in Accra. We clean and restore sneakers by hand so they stay in use for longer, and we work with recyclers on the pairs that can't be saved.</p>${contact()}`,
+  '/studio': {
+    title: 'Studio: Sneaker Care on Golf Hills St, Accra | KleanKickx',
+    description: 'The KleanKickx studio at 29 Golf Hills St, Accra. Sneaker cleaning and restoration by hand since 2020, run by a local team.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'AboutPage', url: `${SITE_URL}/studio`, about: { '@id': `${SITE_URL}/#business` } }],
+    body: () => `${nav()}<h1>29 Golf Hills St, Accra</h1><p>Our studio in Accra. Every pair is cleaned here by hand, by a team we trained.</p>
+<h2>Started with one table</h2><p>KleanKickx began in 2020 with homemade cleaning products and a worktable built from a broken door. Today the studio is run by a local team in Accra.</p>
+<h2>How we work</h2><ul><li>By hand: every pair is checked, cleaned and finished by a trained technician.</li><li>Fair prices: from ₵50 a pair.</li><li>Nothing wasted: pairs that can't be saved go to material recovery.</li></ul>${areas()}${contact()}`,
+  },
+  '/impact': {
+    title: 'Impact: Keeping Shoes in Use in Accra | KleanKickx',
+    description: 'KleanKickx extends the life of shoes in Accra, trains young technicians, and sends unwearable pairs to KicksCTRL for material recovery instead of landfill.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'WebPage', url: `${SITE_URL}/impact`, about: { '@id': `${SITE_URL}/#business` } }],
+    body: () => `${nav()}<h1>Keep shoes in use</h1><p>KleanKickx is Accra's sneaker care and collection hub. We extend the life of shoes, train the people who restore them, and make sure the pairs we can't save don't end up in landfill.</p>
+<h2>22 billion pairs discarded globally</h2><p>Every year, about 22 billion pairs of shoes are sent to landfill or burned, out of roughly 24 billion made.</p>
+<h2>What we do</h2><ul><li>Extend: every Klean adds wear to a pair that already exists.</li><li>Train: young people in Accra learn technical cleaning, restoration and triage.</li><li>Recover: pairs past saving go to our partner <a href="https://kicksctrl.com">KicksCTRL</a>.</li></ul>
+<h2>Accra pilot with KicksCTRL</h2><p>Over two days at one collection point: 682 records taken in, 446 pairs back into use, and 100% of records sent to reuse or held as recovery feedstock.</p>${tradeIn()}${contact()}`,
   },
   '/vouchers': {
     title: 'Sneaker Cleaning Gift Vouchers | KleanKickx Accra',

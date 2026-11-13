@@ -13,7 +13,8 @@ import Login from './pages/Login';
 import Checkout from './pages/Checkout';
 import RateAndServices from './pages/RateAndServices';
 import Home from './pages/Home';
-import About from './pages/About';
+import Studio from './pages/Studio';
+import Impact from './pages/Impact';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -127,7 +128,9 @@ const AppContent = () => {
           <Route path="/auth/verify-email" element={<VerifyEmail />} />
           <Route path="/auth/confirm-email" element={<UserVerifyEmail />} />
           <Route path="/rate-and-services" element={<RateAndServices />} />
-          <Route path="/about-us" element={<About />} />
+          <Route path="/studio" element={<Studio />} />
+          <Route path="/impact" element={<Impact />} />
+          <Route path="/about-us" element={<Navigate to="/studio" replace />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
           <Route path="/legal" element={<KleanKickxLegal />} />

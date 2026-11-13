@@ -15,8 +15,6 @@ import {
   faShoePrints,
   faGift,
   faTicket,
-  faHome,
-  faInfoCircle,
   faClipboardList,
   faFire,
 } from '@fortawesome/free-solid-svg-icons';
@@ -28,11 +26,10 @@ import Logo from '../assets/logo2.png';
 const Navbar = () => {
   // Get cart data from context
   const { getCartItemCount, cartMeta, loading: cartLoading } = useContext(CartContext);
-  const { isAuthenticated, user, logout, discounts } = useContext(AuthContext);
+  const { isAuthenticated, user, logout } = useContext(AuthContext);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isBannerVisible, setIsBannerVisible] = useState(true);
 
   // Desktop-only: controls the hover/click dropdowns in the top nav bar.
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -51,8 +48,6 @@ const Navbar = () => {
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
-
-  const signupDiscount = discounts?.find(d => d.discount_type === 'signup');
 
   // Get cart item count - this will update as soon as cart loads
   const cartItemCount = getCartItemCount();
@@ -127,56 +122,23 @@ const Navbar = () => {
     setIsDropdownOpen(false);
   };
 
-  // Desktop Navigation Groups
+  // Main navigation: four links and one call to action. Hash links point at
+  // sections on the homepage; ScrollToTop scrolls to them from any page.
   const navGroups = [
-    {
-      label: 'Home',
-      to: '/',
-      icon: faHome,
-      simple: true,
-    },
-    {
-      label: 'Services',
-      items: [
-        { to: '/rate-and-services', label: 'Rate & Services', icon: faClipboardList },
-        { to: '/services', label: 'Start Kleaning Here', icon: faShoePrints },
-      ],
-    },
-    {
-      label: 'About',
-      to: '/about-us',
-      icon: faInfoCircle,
-      simple: true,
-    },
-    {
-      label: 'Shop',
-      items: [
-        { to: '/services', label: 'Start Kleaning Here', icon: faShoePrints },
-        { to: '/vouchers', label: 'Buy Vouchers', icon: faGift },
-        { to: '/redeem', label: 'Redeem Voucher', icon: faTicket, highlight: true },
-      ],
-    },
-    {
-      label: 'Orders',
-      items: isAuthenticated
-        ? [
-            { to: '/orders', label: 'My Orders', icon: faClipboardList },
-            { to: '/account/vouchers', label: 'My Vouchers', icon: faGift },
-          ]
-        : [],
-      authOnly: true,
-    },
-    {
-      label: 'Promotions',
-      to: '/promotions',
-      icon: faFire,
-      simple: true,
-    },
+    { label: 'Services', to: '/#services', simple: true, hash: true },
+    { label: 'Trade-In', to: '/#trade-in', simple: true, hash: true },
+    { label: 'Impact', to: '/impact', simple: true },
+    { label: 'Studio', to: '/studio', simple: true },
   ];
 
-  const handleCloseBanner = () => {
-    setIsBannerVisible(false);
-  };
+  // Account links, shown in the user menu (desktop) and the drawer (mobile).
+  const accountLinks = [
+    { to: '/orders', label: 'My Orders', icon: faClipboardList, color: 'text-green-600' },
+    { to: '/account/vouchers', label: 'My Vouchers', icon: faGift, color: 'text-purple-500' },
+    { to: '/redeem', label: 'Redeem Voucher', icon: faTicket, color: 'text-green-600' },
+    { to: '/vouchers', label: 'Buy Gift Vouchers', icon: faShoePrints, color: 'text-gray-600' },
+    { to: '/promotions', label: 'Promotions', icon: faFire, color: 'text-orange-500' },
+  ];
 
   // Desktop dropdown toggle (top nav bar)
   const toggleDropdown = (groupLabel) => {
@@ -191,41 +153,6 @@ const Navbar = () => {
 
   return (
     <div className="sticky inset-x-0 top-0 z-40">
-      {/* Discount Banner with Slide Animation */}
-      {signupDiscount && isBannerVisible && signupDiscount.is_active && (
-        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white transform transition-transform duration-500 ease-in-out">
-          <div className="py-2 px-4">
-            <div className="max-w-7xl mx-auto flex items-start justify-between gap-2">
-              <div className="flex items-start gap-1">
-                <span>🎉</span>
-                <div>
-                  <span className="font-bold mr-2">SPECIAL OFFER!</span>
-                  <span className="lg:text-sm text-xs">
-                    Get {signupDiscount.percentage}% off on your first order when you sign up!
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={handleCloseBanner}
-                className="text-white hover:text-green-100 transition-colors flex-shrink-0 cursor-pointer"
-                aria-label="Close banner"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5 sm:w-6 sm:h-6"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <nav className="bg-white text-gray-900 py-3 shadow-sm border-b border-gray-200">
         <div className="flex justify-between items-center px-4 lg:px-8 xl:px-12 gap-6">
           {/* Logo */}
@@ -245,7 +172,7 @@ const Navbar = () => {
                       to={group.to}
                       className={({ isActive }) =>
                         `flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                          isActive
+                          isActive && !group.hash
                             ? 'bg-green-50 text-green-700'
                             : 'hover:bg-gray-100 hover:text-green-700'
                         }`
@@ -312,6 +239,12 @@ const Navbar = () => {
 
           {/* Right Side Actions */}
           <div className="hidden lg:flex items-center gap-4">
+            <Link
+              to="/#services"
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+            >
+              Book a Klean
+            </Link>
             {/* Cart - Smooth display without disappearing */}
             <button
               onClick={() => navigate('/cart')}
@@ -367,17 +300,21 @@ const Navbar = () => {
                     ref={dropdownRef}
                   >
                     <div className="space-y-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/account/vouchers');
-                          setIsDropdownOpen(false);
-                        }}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <FontAwesomeIcon icon={faGift} className="w-4 h-4 text-purple-500" />
-                        <span>My Vouchers</span>
-                      </button>
+                      {accountLinks.map((item) => (
+                        <button
+                          key={item.to}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(item.to);
+                            setIsDropdownOpen(false);
+                          }}
+                          className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
+                        >
+                          <FontAwesomeIcon icon={item.icon} className={`w-4 h-4 ${item.color}`} />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                      <div className="border-t border-gray-200 my-2" />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -418,9 +355,9 @@ const Navbar = () => {
                 </NavLink>
                 <NavLink
                   to="/auth/register"
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors font-medium"
                 >
-                  Register
+                  Sign up
                 </NavLink>
               </div>
             )}
@@ -550,7 +487,7 @@ const Navbar = () => {
                           onClick={closeMobileMenu}
                           className={({ isActive }) =>
                             `flex items-center gap-3 px-4 py-3.5 rounded-lg transition-colors ${
-                              isActive
+                              isActive && !group.hash
                                 ? 'bg-green-50 text-green-700'
                                 : 'hover:bg-gray-100'
                             }`
@@ -612,9 +549,31 @@ const Navbar = () => {
                   ))}
               </div>
 
+              <Link
+                to="/#services"
+                onClick={closeMobileMenu}
+                className="block px-4 py-3.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center font-semibold"
+              >
+                Book a Klean
+              </Link>
+
               {/* User Actions for Mobile */}
               {isAuthenticated && (
                 <div className="space-y-2 pt-4 border-t border-gray-200">
+                  {accountLinks.map((item) => (
+                    <button
+                      key={item.to}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(item.to);
+                        closeMobileMenu();
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                    >
+                      <FontAwesomeIcon icon={item.icon} className={`w-4 h-4 ${item.color}`} />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -651,9 +610,9 @@ const Navbar = () => {
                   <NavLink
                     to="/auth/register"
                     onClick={closeMobileMenu}
-                    className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center font-medium"
+                    className="px-4 py-3 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors text-center font-medium"
                   >
-                    Register
+                    Sign up
                   </NavLink>
                 </div>
               )}

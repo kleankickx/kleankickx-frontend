@@ -221,7 +221,7 @@ const UserVerifyEmail = () => {
                     className="flex justify-center items-center"
                 >
                     <Link to="/">
-                        <img src={logo} className="w-[10rem]" alt="Kleankickx Logo" />
+                        <img src={logo} className="w-[10rem]" alt="KleanKickx logo" />
                     </Link>                  
                 </motion.div>
                 {/* Header - changes based on verification status */}

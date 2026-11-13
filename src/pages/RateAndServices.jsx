@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import { AuthContext } from '../context/AuthContext';
+import useQuickAdd from '../hooks/useQuickAdd';
 
 
 // assets
@@ -42,10 +43,10 @@ const RateAndServices = () => {
   const [error, setError] = useState(null);
   const [hoveredDescriptionId, setHoveredDescriptionId] = useState(null);
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
-  const { discounts, user, isAuthenticated } = useContext(AuthContext);
+  const { user, isAuthenticated } = useContext(AuthContext);
+  const { quickAdd, addingId } = useQuickAdd();
   
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
-  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
 
   // Define the services we want to display
   const featuredServiceNames = ['Standard Klean', 'Deep Klean', 'Triple Threat'];
@@ -121,8 +122,7 @@ const RateAndServices = () => {
               Sneakers
             </h2>
             <p className="text-white text-lg">
-              No matter the style or material, we have the expertise and experience to clean your sneakers to perfection. Our services
-              cover: High-tops and low-tops, Canvas, leather, suede, and more. Every type of sneaker, from everyday wear to limited editions.
+              High-tops and low-tops, canvas, leather, suede, mesh and knit. Everyday pairs and limited editions.
             </p>
           </motion.div>
 
@@ -142,7 +142,7 @@ const RateAndServices = () => {
       {/* SERVICE PRICING */}
       <section className="bg-white py-16 px-4 md:px-8 lg:px-24" id="pricing">
         <h2 className="text-primary header text-4xl md:text-6xl font-bold text-center">Service Pricing</h2>
-        <p className="text-gray-600 text-center mb-16 mt-1">Transparent Rates for Quality Care</p>
+        <p className="text-gray-600 text-center mb-16 mt-1">Priced per pair, in GHS.</p>
         
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
@@ -189,15 +189,8 @@ const RateAndServices = () => {
                     </div>
                   )}
 
-                  {/* Discount Badge - only show if not a free service or if free service is claimed */}
-                  {signupDiscount && !service.is_free_signup_service && (
-                    <div className="absolute top-4 left-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-r-full shadow-lg z-10">
-                      {parseInt(signupDiscount.percentage)}% OFF
-                    </div>
-                  )}
-
                   <div className="flex flex-col h-full">
-                    <Link to="/services" className="flex-grow">
+                    <div className="flex-grow flex flex-col">
                       <div className="relative h-80 w-full overflow-hidden bg-gray-100">
                         <img 
                           src={service.image} 
@@ -288,13 +281,20 @@ const RateAndServices = () => {
                           <span className="font-medium">PRICE </span>
                           <span className="mx-2">|</span>
                           <span className={service.is_free_signup_service && !hasClaimedFreeService ? 'text-yellow-300' : ''}>
-                            {service.is_free_signup_service && !hasClaimedFreeService ? 'FREE' : `GH₵${service.price}`}
+                            {service.is_free_signup_service && !hasClaimedFreeService ? 'FREE' : `₵${service.price}`}
                           </span>
                         </div>
-                        
-                        
+
+                        <button
+                          type="button"
+                          onClick={() => quickAdd(service)}
+                          disabled={addingId === service.id}
+                          className="w-full mt-2 bg-gray-900 text-white font-semibold py-3 rounded-lg hover:bg-primary transition disabled:opacity-60"
+                        >
+                          {addingId === service.id ? 'Adding…' : 'Add to cart'}
+                        </button>
                       </div>
-                    </Link>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -320,7 +320,7 @@ const RateAndServices = () => {
       {/* CUSTOMER EXPERIENCE */}
       <section className="px-4 md:px-8 lg:px-24 py-16 bg-white">
         <h2 className="text-4xl md:text-6xl font-bold text-primary header text-center mb-4">Customer Experience</h2>
-        <p className="text-gray-600 text-center mb-10">Seamless Sneaker Care</p>
+        <p className="text-gray-600 text-center mb-10">How a booking works.</p>
         <motion.div
           className="grid grid-cols-1 md:grid-cols-5 gap-6"
           variants={stagger}
@@ -330,26 +330,26 @@ const RateAndServices = () => {
         >
           {[{
             icon: schedule,
-            title: 'Schedule a Pickup',
-            desc: 'Pick a convenient time online, and our courier will collect your kicks.',
-            link: '/services',
-            linkText: 'Schedule Now',
+            title: 'Book a pickup',
+            desc: 'Add your Klean to the cart, choose a pickup time at checkout, and our courier collects your pair.',
+            link: '/#services',
+            linkText: 'Book a Klean',
           }, {
             icon: courierCall,
-            title: 'Courier Contact',
-            desc: 'Our courier confirms details on the scheduled day.',
+            title: 'Courier call',
+            desc: 'Our courier calls to confirm on the pickup day.',
           }, {
             icon: diamond,
-            title: 'Premium Care',
-            desc: 'We treat each pair with precision and premium products.',
+            title: 'Cleaned by hand',
+            desc: 'The right brush, product and drying for each material.',
           }, {
             icon: delivery,
-            title: 'Swift Delivery',
-            desc: 'Get your rejuvenated sneakers back in ~72 hrs.',
+            title: 'Back in 72 hours',
+            desc: 'Your pair comes back clean, usually within 72 hours.',
           }, {
             icon: priority,
-            title: 'Priority Service',
-            desc: 'Need them faster? Choose our priority add‑on.',
+            title: 'Next-day Priority',
+            desc: 'Need them sooner? Priority Klean (₵70 a pair) comes back the next day.',
           }].map((card, idx) => (
             <motion.div key={idx} className="p-6 border border-gray-300 rounded-lg hover:shadow-xl hover:scale-[1.02] transition" variants={fadeInUp}>
               <img src={card.icon} alt={card.title} className="w-14 h-14 mb-4" />
@@ -374,11 +374,9 @@ const RateAndServices = () => {
           <div className="max-w-xl space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary header">Tailored Services For Your Needs</h2>
             <p className="text-gray-600 text-base md:text-lg">
-              At KleanKickx, we understand that sneakers aren't just shoes;
-              they're a statement, a passion, and a cherished part of your style.
-              Our mission is to ensure that every step you take is a confident
-              and klean one. Whether you're an athlete, a collector, or
-              someone who simply loves to strut in stylish kicks, we're here for you.
+              Athlete, collector or everyday wearer: every pair that comes
+              through the studio is cleaned by hand and checked before it
+              goes back to you.
             </p>
           </div>
         </motion.div>
@@ -386,9 +384,6 @@ const RateAndServices = () => {
         {/* mobile bg image */}
         <img src={shoe2} alt="bg mobile" className="block lg:hidden w-full object-contain mt-8" />
       </section>
-
-      {/* OPTIONAL CAROUSEL / TESTIMONIALS*/}
-      {/* <ShoeCarousel /> */}
 
       {/* FOOTER */}
       <Footer />
