@@ -6,6 +6,7 @@ import { useCheckoutState } from '../hooks/useCheckoutState';
 import { CartContext } from "../context/CartContext"; 
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
+import { trackOrderPurchase } from '../utils/analytics';
 
 const PaymentStatus = () => {
     const { reference, status } = useParams(); 
@@ -29,6 +30,8 @@ const PaymentStatus = () => {
                 const response = await api.get(`/api/orders/${reference}/`); 
                 const fetchedOrder = response.data;
                 setOrder(fetchedOrder);
+                // GA4 purchase: this is where Paystack sends customers after paying.
+                trackOrderPurchase(fetchedOrder, 'payment_return');
 
                 if (fetchedOrder.status === 'PROCESSING' || fetchedOrder.status === 'FULFILLED') {
                     setShouldCleanup(true);

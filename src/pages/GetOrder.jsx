@@ -39,7 +39,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '../components/Footer';
 import api from '../api';
-import { trackPurchase } from '../utils/analytics';
+import { trackOrderPurchase } from '../utils/analytics';
 import OrderStatusStepper from '../components/OrderStatusStepper';
 
 // Delete Confirmation Modal Component
@@ -641,51 +641,10 @@ const GetOrder = () => {
                orderStatus !== 'CANCELLED';
     };
 
-    // GA4 Purchase Tracking - Client-side fallback
+    // GA4 purchase: fallback for customers who reach the order page first.
+    // Shared helper, fires once per order (see utils/analytics.js).
     useEffect(() => {
-        // Send GA4 purchase event when order loads and payment is successful
-        // This serves as a fallback in case webhook didn't fire
-        if (order && order.payment_status === 'SUCCESS' && order.status !== 'CANCELLED') {
-            // Check if we've already tracked this order in this session
-            const trackedKey = `ga4_tracked_${order.reference_code}`;
-            if (!sessionStorage.getItem(trackedKey)) {
-                
-                // Prepare items from order
-                const items = (order.items || []).map(item => ({
-                    item_id: String(item.service?.id || item.service_id),
-                    item_name: item.service?.name || item.service_name,
-                    item_category: item.service?.service_type || 'Cleaning',
-                    price: parseFloat(item.unit_price || item.price),
-                    quantity: item.quantity,
-                }));
-                
-                if (items.length > 0) {
-                    // Get coupon from discounts if any
-                    let coupon = null;
-                    if (order.discounts_applied) {
-                        const promoDiscount = order.discounts_applied.find(d => d.type === 'promotion');
-                        if (promoDiscount) coupon = promoDiscount.promotion_code;
-                    }
-                    
-                    // Track purchase (duplicate prevention - GA4 deduplicates by transaction_id)
-                    const trackingResult = trackPurchase({
-                        transaction_id: order.reference_code,
-                        value: parseFloat(order.total_amount || order.total),
-                        currency: 'GHS',
-                        items: items,
-                        payment_type: order.payment_method || 'paystack',
-                        shipping: parseFloat(order.delivery_cost || 0) + parseFloat(order.pickup_cost || 0),
-                        coupon: coupon,
-                    });
-                    
-                    if (trackingResult) {
-                        // Mark as tracked
-                        sessionStorage.setItem(trackedKey, 'true');
-                        console.log('GA4 purchase event sent from order page for:', order.reference_code);
-                    }
-                }
-            }
-        }
+        trackOrderPurchase(order, 'order_page');
     }, [order]);
 
     useEffect(() => {
