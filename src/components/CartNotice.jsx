@@ -1,8 +1,9 @@
 // src/components/CartNotice.jsx
-// "Added to cart" banner in the style of an iOS notification: frosted glass, the
-// service photo, a check that draws itself, and a View cart button. It springs in
-// from the top, pauses while hovered or touched, can be swiped up to dismiss, and
-// adding the same item again updates the count instead of stacking banners.
+// "Added to cart", Dynamic Island style: a small black pill appears at the top
+// centre, springs open into a card (photo with a countdown ring and a check that
+// draws itself, name, price, cart total, View cart), then folds back into the pill
+// and leaves. Hover or touch pauses it, swipe up or Esc dismisses it, and adding the
+// same item again bumps a counter instead of stacking. Reduced motion: a plain fade.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
@@ -11,7 +12,10 @@ import { CartContext } from '../context/CartContext';
 const CartNoticeContext = createContext({ showAdded: () => {} });
 export const useCartNotice = () => useContext(CartNoticeContext);
 
-const SHOW_MS = 3600;
+const SHOW_MS = 4000;
+const PILL = { width: 132, height: 38, borderRadius: 19 };
+const SPRING = { type: 'spring', stiffness: 380, damping: 30, mass: 0.85 };
+const RING = 2 * Math.PI * 25; // circumference of the countdown ring (r = 25)
 
 const money = (value) => {
   const n = Number(value);
@@ -19,90 +23,102 @@ const money = (value) => {
   return n === 0 ? 'Free' : `₵${n % 1 ? n.toFixed(2) : n}`;
 };
 
-const Check = ({ reduce }) => (
-  <span className="kk-cn-check" aria-hidden="true">
-    <svg viewBox="0 0 24 24" width="14" height="14">
-      <motion.path
-        d="M5 12.5l4.2 4.2L19 7"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        initial={{ pathLength: reduce ? 1 : 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ delay: 0.18, duration: 0.42, ease: [0.65, 0, 0.35, 1] }}
-      />
-    </svg>
-  </span>
-);
+const openWidth = () => (typeof window === 'undefined' ? 400 : Math.min(420, window.innerWidth - 20));
 
 const Notice = ({ notice, onClose, onPause, onResume }) => {
   const reduce = useReducedMotion();
   const { cartMeta } = useContext(CartContext);
   const count = cartMeta?.item_count;
   const total = cartMeta?.total;
+  const open = { width: openWidth(), height: 76, borderRadius: 28 };
+
+  const content = {
+    hidden: { opacity: 0, filter: 'blur(6px)', scale: 0.96 },
+    shown: { opacity: 1, filter: 'blur(0px)', scale: 1, transition: { delay: reduce ? 0 : 0.14, duration: 0.28 } },
+    gone: { opacity: 0, filter: 'blur(6px)', transition: { duration: 0.12 } },
+  };
 
   return (
     <motion.div
-      key={notice.key}
       role="status"
       aria-live="polite"
-      className="kk-cn"
-      layout
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: -28, scale: 0.94, filter: 'blur(6px)' }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      exit={reduce ? { opacity: 0 } : { opacity: 0, y: -22, scale: 0.96, filter: 'blur(4px)', transition: { duration: 0.22 } }}
-      transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.9 }}
+      className="kk-island"
+      initial={reduce ? { ...open, opacity: 0 } : { ...PILL, opacity: 0, y: -8 }}
+      animate={{ ...open, opacity: 1, y: 0, transition: SPRING }}
+      exit={reduce
+        ? { opacity: 0, transition: { duration: 0.2 } }
+        : { ...PILL, opacity: 0, y: -10, transition: { ...SPRING, opacity: { delay: 0.18, duration: 0.15 } } }}
       drag={reduce ? false : 'y'}
       dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0.6, bottom: 0.08 }}
+      dragElastic={{ top: 0.5, bottom: 0.06 }}
       onDragStart={onPause}
-      onDragEnd={(_, info) => (info.offset.y < -24 || info.velocity.y < -300 ? onClose() : onResume())}
+      onDragEnd={(_, info) => (info.offset.y < -20 || info.velocity.y < -280 ? onClose() : onResume())}
       onMouseEnter={onPause}
       onMouseLeave={onResume}
       onTouchStart={onPause}
       onTouchEnd={onResume}
     >
-      <div className="kk-cn-thumb">
-        {notice.image ? <img src={notice.image} alt="" /> : <span className="kk-cn-thumb-fallback" />}
-        <Check reduce={reduce} />
-      </div>
+      <motion.div className="kk-island-body" variants={content} initial="hidden" animate="shown" exit="gone">
+        <div className="kk-island-thumb">
+          {notice.image ? <img src={notice.image} alt="" /> : <span className="kk-island-thumb-fallback" />}
+          <svg className="kk-island-ring" viewBox="0 0 56 56" aria-hidden="true">
+            <circle cx="28" cy="28" r="25" className="track" />
+            <motion.circle
+              // Re-mounted on every pause / resume, starting from exactly what is left
+              key={`${notice.key}-${notice.times}-${notice.paused}-${notice.remaining}`}
+              cx="28" cy="28" r="25" className="bar"
+              strokeDasharray={RING}
+              initial={{ strokeDashoffset: RING * (1 - notice.remaining / SHOW_MS) }}
+              animate={notice.paused ? undefined : { strokeDashoffset: RING }}
+              transition={{ duration: notice.remaining / 1000, ease: 'linear' }}
+            />
+          </svg>
+          <motion.span
+            className="kk-island-check"
+            aria-hidden="true"
+            initial={reduce ? false : { scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.22, type: 'spring', stiffness: 520, damping: 18 }}
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <motion.path
+                d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3"
+                strokeLinecap="round" strokeLinejoin="round"
+                initial={{ pathLength: reduce ? 1 : 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 0.32, duration: 0.36, ease: [0.65, 0, 0.35, 1] }}
+              />
+            </svg>
+          </motion.span>
+        </div>
 
-      <div className="kk-cn-text">
-        <p className="kk-cn-eyebrow">Added to cart</p>
-        <p className="kk-cn-name">
-          {notice.name}
-          <AnimatePresence initial={false}>
-            {notice.times > 1 && (
-              <motion.span
-                key={notice.times}
-                className="kk-cn-times"
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 600, damping: 20 }}
-              >
-                ×{notice.times}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </p>
-        <p className="kk-cn-meta">
-          {money(notice.price)}
-          {count > 0 && <> · {count} {count === 1 ? 'item' : 'items'}{Number(total) > 0 ? ` · ${money(total)}` : ''}</>}
-        </p>
-      </div>
+        <div className="kk-island-text">
+          <p className="kk-island-eyebrow">Added to cart</p>
+          <p className="kk-island-name">
+            <span className="n">{notice.name}</span>
+            <AnimatePresence initial={false} mode="popLayout">
+              {notice.times > 1 && (
+                <motion.span
+                  key={notice.times}
+                  className="kk-island-times"
+                  initial={{ scale: 0.4, opacity: 0, y: 6 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.4, opacity: 0, y: -6 }}
+                  transition={{ type: 'spring', stiffness: 600, damping: 22 }}
+                >
+                  ×{notice.times}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </p>
+          <p className="kk-island-meta">
+            {money(notice.price)}
+            {count > 0 && <> · {count} {count === 1 ? 'item' : 'items'}{Number(total) > 0 ? ` · ${money(total)}` : ''}</>}
+          </p>
+        </div>
 
-      <Link to="/cart" className="kk-cn-btn" onClick={onClose}>View cart</Link>
-
-      <motion.span
-        className="kk-cn-timer"
-        aria-hidden="true"
-        key={`${notice.key}-${notice.times}`}
-        initial={{ scaleX: 1 }}
-        animate={{ scaleX: notice.paused ? undefined : 0 }}
-        transition={{ duration: notice.remaining / 1000, ease: 'linear' }}
-      />
+        <Link to="/cart" className="kk-island-btn" onClick={onClose}>View cart</Link>
+      </motion.div>
     </motion.div>
   );
 };
@@ -121,11 +137,12 @@ export const CartNoticeProvider = ({ children }) => {
   }, []);
 
   const showAdded = useCallback(({ id, name, price, image }) => {
+    try { navigator.vibrate?.(12); } catch { /* not supported */ }
     setNotice((prev) => {
       const same = prev && prev.id === id;
       return {
         key: same ? prev.key : `${id}-${Date.now()}`,
-        id, name, price, image: image || prev?.image,
+        id, name, price, image: image || (same ? prev.image : null),
         times: same ? prev.times + 1 : 1,
         paused: false,
         remaining: SHOW_MS,
@@ -136,7 +153,7 @@ export const CartNoticeProvider = ({ children }) => {
 
   const pause = useCallback(() => {
     if (!timer.current) return;
-    const left = Math.max(endsAt.current - Date.now(), 600);
+    const left = Math.max(endsAt.current - Date.now(), 800);
     clear();
     setNotice((n) => (n ? { ...n, paused: true, remaining: left } : n));
   }, []);
@@ -161,33 +178,37 @@ export const CartNoticeProvider = ({ children }) => {
     <CartNoticeContext.Provider value={value}>
       {children}
       <style>{`
-        .kk-cn-wrap{position:fixed;top:max(14px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);
-          z-index:10000;width:min(420px,calc(100vw - 24px));pointer-events:none}
-        @media (min-width:768px){.kk-cn-wrap{left:auto;right:20px;transform:none;top:84px}}
-        .kk-cn{pointer-events:auto;position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;
-          padding:10px 10px 10px 10px;border-radius:22px;cursor:grab;touch-action:pan-x;
-          background:rgba(250,251,249,.78);backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);
-          box-shadow:0 18px 40px -18px rgba(10,11,10,.38),0 2px 8px -2px rgba(10,11,10,.12),inset 0 0 0 .5px rgba(10,11,10,.10),inset 0 1px 0 rgba(255,255,255,.7);
-          font-family:"League Spartan",system-ui,-apple-system,sans-serif;color:#0A0B0A}
-        .kk-cn:active{cursor:grabbing}
-        .kk-cn-thumb{position:relative;flex:none;width:48px;height:48px;border-radius:14px;overflow:visible}
-        .kk-cn-thumb img,.kk-cn-thumb-fallback{width:100%;height:100%;border-radius:14px;object-fit:cover;display:block;background:#E7EBE5}
-        .kk-cn-check{position:absolute;right:-5px;bottom:-5px;width:22px;height:22px;border-radius:50%;
-          display:grid;place-items:center;background:#1A7A1A;color:#fff;box-shadow:0 0 0 2.5px rgba(250,251,249,.95)}
-        .kk-cn-text{min-width:0;flex:1}
-        .kk-cn-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#1A7A1A}
-        .kk-cn-name{margin:1px 0 0;font-size:15px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-cn-times{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:12px;background:#0A0B0A;color:#fff;vertical-align:1px}
-        .kk-cn-meta{margin:2px 0 0;font-size:12.5px;color:rgba(10,11,10,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-cn-btn{flex:none;align-self:center;padding:9px 14px;border-radius:999px;background:#0A0B0A;color:#fff !important;
-          font-size:13px;font-weight:600;text-decoration:none !important;transition:transform .15s,background .2s}
-        .kk-cn-btn:hover{background:#1A7A1A}
-        .kk-cn-btn:active{transform:scale(.96)}
-        .kk-cn-btn:focus-visible{outline:2px solid #1A7A1A;outline-offset:2px}
-        .kk-cn-timer{position:absolute;left:14px;right:14px;bottom:3px;height:2px;border-radius:2px;background:rgba(26,122,26,.45);transform-origin:left}
+        .kk-island-wrap{position:fixed;left:0;right:0;top:max(10px,env(safe-area-inset-top,0px));z-index:10000;
+          display:flex;justify-content:center;pointer-events:none}
+        .kk-island{pointer-events:auto;position:relative;overflow:hidden;cursor:grab;touch-action:pan-x;
+          background:rgba(10,11,10,.94);color:#fff;backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);
+          box-shadow:0 22px 50px -20px rgba(0,0,0,.55),0 4px 14px -6px rgba(0,0,0,.35),inset 0 0 0 .5px rgba(255,255,255,.08);
+          font-family:"League Spartan",system-ui,-apple-system,sans-serif}
+        .kk-island:active{cursor:grabbing}
+        .kk-island-body{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:0 12px 0 10px}
+        .kk-island-thumb{position:relative;flex:none;width:56px;height:56px;display:grid;place-items:center}
+        .kk-island-thumb img,.kk-island-thumb-fallback{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block;background:#2A2D2A}
+        .kk-island-ring{position:absolute;inset:0;transform:rotate(-90deg)}
+        .kk-island-ring circle{fill:none;stroke-width:2.5}
+        .kk-island-ring .track{stroke:rgba(255,255,255,.12)}
+        .kk-island-ring .bar{stroke:#6FD46F;stroke-linecap:round}
+        .kk-island-check{position:absolute;right:1px;bottom:1px;width:20px;height:20px;border-radius:50%;
+          display:grid;place-items:center;background:#34C759;color:#0A0B0A;box-shadow:0 0 0 2.5px #0A0B0A}
+        .kk-island-text{min-width:0;flex:1}
+        .kk-island-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6FD46F}
+        .kk-island-name{margin:1px 0 0;display:flex;align-items:center;gap:6px;font-size:15.5px;font-weight:600;line-height:1.2;min-width:0}
+        .kk-island-name .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .kk-island-times{flex:none;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:700;background:#fff;color:#0A0B0A}
+        .kk-island-meta{margin:2px 0 0;font-size:12.5px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .kk-island-btn{flex:none;padding:10px 15px;border-radius:999px;background:#fff;color:#0A0B0A !important;
+          font-size:13.5px;font-weight:700;text-decoration:none !important;transition:transform .15s,background .2s}
+        .kk-island-btn:hover{background:#6FD46F}
+        .kk-island-btn:active{transform:scale(.95)}
+        .kk-island-btn:focus-visible{outline:2px solid #6FD46F;outline-offset:2px}
+        @media (max-width:360px){.kk-island-btn{padding:9px 11px;font-size:12.5px}.kk-island-body{gap:9px}}
       `}</style>
-      <div className="kk-cn-wrap">
-        <AnimatePresence mode="popLayout">
+      <div className="kk-island-wrap">
+        <AnimatePresence>
           {notice && <Notice key={notice.key} notice={notice} onClose={close} onPause={pause} onResume={resume} />}
         </AnimatePresence>
       </div>
