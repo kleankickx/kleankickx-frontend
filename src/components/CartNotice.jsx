@@ -5,9 +5,9 @@
 // and leaves. Hover or touch pauses it, swipe up or Esc dismisses it, and adding the
 // same item again bumps a counter instead of stacking. Reduced motion: a plain fade.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { CartContext } from '../context/CartContext';
+import { useCartDrawer } from './CartDrawer';
 
 const CartNoticeContext = createContext({ showAdded: () => {} });
 export const useCartNotice = () => useContext(CartNoticeContext);
@@ -28,6 +28,7 @@ const openWidth = () => (typeof window === 'undefined' ? 400 : Math.min(420, win
 const Notice = ({ notice, onClose, onPause, onResume }) => {
   const reduce = useReducedMotion();
   const { cartMeta } = useContext(CartContext);
+  const { openCart } = useCartDrawer();
   const count = cartMeta?.item_count;
   const total = cartMeta?.total;
   const open = { width: openWidth(), height: 76, borderRadius: 28 };
@@ -117,7 +118,7 @@ const Notice = ({ notice, onClose, onPause, onResume }) => {
           </p>
         </div>
 
-        <Link to="/cart" className="kk-island-btn" onClick={onClose}>View cart</Link>
+        <button type="button" className="kk-island-btn" onClick={() => { onClose(); openCart(); }}>View cart</button>
       </motion.div>
     </motion.div>
   );
@@ -200,7 +201,7 @@ export const CartNoticeProvider = ({ children }) => {
         .kk-island-name .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .kk-island-times{flex:none;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:700;background:#0A0B0A;color:#fff}
         .kk-island-meta{margin:2px 0 0;font-size:12.5px;color:rgba(10,11,10,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-island-btn{flex:none;padding:10px 15px;border-radius:999px;background:#0A0B0A;color:#fff !important;
+        .kk-island-btn{flex:none;border:0;cursor:pointer;font-family:inherit;padding:10px 15px;border-radius:999px;background:#0A0B0A;color:#fff !important;
           font-size:13.5px;font-weight:700;text-decoration:none !important;transition:transform .15s,background .2s}
         .kk-island-btn:hover{background:#1A7A1A}
         .kk-island-btn:active{transform:scale(.95)}

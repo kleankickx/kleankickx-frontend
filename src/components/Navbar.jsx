@@ -18,6 +18,7 @@ import {
   faClipboardList,
   faFire,
 } from '@fortawesome/free-solid-svg-icons';
+import { useCartDrawer } from './CartDrawer';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -26,6 +27,7 @@ import Logo from '../assets/logo2.png';
 const Navbar = () => {
   // Get cart data from context
   const { getCartItemCount, cartMeta, loading: cartLoading } = useContext(CartContext);
+  const { openCart } = useCartDrawer();
   const { isAuthenticated, user, logout } = useContext(AuthContext);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -247,7 +249,7 @@ const Navbar = () => {
             </Link>
             {/* Cart - Smooth display without disappearing */}
             <button
-              onClick={() => navigate('/cart')}
+              onClick={openCart}
               className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Shopping cart"
             >
@@ -367,7 +369,7 @@ const Navbar = () => {
           <div className="lg:hidden flex gap-4 items-center">
             {/* Cart for mobile */}
             <button
-              onClick={() => navigate('/cart')}
+              onClick={openCart}
               className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Shopping cart"
             >
@@ -438,8 +440,8 @@ const Navbar = () => {
               {!cartLoading && cartItemCount > 0 && (
                 <div
                   onClick={() => {
-                    navigate('/cart');
                     closeMobileMenu();
+                    openCart();
                   }}
                   className="p-4 bg-gradient-to-r from-green-600/20 to-primary/20 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                 >
