@@ -658,7 +658,7 @@ const handleAddToCart = async (service) => {
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = 'https://via.placeholder.com/400x300?text=Sneaker+Service';
+              e.target.src = '/images/service-fallback.svg';
             }}
           />
         </div>

@@ -57,7 +57,7 @@ const KleanKickxLegal = () => {
 
         {/* Footer note */}
         <div className="mt-8 text-center text-xs text-gray-400 border-t border-gray-200 pt-6">
-          <p>KleanKickx Sneaker Care Limited &bull; 29 Golf Hills Street, Accra, Ghana</p>
+          <p>KleanKickx Sneaker Care Limited &bull; 29 Golf Hills St, Accra, Ghana</p>
           <p className="mt-1">
             <a href="mailto:info@kleankickx.com" className="text-primary hover:text-secondary transition-colors">info@kleankickx.com</a>
             &nbsp;&bull;&nbsp; <a href="tel:+233536278834" className="text-primary hover:text-secondary transition-colors">+233 53 627 8834</a>
@@ -87,7 +87,7 @@ const PrivacyPolicy = () => {
             Who We Are
           </h2>
           <div className="pl-11 space-y-2 text-gray-700">
-            <p><strong>KleanKickx Sneaker Care Limited</strong> (RGD Number: CS188801124) is incorporated in Ghana with registered office at 29 Golf Hills Street, Accra.</p>
+            <p><strong>KleanKickx Sneaker Care Limited</strong> (RGD Number: CS188801124) is incorporated in Ghana with registered office at 29 Golf Hills St, Accra.</p>
             <p>Data Protection Contact: <a href="mailto:info@kleankickx.com" className="text-primary hover:underline">info@kleankickx.com</a></p>
           </div>
         </section>
@@ -224,7 +224,7 @@ const PrivacyPolicy = () => {
             <p><strong>Security:</strong> We maintain administrative, technical, and physical safeguards including encryption, access controls, staff training, and incident response. In case of breach, we will notify you and the Data Protection Commission.</p>
             <p><strong>Children's Data:</strong> Our Services are not directed at children under 18. If you believe we have inadvertently collected such data, please contact us.</p>
             <p><strong>Changes:</strong> We may update this policy. Material changes will be notified by email.</p>
-            <p><strong>Contact:</strong> <a href="mailto:info@kleankickx.com" className="text-primary hover:underline">info@kleankickx.com</a> or write to 29 Golf Hills Street, Accra, Ghana.</p>
+            <p><strong>Contact:</strong> <a href="mailto:info@kleankickx.com" className="text-primary hover:underline">info@kleankickx.com</a> or write to 29 Golf Hills St, Accra, Ghana.</p>
           </div>
         </section>
       </div>
@@ -369,7 +369,7 @@ const TermsAndConditions = () => {
             <p><strong>Amendments:</strong> We may update these Terms; continued use constitutes acceptance.</p>
             <p><strong>Entire agreement:</strong> These Terms, Intake Form, Privacy Policy, and confirmations constitute the entire agreement.</p>
             <p><strong>Severability:</strong> If any provision is invalid, the remainder remains in effect.</p>
-            <p><strong>Contact:</strong> <a href="mailto:info@kleankickx.com" className="text-primary hover:underline">info@kleankickx.com</a> | +233 53 627 8834 | 29 Golf Hills Street, Accra.</p>
+            <p><strong>Contact:</strong> <a href="mailto:info@kleankickx.com" className="text-primary hover:underline">info@kleankickx.com</a> | +233 53 627 8834 | 29 Golf Hills St, Accra.</p>
           </div>
         </section>
       </div>
