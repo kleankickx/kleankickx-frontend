@@ -10,6 +10,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { CartContext } from '../context/CartContext';
 import { trackBeginCheckout, trackEvent } from '../utils/analytics';
+import api from '../api';
+import useQuickAdd from '../hooks/useQuickAdd';
 
 const FALLBACK_IMG = '/images/service-fallback.svg';
 const SWIFT = [0.77, 0, 0.18, 1];          // the site's --swift easing
@@ -107,6 +109,90 @@ const Line = ({ item, index }) => {
   );
 };
 
+/** Line art: an open shoebox with a sneaker outline that draws itself, and a puff of dust. */
+const EmptyArt = () => {
+  const reduce = useReducedMotion();
+  const draw = (delay, duration = 1.1) => (reduce ? {} : {
+    initial: { pathLength: 0, opacity: 0 },
+    animate: { pathLength: 1, opacity: 1 },
+    transition: { pathLength: { delay, duration, ease: SWIFT }, opacity: { delay, duration: 0.01 } },
+  });
+  return (
+    <svg className="kkc-art" viewBox="0 -16 220 166" aria-hidden="true">
+      {/* floor line */}
+      <motion.path d="M10 136H210" stroke="var(--line)" strokeWidth="2" {...draw(0, 0.6)} />
+      {/* box: back, lid flap, front */}
+      <motion.path d="M46 70L84 52H180L142 70" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.1)} />
+      <motion.path d="M84 52L70 34H166L180 52" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.25, 0.6)} />
+      <motion.path d="M46 70H142V128H46Z" fill="var(--paper)" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.2)} />
+      <motion.path d="M142 70L180 52V110L142 128" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.3)} />
+      {/* green label on the box */}
+      <motion.rect x="60" y="92" width="34" height="14" fill="var(--green)"
+        initial={reduce ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} style={{ originX: 0 }}
+        transition={{ delay: 1, duration: 0.5, ease: SWIFT }} />
+      {/* sneaker outline, floating above the empty box */}
+      <g transform="translate(14 -14)">
+      <motion.g initial={reduce ? false : { y: 0 }} animate={reduce ? undefined : { y: [0, -5, 0] }}
+        transition={{ delay: 1.6, duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}>
+        <motion.path
+          d="M58 34c6-1 14-6 19-12l6 3c2 4 8 6 13 5 9 6 21 9 33 10 7 1 11 5 11 9v3H58c-3 0-5-2-5-5v-8c0-3 2-5 5-5z"
+          fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.45, 1.3)} />
+        <motion.path d="M54 47h86" fill="none" stroke="var(--ink)" strokeWidth="2" {...draw(1.1, 0.5)} />
+        <motion.path d="M80 26l5 8M88 24l4 8M96 28l3 6" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" {...draw(1.3, 0.5)} />
+      </motion.g>
+      </g>
+      {/* dust puff */}
+      {[[188, 30, 3], [198, 40, 2], [192, 18, 2]].map(([cx, cy, r], i) => (
+        <motion.circle key={i} cx={cx} cy={cy} r={r} fill="var(--muted)"
+          initial={reduce ? false : { opacity: 0, scale: 0 }} animate={{ opacity: [0, 0.6, 0], scale: [0, 1, 1.4] }}
+          transition={{ delay: 1.4 + i * 0.25, duration: 2.4, repeat: Infinity, repeatDelay: 1.2 }} />
+      ))}
+    </svg>
+  );
+};
+
+/** Three popular Kleans, addable in one tap straight from the empty cart. */
+const QuickPicks = () => {
+  const { quickAdd, addingId } = useQuickAdd();
+  const [picks, setPicks] = useState(null);
+
+  useEffect(() => {
+    let live = true;
+    api.get('/api/services/public/').then(({ data }) => {
+      const list = (Array.isArray(data) ? data : data?.results || [])
+        .filter((x) => !x.is_free_signup_service && !x.is_wholesale);
+      const find = (word) => list.find((x) => x.name?.toLowerCase().includes(word));
+      const chosen = [find('standard'), find('deep'), find('triple')].filter(Boolean);
+      const rest = list.filter((x) => !chosen.includes(x));
+      if (live) setPicks([...chosen, ...rest].slice(0, 3));
+    }).catch(() => { if (live) setPicks([]); });
+    return () => { live = false; };
+  }, []);
+
+  if (picks && !picks.length) return null;
+  return (
+    <div className="kkc-picks">
+      <p className="kkc-eyebrow">Popular right now</p>
+      <ul>
+        {(picks || [0, 1, 2]).map((svc, i) => (svc?.id ? (
+          <motion.li key={svc.id} initial={{ y: 10 }} animate={{ y: 0 }}
+            transition={{ delay: 0.35 + i * 0.07, duration: 0.45, ease: SWIFT }}>
+            <img src={svc.image || FALLBACK_IMG} alt="" loading="lazy" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = FALLBACK_IMG; }} />
+            <div className="kkc-pick-main">
+              <p className="kkc-pick-name">{svc.name}</p>
+              <p className="kkc-pick-price">{money(svc.price)}{Number(svc.included_quantity) > 1 ? ` / ${svc.included_quantity} pairs` : ' / pair'}</p>
+            </div>
+            <button type="button" className="kkc-pick-add" onClick={() => quickAdd(svc)} disabled={addingId === svc.id}
+              aria-label={`Add ${svc.name} to cart`}>
+              {addingId === svc.id ? <span className="kkc-spin" /> : <>Add <span aria-hidden="true">+</span></>}
+            </button>
+          </motion.li>
+        ) : <li key={i} className="kkc-pick-skel" />))}
+      </ul>
+    </div>
+  );
+};
+
 /** The cart contents with its footer. `onNavigate` closes the drawer before leaving. */
 export const CartPanel = ({ onNavigate, inDrawer = false }) => {
   const { cart, cartMeta, initialized, loading } = useContext(CartContext);
@@ -125,14 +211,19 @@ export const CartPanel = ({ onNavigate, inDrawer = false }) => {
 
   if (!items.length) {
     return (
-      <motion.div className="kkc-empty" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: SWIFT, delay: 0.1 }}>
-        <p className="kkc-eyebrow">00 items</p>
-        <h3 className="kkc-empty-h">Nothing here yet</h3>
-        <p className="kkc-empty-p">Pick a Klean and it will show up here. Standard Klean from ₵50 a pair.</p>
-        <button type="button" className="kkc-btn go" onClick={() => go('/#services')}>
-          See services <span className="ar" aria-hidden="true">→</span>
-        </button>
-      </motion.div>
+      <div className="kkc-empty-wrap">
+        <motion.div className="kkc-empty" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: SWIFT, delay: 0.05 }}>
+          <EmptyArt />
+          <h3 className="kkc-empty-h">Your box is empty</h3>
+          <p className="kkc-empty-p">Your sneakers deserve better. Add a Klean below, or browse every service and bundle.</p>
+        </motion.div>
+        <QuickPicks />
+        <div className="kkc-empty-foot">
+          <button type="button" className="kkc-btn go wide" onClick={() => go('/#services')}>
+            See all services <span className="ar" aria-hidden="true">→</span>
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -226,9 +317,28 @@ const CartStyles = () => (
     .kkc-btn:not(.go):hover{background:var(--ink);color:#fff}
     .kkc-btn:focus-visible,.kkc-close:focus-visible,.kkc-step button:focus-visible,.kkc-remove:focus-visible{outline:2px solid var(--green);outline-offset:3px}
 
-    .kkc-empty{padding:40px 24px 32px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
-    .kkc-empty-h{margin:0;font-family:var(--display);font-weight:400;font-size:56px;line-height:.9;text-transform:uppercase;max-width:8ch}
-    .kkc-empty-p{margin:0 0 10px;color:var(--muted);font-size:15px;max-width:30ch}
+    .kkc-empty-wrap{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto}
+    .kkc-empty{padding:26px 24px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+    .kkc-art{width:220px;max-width:70%;height:auto;margin:4px 0 6px;overflow:visible}
+    .kkc-empty-h{margin:0;font-family:var(--display);font-weight:400;font-size:52px;line-height:.9;text-transform:uppercase;max-width:9ch}
+    .kkc-empty-p{margin:0;color:var(--muted);font-size:15px;line-height:1.5;max-width:34ch}
+    .kkc-picks{padding:18px 24px 6px}
+    .kkc-picks ul{list-style:none;margin:10px 0 0;padding:0;border-top:2px solid var(--ink)}
+    .kkc-picks li{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+    .kkc-picks img{width:52px;height:52px;object-fit:cover;background:var(--line);display:block}
+    .kkc-pick-main{min-width:0}
+    .kkc-pick-name{margin:0;font-family:var(--display);font-size:20px;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .kkc-pick-price{margin:4px 0 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+    .kkc-pick-add{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:72px;height:38px;padding:0 12px;border:2px solid var(--ink);
+      border-radius:2px;background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:700;cursor:pointer;
+      transition:background .2s,color .2s,transform .25s var(--spring)}
+    .kkc-pick-add:hover:not(:disabled){background:var(--ink);color:#fff}
+    .kkc-pick-add:active{transform:scale(.96)}
+    .kkc-pick-add:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+    .kkc-pick-skel{height:52px;margin:12px 0;background:linear-gradient(90deg,var(--line) 0%,#EEF2EC 50%,var(--line) 100%);background-size:200% 100%;animation:kkcShim 1.3s linear infinite;border:0 !important}
+    .kkc-spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(10,11,10,.15);border-top-color:var(--ink);animation:kkcSpin .8s linear infinite}
+    @keyframes kkcSpin{to{transform:rotate(360deg)}}
+    .kkc-empty-foot{margin-top:auto;padding:16px 24px 22px}
     .kkc-skel{height:118px;margin:20px 0;background:linear-gradient(90deg,var(--line) 0%,#EEF2EC 50%,var(--line) 100%);background-size:200% 100%;animation:kkcShim 1.3s linear infinite}
     @keyframes kkcShim{to{background-position:-200% 0}}
 
@@ -287,7 +397,9 @@ const Drawer = ({ onClose }) => {
         <motion.header className="kkc-head" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: SWIFT, delay: 0.08 }}>
           <div>
-            <p className="kkc-eyebrow"><Rolling value={two(count)} /> {count === 1 ? 'item' : 'items'}</p>
+            <p className="kkc-eyebrow">
+              {count > 0 ? <><Rolling value={two(count)} /> {count === 1 ? 'item' : 'items'}</> : 'Ready when you are'}
+            </p>
             <h2 className="kkc-title">Your cart</h2>
           </div>
           <button ref={closeRef} type="button" className="kkc-close" onClick={onClose} aria-label="Close cart">
