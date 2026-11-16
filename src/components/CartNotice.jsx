@@ -1,5 +1,5 @@
 // src/components/CartNotice.jsx
-// "Added to cart", Dynamic Island style: a small black pill appears at the top
+// "Added to cart", Dynamic Island style (in light frosted glass): a small pill appears at the top
 // centre, springs open into a card (photo with a countdown ring and a check that
 // draws itself, name, price, cart total, View cart), then folds back into the pill
 // and leaves. Hover or touch pauses it, swipe up or Esc dismisses it, and adding the
@@ -181,30 +181,30 @@ export const CartNoticeProvider = ({ children }) => {
         .kk-island-wrap{position:fixed;left:0;right:0;top:max(10px,env(safe-area-inset-top,0px));z-index:10000;
           display:flex;justify-content:center;pointer-events:none}
         .kk-island{pointer-events:auto;position:relative;overflow:hidden;cursor:grab;touch-action:pan-x;
-          background:rgba(10,11,10,.94);color:#fff;backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);
-          box-shadow:0 22px 50px -20px rgba(0,0,0,.55),0 4px 14px -6px rgba(0,0,0,.35),inset 0 0 0 .5px rgba(255,255,255,.08);
+          background:rgba(252,253,251,.80);color:#0A0B0A;backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);
+          box-shadow:0 22px 48px -22px rgba(10,11,10,.40),0 3px 10px -4px rgba(10,11,10,.14),inset 0 0 0 .5px rgba(10,11,10,.10),inset 0 1px 0 rgba(255,255,255,.85);
           font-family:"League Spartan",system-ui,-apple-system,sans-serif}
         .kk-island:active{cursor:grabbing}
         .kk-island-body{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:0 12px 0 10px}
         .kk-island-thumb{position:relative;flex:none;width:56px;height:56px;display:grid;place-items:center}
-        .kk-island-thumb img,.kk-island-thumb-fallback{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block;background:#2A2D2A}
+        .kk-island-thumb img,.kk-island-thumb-fallback{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block;background:#E7EBE5}
         .kk-island-ring{position:absolute;inset:0;transform:rotate(-90deg)}
         .kk-island-ring circle{fill:none;stroke-width:2.5}
-        .kk-island-ring .track{stroke:rgba(255,255,255,.12)}
-        .kk-island-ring .bar{stroke:#6FD46F;stroke-linecap:round}
+        .kk-island-ring .track{stroke:rgba(10,11,10,.08)}
+        .kk-island-ring .bar{stroke:#1A7A1A;stroke-linecap:round}
         .kk-island-check{position:absolute;right:1px;bottom:1px;width:20px;height:20px;border-radius:50%;
-          display:grid;place-items:center;background:#34C759;color:#0A0B0A;box-shadow:0 0 0 2.5px #0A0B0A}
+          display:grid;place-items:center;background:#1A7A1A;color:#fff;box-shadow:0 0 0 2.5px rgba(252,253,251,.98)}
         .kk-island-text{min-width:0;flex:1}
-        .kk-island-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6FD46F}
+        .kk-island-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#1A7A1A}
         .kk-island-name{margin:1px 0 0;display:flex;align-items:center;gap:6px;font-size:15.5px;font-weight:600;line-height:1.2;min-width:0}
         .kk-island-name .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-island-times{flex:none;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:700;background:#fff;color:#0A0B0A}
-        .kk-island-meta{margin:2px 0 0;font-size:12.5px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-island-btn{flex:none;padding:10px 15px;border-radius:999px;background:#fff;color:#0A0B0A !important;
+        .kk-island-times{flex:none;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:700;background:#0A0B0A;color:#fff}
+        .kk-island-meta{margin:2px 0 0;font-size:12.5px;color:rgba(10,11,10,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .kk-island-btn{flex:none;padding:10px 15px;border-radius:999px;background:#0A0B0A;color:#fff !important;
           font-size:13.5px;font-weight:700;text-decoration:none !important;transition:transform .15s,background .2s}
-        .kk-island-btn:hover{background:#6FD46F}
+        .kk-island-btn:hover{background:#1A7A1A}
         .kk-island-btn:active{transform:scale(.95)}
-        .kk-island-btn:focus-visible{outline:2px solid #6FD46F;outline-offset:2px}
+        .kk-island-btn:focus-visible{outline:2px solid #1A7A1A;outline-offset:2px}
         @media (max-width:360px){.kk-island-btn{padding:9px 11px;font-size:12.5px}.kk-island-body{gap:9px}}
       `}</style>
       <div className="kk-island-wrap">
