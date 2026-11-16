@@ -10,7 +10,7 @@ import { CartContext } from '../context/CartContext';
 import { CartPanel } from '../components/CartDrawer';
 
 const Cart = () => {
-  const { refreshCart } = useContext(CartContext);
+  const { refreshCart, cart } = useContext(CartContext);
   const navigate = useNavigate();
   const [recovering, setRecovering] = useState(false);
 
@@ -54,7 +54,7 @@ const Cart = () => {
       <div className="kkc-card">
         <header className="kkc-head">
           <div>
-            <p className="kkc-eyebrow">{recovering ? 'Restoring your cart…' : 'Review your order'}</p>
+            <p className="kkc-eyebrow">{recovering ? 'Restoring your cart…' : cart?.length ? 'Review your order' : 'Ready when you are'}</p>
             <h1 className="kkc-title">Your cart</h1>
           </div>
         </header>
