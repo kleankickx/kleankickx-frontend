@@ -12,6 +12,7 @@ import { CartContext } from '../context/CartContext';
 import { trackBeginCheckout, trackEvent } from '../utils/analytics';
 import api from '../api';
 import useQuickAdd from '../hooks/useQuickAdd';
+import { prepareCartPhoto, photoSrc } from '../utils/cartPhoto';
 
 const FALLBACK_IMG = '/images/service-fallback.svg';
 const SWIFT = [0.77, 0, 0.18, 1];          // the site's --swift easing
@@ -58,6 +59,67 @@ const Stepper = ({ value, onChange, busy, label }) => (
   </div>
 );
 
+/** Optional photo of the sneakers on this line: the customer's record of their
+ *  condition. One per line here; after checkout they can add one per pair. */
+const LinePhoto = ({ item, pairs }) => {
+  const { addImageToCartItem, removeImageFromCartItem } = useContext(CartContext);
+  const input = useRef(null);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const saving = String(item.id).startsWith('temp-');   // still being added to the cart
+  const src = photoSrc(item.image_base64);
+  const has = !!src || item.has_image;
+
+  const pick = async (file) => {
+    if (!file) return;
+    setError(''); setBusy('Adding photo…');
+    try {
+      const raw = await prepareCartPhoto(file);
+      await addImageToCartItem(item.id, raw);
+    } catch (e) {
+      setError(e?.response?.data?.error || e?.message || "That photo didn't upload. Try again.");
+    } finally {
+      setBusy('');
+      if (input.current) input.current.value = '';
+    }
+  };
+  const remove = async () => {
+    setError(''); setBusy('Removing…');
+    try { await removeImageFromCartItem(item.id); } catch { setError("Couldn't remove it. Try again."); } finally { setBusy(''); }
+  };
+
+  return (
+    <div className="kkc-photo">
+      {has ? (
+        <>
+          {src ? <img className="kkc-photo-thumb" src={src} alt={`Your photo of ${item.service_details?.name || 'this pair'}`} />
+            : <span className="kkc-photo-thumb" aria-hidden="true" />}
+          <div className="kkc-photo-text">
+            <span className="ok">Photo added</span>
+            <span className="kkc-photo-links">
+              <button type="button" onClick={() => input.current?.click()} disabled={!!busy}>Change</button>
+              <button type="button" onClick={remove} disabled={!!busy}>Remove</button>
+            </span>
+          </div>
+        </>
+      ) : (
+        <button type="button" className="kkc-photo-add" onClick={() => input.current?.click()} disabled={!!busy || saving}
+          title={saving ? 'One moment, still adding this to your cart' : undefined}>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <circle cx="12" cy="13.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          </svg>
+          <span><b>Add a photo</b> <i>optional</i></span>
+        </button>
+      )}
+      {busy ? <p className="kkc-photo-note">{busy}</p>
+        : error ? <p className="kkc-photo-note err" role="alert">{error}</p>
+        : !has && <p className="kkc-photo-note">Your record of their condition.{pairs > 1 ? ' You can add one per pair after checkout.' : ''}</p>}
+      <input ref={input} type="file" accept="image/*,.heic,.heif" capture="environment" hidden onChange={(e) => pick(e.target.files?.[0])} />
+    </div>
+  );
+};
+
 const Line = ({ item, index }) => {
   const { updateQuantity, removeFromCart } = useContext(CartContext);
   const [busy, setBusy] = useState(false);
@@ -103,6 +165,7 @@ const Line = ({ item, index }) => {
             : <Stepper value={Number(item.quantity) || 1} onChange={change} busy={busy} label={name} />}
           <button type="button" className="kkc-remove" onClick={remove} disabled={busy}>Remove</button>
         </div>
+        <LinePhoto item={item} pairs={pairs} />
       </div>
       <p className="kkc-amt">{free || voucher ? <span className="kkc-amt-free">Free</span> : <Rolling value={money(lineTotal)} />}</p>
     </motion.li>
@@ -296,6 +359,22 @@ const CartStyles = () => (
     .kkc-remove{border:0;background:none;padding:0;font:inherit;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;
       background-image:linear-gradient(currentColor,currentColor);background-size:0 1px;background-repeat:no-repeat;background-position:0 100%;transition:background-size .3s var(--swift),color .2s}
     .kkc-remove:hover{color:#B42318;background-size:100% 1px}
+    .kkc-photo{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:12px}
+    .kkc-photo-add{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed rgba(10,11,10,.35);border-radius:2px;background:transparent;
+      color:var(--ink);font:inherit;font-size:13px;cursor:pointer;transition:border-color .2s,color .2s,background .2s}
+    .kkc-photo-add b{font-weight:700}
+    .kkc-photo-add i{font-style:normal;color:var(--muted);margin-left:2px}
+    .kkc-photo-add:hover:not(:disabled){border-color:var(--green);color:var(--green);background:rgba(26,122,26,.05)}
+    .kkc-photo-add:disabled{opacity:.5;cursor:default}
+    .kkc-photo-thumb{width:44px;height:44px;object-fit:cover;display:block;background:var(--line);border:1px solid var(--line)}
+    .kkc-photo-text{display:flex;flex-direction:column;gap:2px;font-size:13px}
+    .kkc-photo-text .ok{font-weight:700;color:var(--green)}
+    .kkc-photo-links{display:flex;gap:12px}
+    .kkc-photo-links button{border:0;background:none;padding:0;font:inherit;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+    .kkc-photo-links button:hover{color:var(--ink)}
+    .kkc-photo-note{flex-basis:100%;margin:0;font-size:12.5px;color:var(--muted)}
+    .kkc-photo-note.err{color:#B42318}
     .kkc-amt{margin:0;font-family:var(--display);font-size:28px;line-height:1;text-align:right;white-space:nowrap}
     .kkc-amt-free{color:var(--green)}
 

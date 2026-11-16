@@ -26,7 +26,7 @@ const Slot = ({ reference, itemName, pair, total, canEdit, onChange }) => {
       // The api client defaults to JSON; a photo must go as multipart
       const { data } = await api.post(`/api/orders/${reference}/pairs/${pair.sequence}/photo/`, body,
         { headers: { 'Content-Type': 'multipart/form-data' } });
-      onChange(pair.sequence, { thumbnail_url: data.preview_url, url: data.full_url, taken_by_staff: false });
+      onChange(pair.sequence, { thumbnail_url: data.preview_url, url: data.full_url, taken_by_staff: false, from_cart: false });
     } catch (e) {
       setError(e.response?.data?.error || "That didn't upload. Try again.");
     } finally {
@@ -71,12 +71,12 @@ const Slot = ({ reference, itemName, pair, total, canEdit, onChange }) => {
       <div className="kk-pp-info">
         <p className="kk-pp-label">{label}</p>
         {error ? <p className="kk-pp-error">{error}</p>
-          : has ? <p className="kk-pp-sub">{pair.taken_by_staff ? 'Photographed by our team' : 'Photo added'}</p>
+          : has ? <p className="kk-pp-sub">{pair.taken_by_staff ? 'Photographed by our team' : pair.from_cart ? 'Added in your cart' : 'Photo added'}</p>
           : <p className="kk-pp-sub">{canEdit ? 'No photo yet' : 'No photo'}</p>}
         {canEdit && !pair.taken_by_staff && (
           <div className="kk-pp-actions">
             <button type="button" onClick={() => input.current?.click()} disabled={busy}>{has ? 'Retake' : 'Add photo'}</button>
-            {has && <button type="button" onClick={remove} disabled={busy}>Remove</button>}
+            {has && !pair.from_cart && <button type="button" onClick={remove} disabled={busy}>Remove</button>}
           </div>
         )}
       </div>
