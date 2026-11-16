@@ -3,17 +3,10 @@ import { useContext } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
+import AppLoader from './AppLoader';
 
 // Loading component for protected routes
-const RouteLoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-      <p className="mt-4 text-gray-600">Checking authentication...</p>
-    </div>
-  </div>
-);
-
+const RouteLoadingSpinner = () => <AppLoader label="Checking your account" />;
 const ProtectedRoute = ({
   children,
   requireVerification = false,
