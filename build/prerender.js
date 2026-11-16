@@ -44,6 +44,16 @@ export default function prerender() {
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, html);
       }
+      // Old About page: the host has no redirect rules (netlify.toml only works on Netlify),
+      // so serve an instant meta refresh, which search engines treat as a permanent redirect.
+      const studio = canonicalFor('/studio');
+      fs.mkdirSync(path.join(outDir, 'about-us'), { recursive: true });
+      fs.writeFileSync(path.join(outDir, 'about-us', 'index.html'),
+        `<!doctype html><html lang="en-GH"><head><meta charset="UTF-8"><title>Moved to Studio | ${SITE_NAME}</title>`
+        + `<link rel="canonical" href="${studio}"><meta name="robots" content="noindex,follow">`
+        + `<meta http-equiv="refresh" content="0; url=${studio}"></head>`
+        + `<body><p>This page has moved to <a href="${studio}">${studio}</a>.</p></body></html>\n`);
+
       const today = new Date().toISOString().slice(0, 10);
       const urls = Object.keys(PAGES).map((r) => `  <url><loc>${canonicalFor(r)}</loc><lastmod>${today}</lastmod></url>`).join('\n');
       fs.writeFileSync(path.join(outDir, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);

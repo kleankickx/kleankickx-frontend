@@ -15,7 +15,8 @@ const LINKS = [
 const FloatingNav = () => {
   const { pathname } = useLocation();
   const [on, setOn] = useState(false);
-  const allowed = SHOW_ON.includes(pathname);
+  // Pre-rendered pages are served at '/studio/' as well as '/studio'
+  const allowed = SHOW_ON.includes(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname);
 
   useEffect(() => {
     if (!allowed) return undefined;

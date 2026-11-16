@@ -93,7 +93,7 @@ const priceList = () => `
 const areas = () => `<h2>Pickup and delivery across Accra</h2><ul>${AREAS.map((a) => `<li>${a}</li>`).join('')}</ul>`;
 const contact = () => `<h2>Studio</h2><address>${BUSINESS.street}, ${BUSINESS.city}, Ghana<br>
 <a href="tel:${BUSINESS.phone}">${BUSINESS.phoneDisplay}</a> · <a href="mailto:${BUSINESS.email}">${BUSINESS.email}</a></address>`;
-const nav = () => `<nav><a href="/#services">Services</a> · <a href="/#trade-in">Trade-In</a> · <a href="/impact">Impact</a> · <a href="/studio">Studio</a> · <a href="/services">Book a Klean</a></nav>`;
+const nav = () => `<nav><a href="/#services">Services</a> · <a href="/#trade-in">Trade-In</a> · <a href="/impact/">Impact</a> · <a href="/studio/">Studio</a> · <a href="/services/">Book a Klean</a></nav>`;
 const tradeIn = () => `<h2>Trade-In</h2><p>Bring the pairs you no longer wear. We check every one by hand: wearable pairs are cleaned and go back into use, and pairs past saving go to our partner <a href="https://kicksctrl.com">KicksCTRL</a> for material recovery, not landfill.</p>`;
 const faq = () => `<h2>Questions</h2>${FAQ.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}`;
 
@@ -154,5 +154,7 @@ export const DEFAULT_META = {
   description: PAGES['/'].description,
 };
 
-export const canonicalFor = (path) => `${SITE_URL}${path === '/' ? '/' : path}`;
+// Trailing slash: the host serves each pre-rendered page from a folder (/studio/index.html)
+// and 301s /studio to /studio/, so the canonical must be the address that answers 200.
+export const canonicalFor = (path) => `${SITE_URL}${path === '/' ? '/' : `${path.replace(/\/+$/, '')}/`}`;
 export const schemaFor = (path) => [businessSchema, ...((PAGES[path] && PAGES[path].schema) || [])];
