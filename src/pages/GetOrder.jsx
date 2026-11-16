@@ -1,572 +1,152 @@
 // src/pages/GetOrder.jsx
 
-import React, { useEffect, useState, useContext } from 'react';
-import {
-  FaShoppingCart,
-  FaExclamationCircle,
-  FaUserCircle,
-  FaBox,
-  FaStore,
-  FaChevronLeft,
-  FaInfoCircle,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaSpinner,
-  FaTruck,
-  FaBroom,
-  FaCheckDouble,
-  FaCalendarAlt,
-  FaTag,
-  FaPhone,
-  FaEnvelope,
-  FaMapMarkerAlt,
-  FaMoneyBillWave,
-  FaCreditCard,
-  FaImage,
-  FaExpand,
-  FaCamera,
-  FaTimes,
-  FaHandsHelping,
-  FaShippingFast,
-  FaUserCheck,
-  FaTrashAlt,
-  FaExclamationTriangle,
-  FaGift
-} from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import Footer from '../components/Footer';
 import api from '../api';
 import { trackOrderPurchase } from '../utils/analytics';
 import OrderStatusStepper from '../components/OrderStatusStepper';
 import PairPhotos from '../components/PairPhotos';
+import { orderStatus, STATUS_TAG_CSS } from '../utils/orderStatus';
 
-// Delete Confirmation Modal Component
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
-    if (!isOpen) return null;
+const ease = [0.77, 0, 0.18, 1];
+const cedi = (v) => `₵${(parseFloat(v) || 0).toFixed(2)}`;
 
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-            onClick={onClose}
-        >
-            <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-red-100 rounded-full">
-                            {isDeleting ? (
-                                <FaSpinner className="animate-spin text-red-600 text-2xl" />
-                            ) : (
-                                <FaExclamationTriangle className="text-red-600 text-2xl" />
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-900">
-                                {isDeleting ? 'Cancelling Order...' : 'Cancel Order'}
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1">Order #{orderRef}</p>
-                        </div>
-                    </div>
-                    
-                    {!isDeleting ? (
-                        <>
-                            <p className="text-gray-700 mb-6">
-                                Are you sure you want to cancel this order? This action cannot be undone.
-                            </p>
-                            
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={onClose}
-                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors cursor-pointer"
-                                    disabled={isDeleting}
-                                >
-                                    Keep Order
-                                </button>
-                                <button
-                                    onClick={onConfirm}
-                                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                                    disabled={isDeleting}
-                                >
-                                    <FaTrashAlt className="w-4 h-4" />
-                                    Yes, Cancel Order
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="py-8 flex flex-col items-center justify-center">
-                            <div className="relative mb-4">
-                                <div className="w-16 h-16 border-4 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <FaTrashAlt className="w-6 h-6 text-red-400 animate-pulse" />
-                                </div>
-                            </div>
-                            <p className="text-gray-600 text-center">
-                                Please wait while we cancel your order...
-                            </p>
-                            <p className="text-xs text-gray-400 mt-2">
-                                This will only take a moment
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </motion.div>
-        </motion.div>
-    );
-};
+const Close = () => (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" /></svg>
+);
 
-// Payment Status Banner
-const PaymentStatusBanner = ({ order, onRetryPayment }) => {
-    const paymentStatus = order.payment_status?.toUpperCase();
-    
-    // Don't show for cancelled orders
-    if (order.status === 'CANCELLED') {
-        return null;
-    }
-
-    if (paymentStatus === 'SUCCESS' || paymentStatus === 'REFUNDED' || paymentStatus === 'PARTIAL_REFUND') {
-        return null;
-    }
-
-    const isFailed = paymentStatus === 'FAILED';
-
-    const config = {
-        icon: isFailed ? <FaTimesCircle className="text-white text-2xl" /> : <FaCreditCard className="text-white text-2xl" />,
-        bgColor: isFailed ? 'bg-red-600' : 'bg-amber-500',
-        borderColor: isFailed ? 'border-red-800' : 'border-amber-700',
-        title: isFailed ? 'Payment Failed' : 'Payment Required',
-        message: isFailed
-            ? order.payment_failure_reason || "Your payment was unsuccessful. Please retry or contact support if the issue persists."
-            : "This order is awaiting payment confirmation. Please complete the transaction to start processing your items.",
-        retryText: isFailed ? 'Retry Payment' : 'Complete Payment'
-    };
-
-    if (paymentStatus !== 'PENDING' && !isFailed) {
-        return null;
-    }
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-5 mb-8 rounded-xl shadow-lg border-b-4 ${config.borderColor} ${config.bgColor} text-white`}
-        >
-            <div className="flex items-start md:items-center justify-between flex-wrap gap-4">
-                <div className="flex items-start gap-4 flex-1 min-w-[200px]">
-                    {config.icon}
-                    <div>
-                        <h2 className="text-xl font-bold">{config.title}</h2>
-                        <p className="mt-1 text-sm opacity-90">{config.message}</p>
-                    </div>
-                </div>
-                <button
-                    onClick={onRetryPayment}
-                    className="flex-shrink-0 ml-0 md:ml-4 px-6 py-3 bg-white text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition-colors text-sm cursor-pointer"
-                >
-                    {config.retryText}
-                </button>
-            </div>
-        </motion.div>
-    );
-};
-
-// Image Modal Component
-const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
-    if (!isOpen) return null;
-
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
-            onClick={onClose}
-        >
-            <div className="relative max-w-4xl max-h-[90vh] w-full mx-4">
-                <button
-                    onClick={onClose}
-                    className="absolute -top-10 right-0 text-white hover:text-gray-300 z-10 p-2 rounded-full hover:bg-white/10 transition-colors"
-                >
-                    <FaTimes className="w-6 h-6" />
-                </button>
-                <img
-                    src={imageUrl}
-                    alt={imageAlt || 'Order item photo'}
-                    className="w-full h-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+// Cancel confirmation
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => (
+    <AnimatePresence>
+        {isOpen && (
+            <motion.div className="kkd-scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <motion.div className="kkd-dialog" role="alertdialog" aria-modal="true" aria-labelledby="kkd-cancel-h"
                     onClick={(e) => e.stopPropagation()}
-                />
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-lg text-sm">
-                    Click outside or press ESC to close
-                </div>
-            </div>
-        </motion.div>
-    );
-};
-
-// Badge for an item paid by a voucher or the free signup offer
-const CoveredBadge = ({ item }) => {
-    if (!item.covered_label) return null;
-    const isVoucher = item.is_voucher_redeem;
-    return (
-        <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-            isVoucher ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-        }`}>
-            {isVoucher ? <FaGift className="w-3 h-3" /> : <FaTag className="w-3 h-3" />}
-            {item.covered_label}
-        </span>
-    );
-};
-
-// Order Item Card
-const OrderItemCard = ({ item, onImageClick }) => {
-    const hasPhoto = item.image_url || item.photo;
-    const isCovered = Boolean(item.covered_label);
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-white border border-gray-100 hover:shadow-sm transition-all gap-4"
-        >
-            <div className="flex items-start gap-4 w-full sm:w-auto">
-                {/* Service Image */}
-                <div className="w-14 h-14 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {item.service?.image ? (
-                        <img
-                            src={item.service.image}
-                            alt={item.service.name}
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <FaBox className="text-gray-400 text-xl" />
-                    )}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                    <h4 className="text-base font-medium text-gray-900 truncate">{item.service.name}</h4>
-                    <p className="text-xs text-gray-500 mt-1">Quantity: {item.quantity}</p>
-                    <CoveredBadge item={item} />
-
-                    {/* Item Photo (Customer Uploaded) */}
-                    {hasPhoto && (
-                        <div className="mt-3">
-                            <div 
-                                className="flex items-center gap-2 cursor-pointer group max-w-fit"
-                                onClick={() => onImageClick(item.image_url || item.photo, item.service.name)}
-                            >
-                                <div className="relative">
-                                    <img
-                                        src={item.image_url || item.photo}
-                                        alt={`Photo for ${item.service.name}`}
-                                        className="w-10 h-10 object-cover rounded border border-gray-200 group-hover:border-blue-500 transition-colors"
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded"></div>
-                                    <FaExpand className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white opacity-0 group-hover:opacity-100 transition-opacity w-3 h-3" />
-                                </div>
-                                <span className="text-xs text-blue-600 group-hover:text-blue-800 font-medium">
-                                    View uploaded photo
-                                </span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            
-            <div className="text-right w-full sm:w-auto sm:min-w-[120px]">
-                {isCovered ? (
-                    <>
-                        {parseFloat(item.full_value) > 0 && (
-                            <p className="text-xs text-gray-400 line-through">
-                                GHS {parseFloat(item.full_value).toFixed(2)}
-                            </p>
-                        )}
-                        <p className={`text-base font-semibold ${item.is_voucher_redeem ? 'text-green-700' : 'text-amber-700'}`}>
-                            {item.is_voucher_redeem ? 'Paid with voucher' : 'FREE'}
-                        </p>
-                    </>
-                ) : (
-                    <>
-                        <p className="text-base font-semibold text-gray-900">
-                            GHS {parseFloat(item.total_price || item.unit_price * item.quantity).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                            GHS {parseFloat(item.unit_price || item.price).toFixed(2)} each
-                        </p>
-                    </>
-                )}
-                
-                {/* Photo Status Badge */}
-                {!hasPhoto && (
-                    <div className="mt-2 flex items-center justify-end gap-1 text-xs text-gray-500">
-                        <FaCamera className="w-3 h-3" />
-                        <span>No photo uploaded</span>
-                    </div>
-                )}
-            </div>
-        </motion.div>
-    );
-};
-
-// Order Items Gallery
-const OrderItemsGallery = ({ items }) => {
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [modalOpen, setModalOpen] = useState(false);
-
-    const handleImageClick = (imageUrl, serviceName) => {
-        setSelectedImage({ url: imageUrl, alt: serviceName });
-        setModalOpen(true);
-    };
-
-    const itemsWithPhotos = items.filter(item => item.image_url || item.photo);
-    const itemsWithoutPhotos = items.filter(item => !item.image_url && !item.photo);
-
-    return (
-        <div className="space-y-6">
-            {/* Image Modal */}
-            <ImageModal
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
-                imageUrl={selectedImage?.url}
-                imageAlt={selectedImage?.alt}
-            />
-
-            {/* Photo Gallery Section */}
-            {itemsWithPhotos.length > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="bg-white rounded-xl border border-gray-200 p-6"
-                >
-                    <div className="flex items-center justify-between mb-6">
+                    initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ duration: 0.4, ease }}>
+                    <div className="kkd-dialog-head">
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900">Uploaded Photos</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                {itemsWithPhotos.length} item{itemsWithPhotos.length !== 1 ? 's' : ''} with photos
-                            </p>
+                            <p className="kkd-eyebrow red">Order #{orderRef}</p>
+                            <h2 id="kkd-cancel-h">{isDeleting ? 'Cancelling…' : 'Cancel this order?'}</h2>
                         </div>
-                        <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            <FaImage className="inline mr-2" />
-                            Photo Gallery
-                        </div>
+                        <button type="button" className="kkd-x" onClick={onClose} disabled={isDeleting} aria-label="Close"><Close /></button>
                     </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {itemsWithPhotos.map((item, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="group relative cursor-pointer"
-                                onClick={() => handleImageClick(item.image_url || item.photo, item.service.name)}
-                            >
-                                <div className="aspect-square rounded-lg overflow-hidden border-2 border-transparent group-hover:border-blue-500 transition-all duration-300">
-                                    <img
-                                        src={item.image_url || item.photo}
-                                        alt={`Photo for ${item.service.name}`}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <div className="absolute bottom-2 left-2 right-2">
-                                            <p className="text-white text-xs truncate">{item.service.name}</p>
-                                            <p className="text-white/80 text-xs">Click to enlarge</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <FaExpand className="w-3 h-3 text-gray-700" />
-                                </div>
-                            </motion.div>
-                        ))}
+                    <p className="kkd-dialog-p">
+                        {isDeleting ? 'One moment while we cancel it.' : "It hasn't been paid for yet, so nothing will be charged. This can't be undone."}
+                    </p>
+                    <div className="kkd-dialog-row">
+                        <button type="button" className="kkd-btn ghost" onClick={onClose} disabled={isDeleting}>Keep order</button>
+                        <button type="button" className="kkd-btn danger" onClick={onConfirm} disabled={isDeleting}>
+                            {isDeleting ? <><span className="kkd-spin" aria-hidden="true" /> Cancelling</> : 'Yes, cancel it'}
+                        </button>
                     </div>
                 </motion.div>
-            )}
-
-            {/* All Order Items */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                        Order Items ({items.length})
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                            {itemsWithPhotos.length} with photos
-                        </span>
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded">
-                            {itemsWithoutPhotos.length} without photos
-                        </span>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    {items.map((item, index) => (
-                        <OrderItemCard
-                            key={index}
-                            item={item}
-                            onImageClick={handleImageClick}
-                        />
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Self-Handled Address Card Component
-const SelfHandledAddressCard = () => (
-    <div className="p-5 rounded-lg border border-amber-200 bg-amber-50">
-        <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-amber-100 rounded-full">
-                <FaHandsHelping className="text-amber-600 text-lg" />
-            </div>
-            <h3 className="font-semibold text-amber-800">
-                Self-Handled Service
-            </h3>
-        </div>
-        <div className="space-y-3 text-sm">
-            <div className="flex items-start gap-2">
-                <FaUserCheck className="text-amber-500 mt-0.5 flex-shrink-0" />
-                <div>
-                    <p className="font-medium text-amber-700">You'll handle pickup and delivery</p>
-                    <p className="text-amber-600 mt-1">
-                        No pickup or delivery fees included. You'll bring items to our facility 
-                        and pick them up when ready.
-                    </p>
-                </div>
-            </div>
-            <div className="flex items-start gap-2 pt-3 border-t border-amber-200">
-                <FaInfoCircle className="text-amber-500 mt-0.5 flex-shrink-0" />
-                <div>
-                    <p className="font-medium text-amber-700">Facility Information</p>
-                    <ul className="mt-1 space-y-1 text-amber-600">
-                        <li>• Please contact us for facility location and hours</li>
-                        <li>• Phone: +233 53 627 8834</li>
-                        <li>• Email: support@kleankickx.com</li>
-                    </ul>
-                </div>
-            </div>
-            <div className="flex items-center gap-2 pt-3 mt-2 border-t border-amber-200">
-                <FaMoneyBillWave className="text-amber-500" />
-                <span className="font-medium text-amber-700">
-                    Pickup/Delivery Cost: GHS 0.00 (self-handled)
-                </span>
-            </div>
-        </div>
-    </div>
+            </motion.div>
+        )}
+    </AnimatePresence>
 );
 
-// Regular Address Card Component
-const RegularAddressCard = ({ type, address, cost }) => (
-    <div className="p-5 rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center gap-3 mb-4">
-            {type === 'delivery' ? (
-                <>
-                    <div className="p-2 bg-blue-100 rounded-full">
-                        <FaShippingFast className="text-blue-600 text-lg" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900">
-                        Delivery Address
-                    </h3>
-                </>
-            ) : (
-                <>
-                    <div className="p-2 bg-green-100 rounded-full">
-                        <FaStore className="text-green-600 text-lg" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900">
-                        Pickup Address
-                    </h3>
-                </>
-            )}
-        </div>
-        <div className="space-y-2 text-sm text-gray-700">
-            <div className="flex items-start gap-2">
-                <FaMapMarkerAlt className="text-gray-400 mt-0.5 flex-shrink-0" />
-                <div>
-                    <p className="font-medium">{address.location_name}</p>
-                    <p>{address.street_address}</p>
-                    <p>{address.region}</p>
-                </div>
-            </div>
-            <div className="flex items-center gap-2 pt-2 mt-2 border-t border-gray-100">
-                <FaMoneyBillWave className="text-gray-400" />
-                <span className="font-medium">
-                    Cost: GHS {parseFloat(cost).toFixed(2)}
-                </span>
-            </div>
-        </div>
-    </div>
-);
+// Payment needed / failed
+const PaymentStatusBanner = ({ order, onRetryPayment }) => {
+    const paymentStatus = order.payment_status?.toUpperCase();
+    if (order.status === 'CANCELLED') return null;
+    if (paymentStatus !== 'PENDING' && paymentStatus !== 'FAILED') return null;
+    const isFailed = paymentStatus === 'FAILED';
 
-// Discount Badge Component
-const DiscountBadge = ({ order, discount, percentage }) => {
-    const colorMap = {
-        "redeemed_points": {
-            bgFrom: "from-blue-50",
-            bgTo: "to-blue-50",
-            border: "border-blue-200",
-            iconBg: "bg-blue-100",
-            iconText: "text-blue-600",
-            titleText: "text-blue-800",
-            text: "text-blue-600",
-            amountText: "text-blue-700",
-        },
-        "referral": {
-            bgFrom: "from-purple-50",
-            bgTo: "to-purple-50",
-            border: "border-purple-200",
-            iconBg: "bg-purple-100",
-            iconText: "text-purple-600",
-            titleText: "text-purple-800",
-            text: "text-purple-600",
-            amountText: "text-purple-700",
-        },
-        "default": {
-            bgFrom: "from-green-50",
-            bgTo: "to-emerald-50",
-            border: "border-emerald-200",
-            iconBg: "bg-emerald-100",
-            iconText: "text-emerald-600",
-            titleText: "text-emerald-800",
-            text: "text-emerald-600",
-            amountText: "text-emerald-700",
-        },
-    };
-
-    const colorScheme = colorMap[discount.discount_type] || colorMap["default"];
-    const formattedDiscountType = discount.discount_type.replace('_', ' ');
-    
     return (
-        <div className={`flex items-center gap-3 p-3 bg-gradient-to-r ${colorScheme.bgFrom} ${colorScheme.bgTo} rounded-lg border ${colorScheme.border}`}>
-            <div className={`p-2 ${colorScheme.iconBg} rounded-lg`}>
-                <FaTag className={`${colorScheme.iconText} text-lg`} />
-            </div>
-            <div className="flex-1">
-                <p className={`text-sm font-semibold ${colorScheme.titleText} capitalize`}>
-                    {formattedDiscountType} Discount
+        <motion.div className={`kkd-alert ${isFailed ? 'bad' : 'wait'}`} role="status"
+            initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
+            <div>
+                <p className="kkd-eyebrow">{isFailed ? 'Payment failed' : 'Payment needed'}</p>
+                <h2>{isFailed ? "That payment didn't go through" : 'Finish paying to start your Klean'}</h2>
+                <p>
+                    {isFailed
+                        ? order.payment_failure_reason || 'Nothing was charged. Try again, or contact us if it keeps happening.'
+                        : "We'll start on your sneakers as soon as payment is confirmed."}
                 </p>
-                <p className={`text-xs ${colorScheme.text}`}>
-                    {percentage}% discount applied
-                </p>
             </div>
-            <div className={`${colorScheme.amountText} font-bold`}>
-                -GHS {parseFloat(order.subtotal * percentage / 100).toFixed(2)}
-            </div>
-        </div>
+            <button type="button" className="kkd-btn go" onClick={onRetryPayment}>
+                {isFailed ? 'Try payment again' : `Pay ${cedi(order.total_amount || order.total)}`} <span className="ar" aria-hidden="true">→</span>
+            </button>
+        </motion.div>
     );
 };
+
+// Full-size photo
+const ImageModal = ({ isOpen, onClose, imageUrl, imageAlt }) => {
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const onKey = (e) => e.key === 'Escape' && onClose();
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div className="kkd-scrim dark" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <button type="button" className="kkd-x light" onClick={onClose} aria-label="Close photo"><Close /></button>
+                    <motion.img src={imageUrl} alt={imageAlt || 'Order item photo'} className="kkd-full" onClick={(e) => e.stopPropagation()}
+                        initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.35, ease }} />
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+// One line of the order
+const OrderItemRow = ({ item, onImageClick }) => {
+    const photo = item.image_url || item.photo;
+    const isCovered = Boolean(item.covered_label);
+    const qty = Number(item.quantity) || 1;
+
+    return (
+        <li className="kkd-item">
+            <span className="kkd-item-pic" aria-hidden="true">
+                {item.service?.image ? <img src={item.service.image} alt="" loading="lazy" /> : null}
+            </span>
+            <div className="kkd-item-main">
+                <p className="kkd-item-name">{item.service?.name}</p>
+                <p className="kkd-item-meta">
+                    {qty} {qty === 1 ? 'pair' : 'pairs'}
+                    {!isCovered && qty > 1 && <> · {cedi(item.unit_price || item.price)} each</>}
+                </p>
+                {isCovered && <span className={`kkd-tag ${item.is_voucher_redeem ? 'g' : 'a'}`}>{item.covered_label}</span>}
+                {photo && (
+                    <button type="button" className="kkd-item-photo" onClick={() => onImageClick(photo, item.service?.name)}>
+                        <img src={photo} alt="" /> View your photo
+                    </button>
+                )}
+            </div>
+            <div className="kkd-item-price">
+                {isCovered ? (
+                    <>
+                        {parseFloat(item.full_value) > 0 && <s>{cedi(item.full_value)}</s>}
+                        <b className={item.is_voucher_redeem ? 'g' : 'a'}>{item.is_voucher_redeem ? 'Voucher' : 'Free'}</b>
+                    </>
+                ) : (
+                    <b>{cedi(item.total_price || item.unit_price * item.quantity)}</b>
+                )}
+            </div>
+        </li>
+    );
+};
+
+const Address = ({ label, address, cost }) => (
+    <div className="kkd-addr">
+        <p className="kkd-eyebrow">{label}</p>
+        <p className="kkd-addr-name">{address.location_name}</p>
+        {address.street_address && <p>{address.street_address}</p>}
+        {address.region && <p>{address.region}</p>}
+        <p className="kkd-addr-fee">Fee <b>{cost ? cedi(cost) : '—'}</b></p>
+    </div>
+);
+
+const Row = ({ k, v, tone }) => (
+    <div className={`kkd-sum-row ${tone || ''}`}><span>{k}</span><span>{v}</span></div>
+);
 
 // Main Component
 const GetOrder = () => {
@@ -575,6 +155,7 @@ const GetOrder = () => {
     const [error, setError] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [photo, setPhoto] = useState(null);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { orderReferenceCode } = useParams();
@@ -590,45 +171,34 @@ const GetOrder = () => {
 
     const handleDeleteOrder = async () => {
         if (!order || deleting) return;
-        
+
         setDeleting(true);
-        
+
         try {
-            const response = await api.delete(`/api/orders/${order.reference_code}/`);
-            
-            toast.success(
-                <div className="flex items-center gap-2">
-                    <span>Order cancelled successfully!</span>
-                </div>,
-                { autoClose: 3000 }
-            );
-            
+            await api.delete(`/api/orders/${order.reference_code}/`);
+
+            toast.success('Order cancelled.', { autoClose: 3000 });
+
             setShowDeleteModal(false);
-            
+
             // Update the local order state to show it's cancelled
             setOrder(prevOrder => ({
                 ...prevOrder,
                 status: 'CANCELLED',
                 cancelled_at: new Date().toISOString()
             }));
-            
+
         } catch (error) {
             console.error('Error deleting order:', error);
-            
-            const errorMessage = error.response?.data?.error || 
-                               error.response?.data?.detail || 
+
+            const errorMessage = error.response?.data?.error ||
+                               error.response?.data?.detail ||
                                'Failed to cancel order. Please try again or contact support.';
-            
-            toast.error(
-                <div className="flex items-center gap-2">
-                    <FaExclamationCircle className="text-red-500" />
-                    <span>{errorMessage}</span>
-                </div>,
-                { autoClose: 5000 }
-            );
-            
+
+            toast.error(errorMessage, { autoClose: 5000 });
+
             setShowDeleteModal(false);
-            
+
         } finally {
             setDeleting(false);
         }
@@ -636,10 +206,10 @@ const GetOrder = () => {
 
     const canDeleteOrder = () => {
         const paymentStatus = order?.payment_status?.toUpperCase();
-        const orderStatus = order?.status?.toUpperCase();
+        const orderStatusKey = order?.status?.toUpperCase();
         // Only allow deletion for pending or failed payments AND if order is not already cancelled
-        return (paymentStatus === 'PENDING' || paymentStatus === 'FAILED') && 
-               orderStatus !== 'CANCELLED';
+        return (paymentStatus === 'PENDING' || paymentStatus === 'FAILED') &&
+               orderStatusKey !== 'CANCELLED';
     };
 
     // GA4 purchase: fallback for customers who reach the order page first.
@@ -650,7 +220,7 @@ const GetOrder = () => {
 
     useEffect(() => {
         const paymentStatus = searchParams.get('payment');
-        
+
         if (paymentStatus === 'success') {
             toast.success('Payment completed successfully!');
             sessionStorage.removeItem('pending_order_ref');
@@ -658,7 +228,7 @@ const GetOrder = () => {
         } else if (paymentStatus === 'failed') {
             toast.error('Payment was not completed');
         }
-        
+
         if (paymentStatus) {
             window.history.replaceState({}, '', window.location.pathname);
         }
@@ -695,75 +265,6 @@ const GetOrder = () => {
         fetchOrder();
     }, [orderReferenceCode, navigate, api]);
 
-    const getStatusDisplay = (status, isSelfHandled = false) => {
-        const statusConfig = {
-            pending: {
-                icon: <FaInfoCircle className="text-blue-500" />,
-                color: 'text-blue-600',
-                bg: 'bg-blue-50',
-                displayText: 'Order Pending'
-            },
-            processing: {
-                icon: <FaSpinner className="animate-spin text-amber-500" />,
-                color: 'text-amber-600',
-                bg: 'bg-amber-50',
-                displayText: 'Processing'
-            },
-            pickup: {
-                icon: isSelfHandled ? <FaUserCheck className="text-indigo-500" /> : <FaTruck className="text-indigo-500" />,
-                color: 'text-indigo-600',
-                bg: 'bg-indigo-50',
-                displayText: isSelfHandled ? 'Ready for Drop-off' : 'Ready for Pickup'
-            },
-            cleaning_ongoing: {
-                icon: <FaBroom className="text-purple-500" />,
-                color: 'text-purple-600',
-                bg: 'bg-purple-50',
-                displayText: 'Cleaning in Progress'
-            },
-            cleaning_completed: {
-                icon: <FaCheckDouble className="text-green-500" />,
-                color: 'text-green-600',
-                bg: 'bg-green-50',
-                displayText: isSelfHandled ? 'Ready for Collection' : 'Cleaning Completed'
-            },
-            scheduled_for_delivery: {
-                icon: <FaCalendarAlt className="text-teal-500" />,
-                color: 'text-teal-600',
-                bg: 'bg-teal-50',
-                displayText: 'Scheduled Delivery'
-            },
-            delivered: {
-                icon: isSelfHandled ? <FaHandsHelping className="text-emerald-500" /> : <FaCheckCircle className="text-emerald-500" />,
-                color: 'text-emerald-600',
-                bg: 'bg-emerald-50',
-                displayText: isSelfHandled ? 'Collected by Customer' : 'Delivered'
-            },
-            cancelled: {
-                icon: <FaTimesCircle className="text-red-500" />,
-                color: 'text-red-600',
-                bg: 'bg-red-50',
-                displayText: 'Cancelled'
-            },
-            default: {
-                icon: <FaInfoCircle className="text-gray-500" />,
-                color: 'text-gray-600',
-                bg: 'bg-gray-50',
-                displayText: 'Unknown'
-            }
-        };
-
-        const statusKey = status?.toLowerCase().replace(/ /g, '_') || 'default';
-        const config = statusConfig[statusKey] || statusConfig.default;
-
-        return (
-            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${config.color} ${config.bg}`}>
-                {config.icon}
-                <span className="ml-2 text-xs">{config.displayText}</span>
-            </span>
-        );
-    };
-
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleString('en-US', {
@@ -778,54 +279,193 @@ const GetOrder = () => {
     // What vouchers / the free signup offer paid for (their items are stored at GHS 0)
     const coverage = order?.coverage;
     const isCovered = Boolean(coverage?.has_voucher || coverage?.has_free_item);
+    const cancelled = order?.status === 'CANCELLED';
+    const status = orderStatus(order?.status, order?.is_self_handled);
 
-    const getPaymentStatusDisplay = (status) => {
-        const statusConfig = {
-            SUCCESS: {
-                text: 'Successful',
-                colorClasses: 'bg-emerald-100 text-emerald-800',
-            },
-            PENDING: {
-                text: 'Pending',
-                colorClasses: 'bg-amber-100 text-amber-800',
-            },
-            FAILED: {
-                text: 'Failed',
-                colorClasses: 'bg-red-100 text-red-800',
-            },
-            REFUNDED: {
-                text: 'Refunded',
-                colorClasses: 'bg-blue-100 text-blue-800',
-            },
-            PARTIAL_REFUND: {
-                text: 'Partial Refund',
-                colorClasses: 'bg-blue-100 text-blue-800',
-            },
-            COVERED: {
-                text: order?.coverage?.has_voucher ? 'Paid with voucher' : 'Free',
-                colorClasses: 'bg-emerald-100 text-emerald-800',
-            },
-            DEFAULT: {
-                text: 'N/A',
-                colorClasses: 'bg-gray-100 text-gray-800',
-            },
-        };
+    const paymentLabel = (s) => ({
+        SUCCESS: ['Paid', 'live'],
+        PENDING: ['Awaiting payment', 'wait'],
+        FAILED: ['Failed', 'bad'],
+        REFUNDED: ['Refunded', 'done'],
+        PARTIAL_REFUND: ['Partly refunded', 'done'],
+        COVERED: [coverage?.has_voucher ? 'Paid with voucher' : 'Free', 'live'],
+    }[s?.toUpperCase()] || ['N/A', 'done']);
 
-        const s = status?.toUpperCase();
-        const config = statusConfig[s] || statusConfig.DEFAULT;
-
-        return (
-            <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.colorClasses}`}
-            >
-                {config.text}
-            </span>
-        );
-    };
+    const items = order?.items || [];
+    const pairs = items.reduce((n, i) => n + (Number(i.quantity) || 1), 0);
+    const legacyPhotos = items.filter((i) => i.image_url || i.photo);
+    const fees = order && !order.is_self_handled
+        ? parseFloat(order.delivery_cost || 0) + parseFloat(order.pickup_cost || 0) : 0;
+    const before = order ? parseFloat(isCovered ? coverage.items_value : order.subtotal) + fees : 0;
+    const total = order ? parseFloat(order.total_amount || order.total) : 0;
+    const [payText, payTone] = paymentLabel(order?.payment_status);
 
     return (
-        <div className="bg-gray-50 min-h-screen">
-            {/* Delete Confirmation Modal */}
+        <div className="kkd">
+            <style>{`
+                .kkd{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--amber:#9A5B00;--red:#B42318;
+                  --display:"Anton","Arial Narrow",Impact,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);
+                  background:var(--paper);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif;min-height:100vh}
+                ${STATUS_TAG_CSS}
+                .kkd-wrap{max-width:1200px;margin:0 auto;padding:0 20px 72px}
+                .kkd-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+                .kkd-eyebrow.red{color:var(--red)}
+                .kkd-back{display:inline-flex;align-items:center;gap:8px;margin-top:28px;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none}
+                .kkd-back span{transition:transform .3s var(--spring)}
+                .kkd-back:hover{color:var(--ink)}
+                .kkd-back:hover span{transform:translateX(-4px)}
+                .kkd-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px;padding:18px 0 24px;border-bottom:2px solid var(--ink)}
+                .kkd-top h1{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(44px,7vw,92px);line-height:.88;word-break:break-all}
+                .kkd-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:14px 0 0;font-size:15px;color:var(--muted)}
+                .kkd-tag{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:2px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:#fff;border:1px solid var(--line);color:var(--ink)}
+                .kkd-tag.g{background:#E9F4E7;border-color:transparent;color:var(--green)}
+                .kkd-tag.a{background:#FFF6E5;border-color:transparent;color:var(--amber)}
+                .kkd-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:50px;padding:0 20px;border:2px solid var(--ink);border-radius:2px;background:transparent;
+                  color:var(--ink);font:inherit;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .25s var(--spring)}
+                .kkd-btn .ar{transition:transform .3s var(--spring)}
+                .kkd-btn:hover:not(:disabled){background:var(--ink);color:#fff}
+                .kkd-btn:hover:not(:disabled) .ar{transform:translateX(5px)}
+                .kkd-btn:active:not(:disabled){transform:scale(.98)}
+                .kkd-btn:disabled{opacity:.5;cursor:default}
+                .kkd-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+                .kkd-btn.go:hover:not(:disabled){background:var(--ink);border-color:var(--ink)}
+                .kkd-btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+                .kkd-btn.danger:hover:not(:disabled){background:#8E1B12;border-color:#8E1B12}
+                .kkd-btn.ghost-red{border-color:var(--red);color:var(--red);height:44px;font-size:14px}
+                .kkd-btn.ghost-red:hover:not(:disabled){background:var(--red);color:#fff}
+                .kkd-btn:focus-visible,.kkd-back:focus-visible,.kkd :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+
+                .kkd-alert{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px;margin-top:24px;padding:20px 22px;background:#fff;border:1px solid var(--line);border-left:6px solid var(--amber)}
+                .kkd-alert.bad{border-left-color:var(--red)}
+                .kkd-alert.wait .kkd-eyebrow{color:var(--amber)}
+                .kkd-alert.bad .kkd-eyebrow{color:var(--red)}
+                .kkd-alert > div{flex:1 1 320px}
+                .kkd-alert h2{margin:6px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:30px;line-height:.95}
+                .kkd-alert p:not(.kkd-eyebrow){margin:8px 0 0;color:var(--muted);line-height:1.5}
+
+                .kkd-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start;margin-top:24px}
+                .kkd-main,.kkd-side{display:flex;flex-direction:column;gap:24px;min-width:0}
+                .kkd-side{position:sticky;top:96px}
+                .kkd-card{background:#fff;border:1px solid var(--line);padding:22px}
+                .kkd-card-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+                .kkd-card-head h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:30px;line-height:1}
+                .kkd-card-head span{font-size:13px;color:var(--muted)}
+
+                .kkd-items{list-style:none;margin:0;padding:0}
+                .kkd-item{display:grid;grid-template-columns:64px 1fr auto;gap:16px;align-items:start;padding:16px 0;border-bottom:1px solid var(--line)}
+                .kkd-item:last-child{border-bottom:0;padding-bottom:0}
+                .kkd-item-pic{width:64px;height:64px;background:var(--paper);border:1px solid var(--line);overflow:hidden}
+                .kkd-item-pic img{width:100%;height:100%;object-fit:cover;display:block}
+                .kkd-item-main{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+                .kkd-item-name{margin:0;font-size:17px;font-weight:700}
+                .kkd-item-meta{margin:0;font-size:14px;color:var(--muted)}
+                .kkd-item-photo{display:inline-flex;align-items:center;gap:8px;margin-top:4px;padding:0;border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+                .kkd-item-photo img{width:30px;height:30px;object-fit:cover;border:1px solid var(--line)}
+                .kkd-item-photo:hover{color:var(--green)}
+                .kkd-item-price{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+                .kkd-item-price s{font-size:13px;color:var(--muted)}
+                .kkd-item-price b{font-family:var(--display);font-weight:400;font-size:24px;line-height:1;font-variant-numeric:tabular-nums}
+                .kkd-item-price b.g{color:var(--green);font-family:inherit;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.08em}
+                .kkd-item-price b.a{color:var(--amber);font-family:inherit;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.08em}
+
+                .kkd-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:16px}
+                .kkd-gallery button{position:relative;aspect-ratio:1;padding:0;border:1px solid var(--line);background:var(--paper);overflow:hidden;cursor:zoom-in}
+                .kkd-gallery img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--swift)}
+                .kkd-gallery button:hover img{transform:scale(1.06)}
+
+                .kkd-addrs{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:4px}
+                .kkd-addr{padding:16px 18px 4px 0}
+                .kkd-addr + .kkd-addr{padding-left:18px;border-left:1px solid var(--line)}
+                .kkd-addr p{margin:3px 0 0;color:var(--muted);font-size:15px}
+                .kkd-addr .kkd-eyebrow{margin:0 0 8px}
+                .kkd-addr .kkd-addr-name{color:var(--ink);font-weight:700;font-size:17px}
+                .kkd-addr .kkd-addr-fee{margin-top:10px;font-size:13px}
+                .kkd-addr-fee b{color:var(--ink)}
+                .kkd-self{margin-top:16px;display:grid;gap:12px}
+                .kkd-self p{margin:0;color:var(--muted);line-height:1.55}
+                .kkd-self b{color:var(--ink)}
+
+                .kkd-sum{background:var(--ink);color:#fff;border:0}
+                .kkd-sum .kkd-card-head{border-bottom-color:rgba(255,255,255,.9)}
+                .kkd-sum .kkd-card-head span{color:#A9B3A7}
+                .kkd-sum-row{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:15px}
+                .kkd-sum-row span:first-child{color:#C4CCC2}
+                .kkd-sum-row.g span{color:#6FD46F !important}
+                .kkd-sum-row.a span{color:#F2B544 !important}
+                .kkd-total{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;padding-top:16px}
+                .kkd-total > span{font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#C4CCC2}
+                .kkd-total div{text-align:right}
+                .kkd-total s{display:block;font-size:14px;color:#A9B3A7}
+                .kkd-total strong{display:block;font-family:var(--display);font-weight:400;font-size:52px;line-height:1;font-variant-numeric:tabular-nums}
+                .kkd-sum-note{margin:16px 0 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);font-size:13px;line-height:1.5;color:#C4CCC2}
+
+                .kkd-dl{margin:0}
+                .kkd-dl div{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
+                .kkd-dl div:last-child{border-bottom:0;padding-bottom:0}
+                .kkd-dl dt{color:var(--muted)}
+                .kkd-dl dd{margin:0;text-align:right;font-weight:600;min-width:0;overflow-wrap:anywhere}
+                .kkd-who{padding:14px 0 6px}
+                .kkd-who p{margin:0}
+                .kkd-who .n{font-family:var(--display);font-size:26px;text-transform:uppercase;line-height:1}
+                .kkd-who .m{margin-top:4px;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+
+                .kkd-help{display:grid;gap:8px;margin-top:14px}
+                .kkd-help a{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;transition:border-color .2s}
+                .kkd-help a small{display:block;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+                .kkd-help a .ar{transition:transform .3s var(--spring)}
+                .kkd-help a:hover{border-color:var(--ink)}
+                .kkd-help a:hover .ar{transform:translateX(4px);color:var(--green)}
+
+                .kkd-skel{background:linear-gradient(90deg,var(--line) 0%,#EEF2EC 50%,var(--line) 100%);background-size:200% 100%;animation:kkdShim 1.3s linear infinite}
+                @keyframes kkdShim{to{background-position:-200% 0}}
+                .kkd-error{margin-top:28px;padding:56px 24px;border:2px dashed var(--line);text-align:center}
+                .kkd-error h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:44px;line-height:.95}
+                .kkd-error p{margin:12px auto 22px;max-width:42ch;color:var(--muted)}
+                .kkd-error div{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+
+                .kkd-scrim{position:fixed;inset:0;z-index:70;background:rgba(10,11,10,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+                .kkd-scrim.dark{background:rgba(10,11,10,.92);cursor:zoom-out}
+                .kkd-dialog{width:100%;max-width:440px;background:var(--paper);border:2px solid var(--ink);font-family:"League Spartan",system-ui,sans-serif;color:var(--ink)}
+                .kkd-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 20px 14px;border-bottom:2px solid var(--ink)}
+                .kkd-dialog-head h2{margin:6px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:32px;line-height:.95}
+                .kkd-dialog-p{margin:0;padding:18px 20px 0;color:var(--muted);line-height:1.5}
+                .kkd-dialog-row{display:flex;gap:10px;padding:20px}
+                .kkd-dialog-row .kkd-btn{flex:1}
+                .kkd-x{flex:none;width:42px;height:42px;display:grid;place-items:center;border:2px solid var(--ink);background:none;color:var(--ink);cursor:pointer;transition:background .2s,color .2s,transform .3s var(--spring)}
+                .kkd-x:hover:not(:disabled){background:var(--ink);color:#fff;transform:rotate(90deg)}
+                .kkd-x.light{position:absolute;top:16px;right:16px;border-color:#fff;color:#fff}
+                .kkd-x.light:hover{background:#fff;color:var(--ink)}
+                .kkd-full{max-width:min(1000px,100%);max-height:86vh;object-fit:contain;cursor:default}
+                .kkd-spin{width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:kkdSpin .8s linear infinite}
+                @keyframes kkdSpin{to{transform:rotate(360deg)}}
+
+                .kkd .kk-pp{border-radius:0;box-shadow:none;border:1px solid var(--line);padding:22px;margin:0}
+                .kkd .kk-pp h2{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:30px;line-height:1}
+                .kkd .kk-pp-head{padding-bottom:14px;border-bottom:2px solid var(--ink);margin-bottom:14px}
+                .kkd .kk-pp-bar{height:6px;border-radius:0}
+                .kkd .kk-pp-bar span{border-radius:0}
+                .kkd .kk-pp-thumb{border-radius:0}
+
+                @media (max-width:980px){
+                  .kkd-grid{grid-template-columns:1fr}
+                  .kkd-side{position:static}
+                }
+                @media (max-width:640px){
+                  .kkd-top{padding-bottom:20px}
+                  .kkd-top .kkd-btn{width:100%}
+                  .kkd-card,.kkd .kk-pp{padding:18px 16px}
+                  .kkd-card-head h2,.kkd .kk-pp h2{font-size:26px}
+                  .kkd-item{grid-template-columns:52px 1fr auto;gap:12px}
+                  .kkd-item-pic{width:52px;height:52px}
+                  .kkd-addrs{grid-template-columns:1fr}
+                  .kkd-addr{padding-right:0}
+                  .kkd-addr + .kkd-addr{padding-left:0;border-left:0;border-top:1px solid var(--line);margin-top:12px}
+                  .kkd-alert .kkd-btn{width:100%}
+                  .kkd-total strong{font-size:44px}
+                }
+                @media (prefers-reduced-motion:reduce){.kkd-skel{animation:none}}
+            `}</style>
+
             <DeleteConfirmationModal
                 isOpen={showDeleteModal}
                 onClose={() => !deleting && setShowDeleteModal(false)}
@@ -833,496 +473,193 @@ const GetOrder = () => {
                 orderRef={orderReferenceCode}
                 isDeleting={deleting}
             />
+            <ImageModal isOpen={!!photo} onClose={() => setPhoto(null)} imageUrl={photo?.url} imageAlt={photo?.alt} />
 
-            <div className="px-4 lg:px-24 py-8">
-                {/* Header Section */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div className="kkd-wrap">
+                <Link to="/orders" className="kkd-back"><span aria-hidden="true">←</span> All orders</Link>
+
+                <header className="kkd-top">
                     <div>
-                        <button
-                            onClick={() => navigate('/orders')}
-                            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4 transition-colors cursor-pointer"
-                        >
-                            <FaChevronLeft className="text-gray-500" />
-                            Back to orders
-                        </button>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                                Order #{orderReferenceCode}
-                            </h1>
-                            {order?.is_self_handled && (
-                                <span className="inline-flex items-center px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
-                                    <FaHandsHelping className="mr-1" />
-                                    Self-Handled
-                                </span>
-                            )}
-                            {order?.coverage?.has_voucher && (
-                                <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-medium">
-                                    <FaGift className="mr-1" />
-                                    Voucher Order
-                                </span>
-                            )}
-                            {order?.coverage?.has_free_item && (
-                                <span className="inline-flex items-center px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-medium">
-                                    <FaTag className="mr-1" />
-                                    Free Signup Service
-                                </span>
-                            )}
-                            {order?.status === 'CANCELLED' && (
-                                <span className="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                    <FaTimesCircle className="mr-1" />
-                                    Cancelled
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-gray-500 text-sm mt-1">
-                            {order?.created_at && `Placed on ${formatDate(order.created_at)}`}
-                        </p>
-                        {order?.cancelled_at && order.status === 'CANCELLED' && (
-                            <p className="text-red-500 text-xs mt-1">
-                                Cancelled on: {formatDate(order.cancelled_at)}
-                            </p>
+                        <p className="kkd-eyebrow">{cancelled ? 'Cancelled order' : 'Order'}</p>
+                        <h1>#{orderReferenceCode}</h1>
+                        {order && (
+                            <div className="kkd-meta">
+                                <span className={`kk-st ${status.tone}`}>{status.label}</span>
+                                <span>Placed {formatDate(order.created_at)}</span>
+                                {order.is_self_handled && <span className="kkd-tag">Drop-off &amp; collect</span>}
+                                {coverage?.has_voucher && <span className="kkd-tag g">Voucher</span>}
+                                {coverage?.has_free_item && <span className="kkd-tag a">Free signup service</span>}
+                            </div>
                         )}
                     </div>
-
-                    {/* Delete Order Button - Only show for cancellable orders */}
                     {order && canDeleteOrder() && (
-                        <button
-                            onClick={() => setShowDeleteModal(true)}
-                            disabled={deleting}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        >
-                            {deleting ? (
-                                <>
-                                    <FaSpinner className="animate-spin w-4 h-4" />
-                                    Cancelling...
-                                </>
-                            ) : (
-                                <>
-                                    <FaTrashAlt className="w-4 h-4" />
-                                    Cancel Order
-                                </>
-                            )}
+                        <button type="button" className="kkd-btn ghost-red" onClick={() => setShowDeleteModal(true)} disabled={deleting}>
+                            {deleting ? 'Cancelling…' : 'Cancel order'}
                         </button>
                     )}
-                </div>
+                </header>
 
-                {/* PAYMENT STATUS BANNER - Hidden for cancelled orders */}
-                {order && order.status !== 'CANCELLED' && (
-                    <PaymentStatusBanner
-                        order={order}
-                        onRetryPayment={handlePaymentRetry}
-                    />
-                )}
+                {order && !cancelled && <PaymentStatusBanner order={order} onRetryPayment={handlePaymentRetry} />}
 
-                {/* Show cancelled message if order is cancelled */}
-                {order?.status === 'CANCELLED' && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-5 mb-8 rounded-xl shadow-lg border-b-4 border-red-800 bg-red-600 text-white"
-                    >
-                        <div className="flex items-start gap-4">
-                            <FaTimesCircle className="text-white text-2xl flex-shrink-0" />
-                            <div>
-                                <h2 className="text-xl font-bold">Order Cancelled</h2>
-                                <p className="mt-1 text-sm opacity-90">
-                                    This order has been cancelled. If you believe this is a mistake, please contact support.
-                                </p>
-                                {order.cancelled_at && (
-                                    <p className="mt-2 text-xs opacity-75">
-                                        Cancelled on: {formatDate(order.cancelled_at)}
-                                    </p>
-                                )}
-                            </div>
+                {cancelled && (
+                    <motion.div className="kkd-alert bad" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
+                        <div>
+                            <p className="kkd-eyebrow">Cancelled{order.cancelled_at ? ` · ${formatDate(order.cancelled_at)}` : ''}</p>
+                            <h2>This order was cancelled</h2>
+                            <p>If that's a mistake, get in touch and we'll sort it out.</p>
                         </div>
+                        <a className="kkd-btn" href="https://wa.me/233536278834" target="_blank" rel="noreferrer">Contact us <span className="ar" aria-hidden="true">→</span></a>
                     </motion.div>
                 )}
 
-                {/* Loading State */}
                 {loading && (
-                    <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                        <FaSpinner className="animate-spin text-primary w-8 h-8" />
-                        <p className="text-gray-600">Loading order details...</p>
+                    <div className="kkd-grid" aria-busy="true" aria-label="Loading order">
+                        <div className="kkd-main"><div className="kkd-skel" style={{ height: 190 }} /><div className="kkd-skel" style={{ height: 260 }} /></div>
+                        <div className="kkd-side"><div className="kkd-skel" style={{ height: 320 }} /></div>
                     </div>
                 )}
 
-                {/* Error State */}
                 {error && !loading && (
-                    <div className="flex flex-col items-center justify-center py-16 space-y-4 bg-white rounded-xl shadow-md border border-red-200">
-                        <FaExclamationCircle className="text-red-500 w-10 h-10" />
-                        <p className="text-gray-700 max-w-md text-center">{error}</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium shadow-md"
-                        >
-                            Try Again
-                        </button>
+                    <div className="kkd-error" role="alert">
+                        <h2>{error.startsWith('Order not found') ? 'Order not found' : "Couldn't load this order"}</h2>
+                        <p>{error.startsWith('Order not found') ? "We couldn't find that order on your account. Check the number, or see all your orders." : error}</p>
+                        <div>
+                            <button type="button" className="kkd-btn" onClick={() => window.location.reload()}>Try again</button>
+                            <Link to="/orders" className="kkd-btn go">All orders <span className="ar" aria-hidden="true">→</span></Link>
+                        </div>
                     </div>
                 )}
 
-                {/* Order Content */}
-                <AnimatePresence>
-                    {order && !loading && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.5 }}
-                            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-                        >
-                            {/* Order progress (cancelled orders show the banner above instead) */}
-                            {order.status !== 'CANCELLED' && (
-                                <div className="lg:col-span-3">
-                                    <OrderStatusStepper
-                                        status={order.status}
-                                        createdAt={order.created_at}
-                                        updatedAt={order.updated_at}
-                                    />
-                                </div>
-                            )}
+                {order && !loading && (
+                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
+                        {!cancelled && (
+                            <div style={{ marginTop: 24 }}>
+                                <OrderStatusStepper status={order.status} createdAt={order.created_at} updatedAt={order.updated_at} selfHandled={order.is_self_handled} />
+                            </div>
+                        )}
 
-                            {/* Main Content */}
-                            <div className="lg:col-span-2 space-y-6">
-                                {/* Customer & Order Info */}
-                                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                                    <div className="w-full flex justify-between items-center border-gray-200 border-b pb-6">
-                                        <div>
-                                            <h2 className="text-xl font-semibold text-gray-900">
-                                                Order Information
-                                            </h2>
-                                            {order.is_self_handled && (
-                                                <p className="text-sm text-amber-600 mt-1">
-                                                    <FaHandsHelping className="inline mr-1" />
-                                                    You'll handle pickup and delivery yourself
-                                                </p>
-                                            )}
+                        <div className="kkd-grid">
+                            <div className="kkd-main">
+                                {items.length > 0 && (
+                                    <section className="kkd-card" aria-labelledby="kkd-items-h">
+                                        <div className="kkd-card-head">
+                                            <h2 id="kkd-items-h">Your Kleans</h2>
+                                            <span>{pairs} {pairs === 1 ? 'pair' : 'pairs'}</span>
                                         </div>
-                                        {order && (
-                                            <div className="">
-                                                {getStatusDisplay(order.status, order.is_self_handled)}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                                        <div>
-                                            <h3 className="text-sm font-medium text-gray-500 mb-3">CUSTOMER DETAILS</h3>
-                                            <div className="flex items-start gap-3 mb-4">
-                                                <FaUserCircle className="text-gray-400 w-6 h-6" />
-                                                <div>
-                                                    <p className="font-medium">
-                                                        {order.first_name || 'N/A'} {order.last_name || 'N/A'}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">{order.email || ''}</p>
-                                                    {order.phone_number && (
-                                                        <p className="text-sm text-gray-500 mt-1">
-                                                            <FaPhone className="inline mr-1" />
-                                                            {order.phone_number}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-medium text-gray-500 mb-3">ORDER SUMMARY</h3>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Order Ref</span>
-                                                    <span className="font-medium">{order.reference_code}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Order Date</span>
-                                                    <span className="font-medium">{formatDate(order.created_at)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Payment Method</span>
-                                                    <span className="font-medium capitalize">
-                                                        {order.payment_method || 'N/A'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Payment Status</span>
-                                                    {getPaymentStatusDisplay(order.payment_status)}
-                                                </div>
-                                                {order.is_self_handled && (
-                                                    <div className="flex justify-between pt-2 border-t border-gray-100">
-                                                        <span className="text-gray-600">Service Type</span>
-                                                        <span className="font-medium text-amber-600">
-                                                            Self-Handled
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Discount Display */}
-                                {order.discounts_applied?.length > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="space-y-3"
-                                    >
-                                        {order.discounts_applied?.map((discount, index) => {
-                                            const percentage = discount.discount_type === "redeemed_points"
-                                                ? order.redeemed_discount_percentage
-                                                : discount.percentage;
-
-                                            return (
-                                                <DiscountBadge key={index} order={order} discount={discount} percentage={percentage} />
-                                            );
-                                        })}
-                                    </motion.div>
+                                        <ul className="kkd-items">
+                                            {items.map((item, index) => (
+                                                <OrderItemRow key={index} item={item} onImageClick={(url, alt) => setPhoto({ url, alt })} />
+                                            ))}
+                                        </ul>
+                                    </section>
                                 )}
 
                                 {/* Customer's photo of each pair (record of condition) */}
                                 <PairPhotos order={order} />
 
-                                {/* Order Items with Photos */}
-                                {order.items && order.items.length > 0 && (
-                                    <OrderItemsGallery items={order.items} />
+                                {legacyPhotos.length > 1 && (
+                                    <section className="kkd-card" aria-labelledby="kkd-photos-h">
+                                        <div className="kkd-card-head">
+                                            <h2 id="kkd-photos-h">Your photos</h2>
+                                            <span>{legacyPhotos.length}</span>
+                                        </div>
+                                        <div className="kkd-gallery">
+                                            {legacyPhotos.map((item, i) => (
+                                                <button key={i} type="button" aria-label={`Open photo for ${item.service?.name}`}
+                                                    onClick={() => setPhoto({ url: item.image_url || item.photo, alt: item.service?.name })}>
+                                                    <img src={item.image_url || item.photo} alt="" loading="lazy" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </section>
                                 )}
 
-                                {/* Delivery & Pickup Section */}
                                 {order.is_self_handled ? (
-                                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                                        <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                                            Service Information
-                                        </h2>
-                                        <SelfHandledAddressCard />
-                                        {order.status !== 'CANCELLED' && (
-                                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                                <p className="text-sm text-blue-700 flex items-start">
-                                                    <FaInfoCircle className="mr-2 mt-0.5 flex-shrink-0" />
-                                                    <span>
-                                                        <strong>Important:</strong> After payment, please bring your items to our facility 
-                                                        for cleaning. We'll notify you when they're ready for collection.
-                                                    </span>
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <section className="kkd-card" aria-labelledby="kkd-where-h">
+                                        <div className="kkd-card-head"><h2 id="kkd-where-h">Drop-off &amp; collect</h2></div>
+                                        <div className="kkd-self">
+                                            <p><b>You bring your sneakers to the studio and collect them when they're ready.</b> No pickup or delivery fees.</p>
+                                            {!cancelled && <p>Once payment is confirmed, drop them off any time we're open. We'll message you when they're ready to collect.</p>}
+                                            <p>Studio: 29 Golf Hills St, Accra · <a href="tel:+233536278834" style={{ color: 'inherit' }}>+233 53 627 8834</a></p>
+                                        </div>
+                                    </section>
                                 ) : (order.delivery_address || order.pickup_address) && (
-                                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                                        <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                                            Delivery & Pickup
-                                        </h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {order.delivery_address && (
-                                                <RegularAddressCard type="delivery" address={order.delivery_address} cost={order.delivery_cost} />
-                                            )}
-                                            {order.pickup_address && (
-                                                <RegularAddressCard type="pickup" address={order.pickup_address} cost={order.pickup_cost} />
-                                            )}
+                                    <section className="kkd-card" aria-labelledby="kkd-where-h">
+                                        <div className="kkd-card-head"><h2 id="kkd-where-h">Pickup &amp; delivery</h2></div>
+                                        <div className="kkd-addrs">
+                                            {order.pickup_address && <Address label="We collect from" address={order.pickup_address} cost={order.pickup_cost} />}
+                                            {order.delivery_address && <Address label="We deliver to" address={order.delivery_address} cost={order.delivery_cost} />}
                                         </div>
-                                    </div>
+                                    </section>
                                 )}
                             </div>
 
-                            {/* Sidebar */}
-                            <div className="space-y-6">
-                                {/* Order Total */}
-                                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 top-8">
-                                    <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                                        Order Total
-                                    </h2>
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Subtotal</span>
-                                            <span className="font-medium">
-                                                GHS {parseFloat(isCovered ? coverage.items_value : (order.subtotal || order.total)).toFixed(2)}
-                                            </span>
-                                        </div>
-
-                                        {coverage?.has_voucher && (
-                                            <div className="flex justify-between text-green-700">
-                                                <span className="flex items-center gap-1">
-                                                    <FaGift className="w-3 h-3" />
-                                                    Paid with voucher
-                                                    {coverage.voucher_codes?.length > 0 && ` (${coverage.voucher_codes.join(', ')})`}
-                                                </span>
-                                                <span className="font-medium">-GHS {parseFloat(coverage.voucher_total).toFixed(2)}</span>
-                                            </div>
-                                        )}
-
-                                        {coverage?.has_free_item && (
-                                            <div className="flex justify-between text-amber-700">
-                                                <span className="flex items-center gap-1">
-                                                    <FaTag className="w-3 h-3" />
-                                                    Free signup service
-                                                </span>
-                                                <span className="font-medium">
-                                                    {parseFloat(coverage.free_total) > 0
-                                                        ? `-GHS ${parseFloat(coverage.free_total).toFixed(2)}`
-                                                        : 'FREE'}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {order.discounts_applied?.map((discount, index) => {
-                                            const isRedeemedPoints = discount.discount_type === "redeemed_points";
-                                            const percentageToDisplay = isRedeemedPoints
-                                                ? (order.redeemed_discount_percentage || 0)
-                                                : (discount.percentage || 0);
-                                            const discountAmount = parseFloat(order.subtotal * percentageToDisplay / 100).toFixed(2);
-                                            const formattedDiscountType = discount.discount_type.replace('_', ' ');
-
-                                            return (
-                                                <div key={index} className="flex justify-between text-emerald-600">
-                                                    <span className='capitalize'>
-                                                        {formattedDiscountType} Discount ({percentageToDisplay}%)
-                                                    </span>
-                                                    <span className="font-medium">-GHS {discountAmount}</span>
-                                                </div>
-                                            );
-                                        })}
-
-                                        {/* Pickup/Delivery Fees */}
-                                        {order.is_self_handled ? (
-                                            <div className="flex justify-between text-amber-600">
-                                                <span className="flex items-center gap-1">
-                                                    <FaHandsHelping className="w-3 h-3" />
-                                                    Self-Handled Service
-                                                </span>
-                                                <span className="font-medium">GHS 0.00</span>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Delivery Fee</span>
-                                                    <span className="font-medium">
-                                                        {order.delivery_cost ? `GHS ${parseFloat(order.delivery_cost).toFixed(2)}` : 'N/A'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Pickup Fee</span>
-                                                    <span className="font-medium">
-                                                        {order.pickup_cost ? `GHS ${parseFloat(order.pickup_cost).toFixed(2)}` : 'N/A'}
-                                                    </span>
-                                                </div>
-                                            </>
-                                        )}
-
-                                        <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
-                                            <span className="font-semibold text-lg">Total Amount</span>
-                                            <div className="text-right">
-                                                {(order.discounts_applied?.length > 0 || isCovered) && (
-                                                    <div className="text-sm text-gray-400 line-through mb-1">
-                                                        GHS {(parseFloat(isCovered ? coverage.items_value : order.subtotal) +
-                                                            (order.is_self_handled ? 0 : parseFloat(order.delivery_cost || 0)) +
-                                                            (order.is_self_handled ? 0 : parseFloat(order.pickup_cost || 0))).toFixed(2)}
-                                                    </div>
-                                                )}
-                                                <span className="font-bold text-xl text-emerald-600">
-                                                    GHS {parseFloat(order.total_amount || order.total).toFixed(2)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        {coverage?.payment_note && (
-                                            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                                <p className="text-xs text-emerald-700">
-                                                    <FaCheckCircle className="inline mr-1" />
-                                                    {coverage.payment_note}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Self-Handled Note */}
-                                        {order.is_self_handled && order.status !== 'CANCELLED' && (
-                                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                                <p className="text-xs text-amber-700">
-                                                    <FaInfoCircle className="inline mr-1" />
-                                                    No pickup or delivery fees included. You'll handle transportation yourself.
-                                                </p>
-                                            </div>
-                                        )}
+                            <aside className="kkd-side">
+                                <section className="kkd-card kkd-sum" aria-labelledby="kkd-sum-h">
+                                    <div className="kkd-card-head">
+                                        <h2 id="kkd-sum-h">Summary</h2>
+                                        <span>{items.length} {items.length === 1 ? 'item' : 'items'}</span>
                                     </div>
-                                </div>
-
-                                {/* Photo Summary */}
-                                {order.items && order.items.some(item => item.image_url || item.photo) && (
-                                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                                        <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                                            Photo Summary
-                                        </h2>
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <FaImage className="text-blue-600" />
-                                                    <span className="text-gray-700">Items with photos</span>
-                                                </div>
-                                                <span className="font-bold text-blue-600">
-                                                    {order.items.filter(item => item.image_url || item.photo).length}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <FaBox className="text-gray-600" />
-                                                    <span className="text-gray-700">Items without photos</span>
-                                                </div>
-                                                <span className="font-bold text-gray-600">
-                                                    {order.items.filter(item => !item.image_url && !item.photo).length}
-                                                </span>
-                                            </div>
-                                            <div className="pt-4 border-t border-gray-200">
-                                                <p className="text-sm text-gray-500">
-                                                    <FaInfoCircle className="inline mr-2 text-gray-400" />
-                                                    Click on any photo to view it in full size
-                                                </p>
-                                            </div>
+                                    <Row k="Subtotal" v={cedi(isCovered ? coverage.items_value : (order.subtotal || order.total))} />
+                                    {coverage?.has_voucher && (
+                                        <Row tone="g" k={`Voucher${coverage.voucher_codes?.length ? ` (${coverage.voucher_codes.join(', ')})` : ''}`} v={`−${cedi(coverage.voucher_total)}`} />
+                                    )}
+                                    {coverage?.has_free_item && (
+                                        <Row tone="a" k="Free signup service" v={parseFloat(coverage.free_total) > 0 ? `−${cedi(coverage.free_total)}` : 'Free'} />
+                                    )}
+                                    {order.discounts_applied?.map((discount, index) => {
+                                        const pct = discount.discount_type === 'redeemed_points'
+                                            ? (order.redeemed_discount_percentage || 0)
+                                            : (discount.percentage || 0);
+                                        const name = discount.discount_type.replace('_', ' ');
+                                        return (
+                                            <Row key={index} tone="g" k={`${name.charAt(0).toUpperCase()}${name.slice(1)} discount (${pct}%)`}
+                                                v={`−${cedi(order.subtotal * pct / 100)}`} />
+                                        );
+                                    })}
+                                    {order.is_self_handled ? (
+                                        <Row k="Pickup & delivery" v="None (drop-off)" />
+                                    ) : (
+                                        <>
+                                            <Row k="Pickup" v={order.pickup_cost ? cedi(order.pickup_cost) : '—'} />
+                                            <Row k="Delivery" v={order.delivery_cost ? cedi(order.delivery_cost) : '—'} />
+                                        </>
+                                    )}
+                                    <div className="kkd-total">
+                                        <span>Total</span>
+                                        <div>
+                                            {(order.discounts_applied?.length > 0 || isCovered) && before > total && <s>{cedi(before)}</s>}
+                                            <strong>{cedi(total)}</strong>
                                         </div>
                                     </div>
-                                )}
+                                    {coverage?.payment_note && <p className="kkd-sum-note">{coverage.payment_note}</p>}
+                                </section>
 
-                                {/* Customer Support */}
-                                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                                    <h2 className="text-xl font-semibold mb-6 text-gray-900 border-gray-200 border-b pb-4">
-                                        Need Help?
-                                    </h2>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-green-100 rounded-full">
-                                                <FaEnvelope className="text-green-600 w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500">Email us at</p>
-                                                <a
-                                                    href="mailto:support@kleankickx.com"
-                                                    className="font-medium text-gray-900 hover:text-green-600 transition-colors"
-                                                >
-                                                    support@kleankickx.com
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-green-100 rounded-full">
-                                                <FaPhone className="text-green-600 w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500">Call us</p>
-                                                <a
-                                                    href="tel:+233536278834"
-                                                    className="font-medium text-gray-900 hover:text-green-600 transition-colors"
-                                                >
-                                                    +233 53 627 8834
-                                                </a>
-                                            </div>
-                                        </div>
-                                        {order.is_self_handled && order.status !== 'CANCELLED' && (
-                                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                                <p className="text-xs text-amber-700 flex items-center">
-                                                    <FaInfoCircle className="inline mr-1" />
-                                                    For facility location and hours, please contact us.
-                                                </p>
-                                            </div>
-                                        )}
+                                <section className="kkd-card" aria-labelledby="kkd-det-h">
+                                    <div className="kkd-card-head"><h2 id="kkd-det-h">Details</h2></div>
+                                    <div className="kkd-who">
+                                        <p className="n">{[order.first_name, order.last_name].filter(Boolean).join(' ') || 'Customer'}</p>
+                                        {order.email && <p className="m">{order.email}</p>}
+                                        {order.phone_number && <p className="m">{order.phone_number}</p>}
                                     </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                    <dl className="kkd-dl">
+                                        <div><dt>Payment</dt><dd><span className={`kk-st ${payTone}`}>{payText}</span></dd></div>
+                                        <div><dt>Method</dt><dd style={{ textTransform: 'capitalize' }}>{(order.payment_method || 'N/A').replace(/_/g, ' ')}</dd></div>
+                                        <div><dt>Placed</dt><dd>{formatDate(order.created_at)}</dd></div>
+                                    </dl>
+                                </section>
+
+                                <section className="kkd-card" aria-labelledby="kkd-help-h">
+                                    <div className="kkd-card-head"><h2 id="kkd-help-h">Need help?</h2></div>
+                                    <div className="kkd-help">
+                                        <a href="https://wa.me/233536278834" target="_blank" rel="noreferrer"><span><small>WhatsApp</small>+233 53 627 8834</span><span className="ar" aria-hidden="true">→</span></a>
+                                        <a href="mailto:support@kleankickx.com"><span><small>Email</small>support@kleankickx.com</span><span className="ar" aria-hidden="true">→</span></a>
+                                    </div>
+                                </section>
+                            </aside>
+                        </div>
+                    </motion.div>
+                )}
             </div>
             <Footer />
         </div>
