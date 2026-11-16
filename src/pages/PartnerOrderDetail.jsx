@@ -405,7 +405,8 @@ const PartnerOrderDetail = () => {
                               className="w-full h-full object-cover"
                               onLoad={() => handleImageLoad(item.id)}
                               onError={(e) => {
-                                e.target.src = 'https://via.placeholder.com/128x128?text=No+Image';
+                                e.target.onerror = null;
+                                e.target.src = '/images/service-fallback.svg';
                               }}
                             />
                           ) : (

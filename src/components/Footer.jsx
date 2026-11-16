@@ -107,7 +107,7 @@ const Footer = () => {
                   <div>
                     <p className="text-sm text-gray-400 mb-1 ">Our Location</p>
                     <p className="text-white text-lg font-medium">
-                      Golf Hills St. Accra, Ghana
+                      29 Golf Hills St, Accra, Ghana
                     </p>
                   </div>
                 </div>
@@ -169,8 +169,8 @@ const Footer = () => {
               </h3>
               
               <p className="text-gray-300 mb-8 leading-relaxed">
-                We're dedicated to supporting the United Nations Sustainable Development Goals 
-                through eco-friendly practices and responsible consumption in sneaker care.
+                Every Klean keeps a pair in use for longer. Our work supports three UN
+                Sustainable Development Goals.
               </p>
               
               <div className="grid grid-cols-3 gap-4 mb-8">
@@ -209,7 +209,7 @@ const Footer = () => {
           >
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-gray-400 text-sm">
-                © {new Date().getFullYear()} KleanKickx Sneaker Care. All rights reserved.
+                © {new Date().getFullYear()} KleanKickx Sneaker Care Limited. All rights reserved.
               </p>
               
               <div className="flex items-center space-x-6">
@@ -227,9 +227,15 @@ const Footer = () => {
                 >
                   Terms of Service
                 </Link>
-                <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-                  FAQ
-                </a>
+                <Link to="/studio" className="text-gray-400 hover:text-white text-sm transition-colors">
+                  Studio
+                </Link>
+                <Link to="/impact" className="text-gray-400 hover:text-white text-sm transition-colors">
+                  Impact
+                </Link>
+                <Link to="/vouchers" className="text-gray-400 hover:text-white text-sm transition-colors">
+                  Gift vouchers
+                </Link>
               </div>
             </div>
             

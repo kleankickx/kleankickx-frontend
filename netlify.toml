@@ -1,3 +1,10 @@
+# Old About page moved to /studio (permanent, so search engines carry its ranking over)
+[[redirects]]
+  from = "/about-us"
+  to = "/studio"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

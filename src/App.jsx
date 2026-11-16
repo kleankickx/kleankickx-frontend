@@ -13,7 +13,8 @@ import Login from './pages/Login';
 import Checkout from './pages/Checkout';
 import RateAndServices from './pages/RateAndServices';
 import Home from './pages/Home';
-import About from './pages/About';
+import Studio from './pages/Studio';
+import Impact from './pages/Impact';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -31,6 +32,7 @@ import AccountVouchers from './pages/AccountVouchers';
 import RedeemVoucher from './pages/RedeemVoucher';
 import VoucherPurchaseSuccess from './pages/VoucherPurchaseSuccess';
 import { useContext, useEffect } from 'react';
+import Seo from './components/Seo';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
@@ -42,6 +44,7 @@ import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
 import PartnerRoute from './components/PartnerRoute';
+import FloatingNav from './components/FloatingNav';
 import PartnerInvoices from './pages/PartnerInvoices';
 import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
 import KleanKickxLegal from './pages/KleanKickxLegal';
@@ -115,6 +118,7 @@ const AppContent = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <ConditionalNavbar />
+      <FloatingNav />
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -126,7 +130,9 @@ const AppContent = () => {
           <Route path="/auth/verify-email" element={<VerifyEmail />} />
           <Route path="/auth/confirm-email" element={<UserVerifyEmail />} />
           <Route path="/rate-and-services" element={<RateAndServices />} />
-          <Route path="/about-us" element={<About />} />
+          <Route path="/studio" element={<Studio />} />
+          <Route path="/impact" element={<Impact />} />
+          <Route path="/about-us" element={<Navigate to="/studio" replace />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
           <Route path="/legal" element={<KleanKickxLegal />} />
@@ -323,6 +329,7 @@ function App() {
           <AuthProvider>
             <CartProvider>
               <ScrollToTop />
+              <Seo />
               <AppContent />
             </CartProvider>
           </AuthProvider>

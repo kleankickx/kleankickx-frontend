@@ -508,7 +508,7 @@ const VoucherStore = () => {
             <span className="">Gift Vouchers</span>
           </h1>
           <p className="text-gray-600 max-w-2xl">
-            Give the gift of pristine sneakers! Purchase vouchers and save on premium cleaning services.
+            Give someone a Klean. Pick a voucher, pay, and it arrives by email. Valid for 6 months.
           </p>
         </div>
 
@@ -682,7 +682,7 @@ const VoucherStore = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {voucherTypes.map((voucher, index) => {
-              const serviceName = voucher.service_details?.name || voucher.service?.name || 'Premium Cleaning';
+              const serviceName = voucher.service_details?.name || voucher.service?.name || 'Sneaker Klean';
               const availableStock = voucher.available_stock || (voucher.stock_quantity - voucher.sold_quantity) || 0;
               const discountAmount = (voucher.original_price || 0) - (voucher.discounted_price || 0);
               const stockStatus = getStockStatus(availableStock);

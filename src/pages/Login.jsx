@@ -789,10 +789,10 @@ useEffect(() => {
               </Link>
               <span className="text-gray-300 text-xs">•</span>
               <Link 
-                to="/about-us" 
+                to="/studio" 
                 className="text-xs text-gray-400 hover:text-primary transition-colors"
               >
-                About Us
+                Studio
               </Link>
             </div>
           </div>

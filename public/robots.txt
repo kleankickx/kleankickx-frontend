@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account/
+Disallow: /payment/
+Disallow: /partner/
+Disallow: /auth/
+Disallow: /redeem
+Disallow: /referral-dashboard
+Disallow: /change-password
+Disallow: /forgot-password
+Disallow: /promotions
+
+Sitemap: https://kleankickx.com/sitemap.xml
