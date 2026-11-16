@@ -1,9 +1,10 @@
 // src/components/CartNotice.jsx
-// "Added to cart", Dynamic Island style (in light frosted glass): a small pill appears at the top
-// centre, springs open into a card (photo with a countdown ring and a check that
-// draws itself, name, price, cart total, View cart), then folds back into the pill
-// and leaves. Hover or touch pauses it, swipe up or Esc dismisses it, and adding the
-// same item again bumps a counter instead of stacking. Reduced motion: a plain fade.
+// "Added to cart" banner in the site's editorial style, matching the cart: square,
+// paper white, a 2px ink rule, Anton display type, League Spartan labels and the
+// green "go" button. It drops in at the top centre and wipes open left to right,
+// a green bar counts down along the bottom, and it lifts away when done. Hover or
+// touch pauses it, swipe up or Esc dismisses it, and adding the same item again
+// bumps a counter instead of stacking. Reduced motion: a plain fade.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { CartContext } from '../context/CartContext';
@@ -13,45 +14,40 @@ const CartNoticeContext = createContext({ showAdded: () => {} });
 export const useCartNotice = () => useContext(CartNoticeContext);
 
 const SHOW_MS = 4000;
-const PILL = { width: 132, height: 38, borderRadius: 19 };
-const SPRING = { type: 'spring', stiffness: 380, damping: 30, mass: 0.85 };
-const RING = 2 * Math.PI * 25; // circumference of the countdown ring (r = 25)
+const SWIFT = [0.77, 0, 0.18, 1];           // the site's --swift easing
+const FALLBACK_IMG = '/images/service-fallback.svg';
 
 const money = (value) => {
   const n = Number(value);
   if (!Number.isFinite(n)) return '';
-  return n === 0 ? 'Free' : `₵${n % 1 ? n.toFixed(2) : n}`;
+  return n === 0 ? 'Free' : `₵${n % 1 ? n.toFixed(2) : n.toLocaleString('en-GH')}`;
 };
-
-const openWidth = () => (typeof window === 'undefined' ? 400 : Math.min(420, window.innerWidth - 20));
+const two = (n) => String(n).padStart(2, '0');
 
 const Notice = ({ notice, onClose, onPause, onResume }) => {
   const reduce = useReducedMotion();
   const { cartMeta } = useContext(CartContext);
   const { openCart } = useCartDrawer();
-  const count = cartMeta?.item_count;
-  const total = cartMeta?.total;
-  const open = { width: openWidth(), height: 76, borderRadius: 28 };
+  const count = Number(cartMeta?.item_count) || 0;
+  const total = Number(cartMeta?.total) || 0;
 
-  const content = {
-    hidden: { opacity: 0, filter: 'blur(6px)', scale: 0.96 },
-    shown: { opacity: 1, filter: 'blur(0px)', scale: 1, transition: { delay: reduce ? 0 : 0.14, duration: 0.28 } },
-    gone: { opacity: 0, filter: 'blur(6px)', transition: { duration: 0.12 } },
-  };
+  const enter = reduce ? { opacity: 0 } : { opacity: 1, y: -24, clipPath: 'inset(0 100% 0 0)' };
+  const shown = { opacity: 1, y: 0, clipPath: 'inset(0 0% 0 0)' };
+  const leave = reduce ? { opacity: 0 } : { opacity: 0, y: -28, clipPath: 'inset(0 0% 0 0)' };
+  const stagger = (i) => (reduce ? {} : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 },
+    transition: { delay: 0.28 + i * 0.06, duration: 0.45, ease: SWIFT } });
 
   return (
     <motion.div
       role="status"
       aria-live="polite"
-      className="kk-island"
-      initial={reduce ? { ...open, opacity: 0 } : { ...PILL, opacity: 0, y: -8 }}
-      animate={{ ...open, opacity: 1, y: 0, transition: SPRING }}
-      exit={reduce
-        ? { opacity: 0, transition: { duration: 0.2 } }
-        : { ...PILL, opacity: 0, y: -10, transition: { ...SPRING, opacity: { delay: 0.18, duration: 0.15 } } }}
+      className="kkn"
+      initial={enter}
+      animate={{ ...shown, transition: { y: { duration: 0.45, ease: SWIFT }, clipPath: { duration: 0.55, ease: SWIFT, delay: 0.05 } } }}
+      exit={{ ...leave, transition: { duration: 0.35, ease: SWIFT } }}
       drag={reduce ? false : 'y'}
       dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0.5, bottom: 0.06 }}
+      dragElastic={{ top: 0.5, bottom: 0.05 }}
       onDragStart={onPause}
       onDragEnd={(_, info) => (info.offset.y < -20 || info.velocity.y < -280 ? onClose() : onResume())}
       onMouseEnter={onPause}
@@ -59,67 +55,52 @@ const Notice = ({ notice, onClose, onPause, onResume }) => {
       onTouchStart={onPause}
       onTouchEnd={onResume}
     >
-      <motion.div className="kk-island-body" variants={content} initial="hidden" animate="shown" exit="gone">
-        <div className="kk-island-thumb">
-          {notice.image ? <img src={notice.image} alt="" /> : <span className="kk-island-thumb-fallback" />}
-          <svg className="kk-island-ring" viewBox="0 0 56 56" aria-hidden="true">
-            <circle cx="28" cy="28" r="25" className="track" />
-            <motion.circle
-              // Re-mounted on every pause / resume, starting from exactly what is left
-              key={`${notice.key}-${notice.times}-${notice.paused}-${notice.remaining}`}
-              cx="28" cy="28" r="25" className="bar"
-              strokeDasharray={RING}
-              initial={{ strokeDashoffset: RING * (1 - notice.remaining / SHOW_MS) }}
-              animate={notice.paused ? undefined : { strokeDashoffset: RING }}
-              transition={{ duration: notice.remaining / 1000, ease: 'linear' }}
-            />
+      <motion.div className="kkn-pic" initial={reduce ? false : { scale: 1.15 }} animate={{ scale: 1 }}
+        transition={{ duration: 0.8, ease: SWIFT }}>
+        <img src={notice.image || FALLBACK_IMG} alt="" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = FALLBACK_IMG; }} />
+        <motion.span className="kkn-tick" aria-hidden="true" initial={reduce ? false : { scale: 0 }} animate={{ scale: 1 }}
+          transition={{ delay: 0.42, type: 'spring', stiffness: 520, damping: 20 }}>
+          <svg viewBox="0 0 24 24" width="12" height="12">
+            <motion.path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="square"
+              initial={{ pathLength: reduce ? 1 : 0 }} animate={{ pathLength: 1 }}
+              transition={{ delay: 0.5, duration: 0.35, ease: SWIFT }} />
           </svg>
-          <motion.span
-            className="kk-island-check"
-            aria-hidden="true"
-            initial={reduce ? false : { scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.22, type: 'spring', stiffness: 520, damping: 18 }}
-          >
-            <svg viewBox="0 0 24 24" width="12" height="12">
-              <motion.path
-                d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3"
-                strokeLinecap="round" strokeLinejoin="round"
-                initial={{ pathLength: reduce ? 1 : 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ delay: 0.32, duration: 0.36, ease: [0.65, 0, 0.35, 1] }}
-              />
-            </svg>
-          </motion.span>
-        </div>
-
-        <div className="kk-island-text">
-          <p className="kk-island-eyebrow">Added to cart</p>
-          <p className="kk-island-name">
-            <span className="n">{notice.name}</span>
-            <AnimatePresence initial={false} mode="popLayout">
-              {notice.times > 1 && (
-                <motion.span
-                  key={notice.times}
-                  className="kk-island-times"
-                  initial={{ scale: 0.4, opacity: 0, y: 6 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.4, opacity: 0, y: -6 }}
-                  transition={{ type: 'spring', stiffness: 600, damping: 22 }}
-                >
-                  ×{notice.times}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </p>
-          <p className="kk-island-meta">
-            {money(notice.price)}
-            {count > 0 && <> · {count} {count === 1 ? 'item' : 'items'}{Number(total) > 0 ? ` · ${money(total)}` : ''}</>}
-          </p>
-        </div>
-
-        <button type="button" className="kk-island-btn" onClick={() => { onClose(); openCart(); }}>View cart</button>
+        </motion.span>
       </motion.div>
+
+      <div className="kkn-text">
+        <motion.p className="kkn-eyebrow" {...stagger(0)}>
+          Added to cart
+          <AnimatePresence initial={false} mode="popLayout">
+            {notice.times > 1 && (
+              <motion.span key={notice.times} className="kkn-times"
+                initial={{ y: '-100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '100%', opacity: 0 }}
+                transition={{ duration: 0.3, ease: SWIFT }}>
+                ×{two(notice.times)}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.p>
+        <motion.p className="kkn-name" {...stagger(1)}>{notice.name}</motion.p>
+        <motion.p className="kkn-meta" {...stagger(2)}>
+          {money(notice.price)}
+          {count > 0 && <><i>/</i>{two(count)} in cart{total > 0 ? <><i>/</i>{money(total)}</> : null}</>}
+        </motion.p>
+      </div>
+
+      <motion.button type="button" className="kkn-btn" onClick={() => { onClose(); openCart(); }} {...stagger(3)}>
+        View cart <span className="ar" aria-hidden="true">→</span>
+      </motion.button>
+
+      <motion.span
+        className="kkn-timer"
+        aria-hidden="true"
+        // Re-mounted on every pause / resume, starting from exactly what is left
+        key={`${notice.key}-${notice.times}-${notice.paused}-${notice.remaining}`}
+        initial={{ scaleX: notice.remaining / SHOW_MS }}
+        animate={notice.paused ? undefined : { scaleX: 0 }}
+        transition={{ duration: notice.remaining / 1000, ease: 'linear' }}
+      />
     </motion.div>
   );
 };
@@ -179,36 +160,38 @@ export const CartNoticeProvider = ({ children }) => {
     <CartNoticeContext.Provider value={value}>
       {children}
       <style>{`
-        .kk-island-wrap{position:fixed;left:0;right:0;top:max(10px,env(safe-area-inset-top,0px));z-index:10000;
-          display:flex;justify-content:center;pointer-events:none}
-        .kk-island{pointer-events:auto;position:relative;overflow:hidden;cursor:grab;touch-action:pan-x;
-          background:rgba(252,253,251,.80);color:#0A0B0A;backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);
-          box-shadow:0 22px 48px -22px rgba(10,11,10,.40),0 3px 10px -4px rgba(10,11,10,.14),inset 0 0 0 .5px rgba(10,11,10,.10),inset 0 1px 0 rgba(255,255,255,.85);
-          font-family:"League Spartan",system-ui,-apple-system,sans-serif}
-        .kk-island:active{cursor:grabbing}
-        .kk-island-body{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:0 12px 0 10px}
-        .kk-island-thumb{position:relative;flex:none;width:56px;height:56px;display:grid;place-items:center}
-        .kk-island-thumb img,.kk-island-thumb-fallback{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block;background:#E7EBE5}
-        .kk-island-ring{position:absolute;inset:0;transform:rotate(-90deg)}
-        .kk-island-ring circle{fill:none;stroke-width:2.5}
-        .kk-island-ring .track{stroke:rgba(10,11,10,.08)}
-        .kk-island-ring .bar{stroke:#1A7A1A;stroke-linecap:round}
-        .kk-island-check{position:absolute;right:1px;bottom:1px;width:20px;height:20px;border-radius:50%;
-          display:grid;place-items:center;background:#1A7A1A;color:#fff;box-shadow:0 0 0 2.5px rgba(252,253,251,.98)}
-        .kk-island-text{min-width:0;flex:1}
-        .kk-island-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#1A7A1A}
-        .kk-island-name{margin:1px 0 0;display:flex;align-items:center;gap:6px;font-size:15.5px;font-weight:600;line-height:1.2;min-width:0}
-        .kk-island-name .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-island-times{flex:none;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:700;background:#0A0B0A;color:#fff}
-        .kk-island-meta{margin:2px 0 0;font-size:12.5px;color:rgba(10,11,10,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .kk-island-btn{flex:none;border:0;cursor:pointer;font-family:inherit;padding:10px 15px;border-radius:999px;background:#0A0B0A;color:#fff !important;
-          font-size:13.5px;font-weight:700;text-decoration:none !important;transition:transform .15s,background .2s}
-        .kk-island-btn:hover{background:#1A7A1A}
-        .kk-island-btn:active{transform:scale(.95)}
-        .kk-island-btn:focus-visible{outline:2px solid #1A7A1A;outline-offset:2px}
-        @media (max-width:360px){.kk-island-btn{padding:9px 11px;font-size:12.5px}.kk-island-body{gap:9px}}
+        .kkn-wrap{position:fixed;left:0;right:0;top:max(12px,env(safe-area-inset-top,0px));z-index:10000;
+          display:flex;justify-content:center;padding:0 10px;pointer-events:none}
+        .kkn{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--body:"League Spartan",system-ui,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
+          pointer-events:auto;position:relative;width:min(460px,100%);display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:14px;
+          padding:10px 10px 13px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);
+          box-shadow:8px 8px 0 -2px rgba(10,11,10,.12),0 24px 50px -24px rgba(10,11,10,.45);
+          font-family:var(--body);cursor:grab;touch-action:pan-x;overflow:hidden}
+        .kkn:active{cursor:grabbing}
+        .kkn-pic{position:relative;width:64px;aspect-ratio:4/5;overflow:visible}
+        .kkn-pic img{width:100%;height:100%;object-fit:cover;display:block;background:var(--line)}
+        .kkn-tick{position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;display:grid;place-items:center;background:var(--green);color:#fff;
+          box-shadow:0 0 0 2px var(--paper)}
+        .kkn-text{min-width:0}
+        .kkn-eyebrow{margin:0;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+        .kkn-times{display:inline-block;background:var(--ink);color:#fff;padding:2px 6px;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+        .kkn-name{margin:3px 0 0;font-family:var(--display);font-weight:400;font-size:24px;line-height:.95;text-transform:uppercase;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .kkn-meta{margin:5px 0 0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+        .kkn-meta i{font-style:normal;opacity:.4;margin:0 6px}
+        .kkn-btn{align-self:center;display:inline-flex;align-items:center;gap:8px;border:2px solid var(--green);border-radius:2px;background:var(--green);color:#fff;
+          font-family:var(--body);font-weight:700;font-size:14px;padding:11px 14px;cursor:pointer;white-space:nowrap;
+          transition:transform .25s var(--spring),background .2s,border-color .2s}
+        .kkn-btn .ar{transition:transform .3s var(--spring)}
+        .kkn-btn:hover{background:var(--ink);border-color:var(--ink)}
+        .kkn-btn:hover .ar{transform:translateX(4px)}
+        .kkn-btn:active{transform:scale(.97)}
+        .kkn-btn:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+        .kkn-timer{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--green);transform-origin:left}
+        @media (max-width:380px){.kkn{grid-template-columns:52px 1fr auto;gap:10px}.kkn-pic{width:52px}.kkn-name{font-size:20px}.kkn-btn{padding:10px 11px;font-size:13px}}
       `}</style>
-      <div className="kk-island-wrap">
+      <div className="kkn-wrap">
         <AnimatePresence>
           {notice && <Notice key={notice.key} notice={notice} onClose={close} onPause={pause} onResume={resume} />}
         </AnimatePresence>
