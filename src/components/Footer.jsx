@@ -1,252 +1,163 @@
-import footerBg from '../assets/footer_bg.webp';
-import { FaXTwitter } from "react-icons/fa6";
-import { FaInstagram, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
-import { motion } from "framer-motion";
-import { IoMdMail } from "react-icons/io";
+// src/components/Footer.jsx
+// Dark footer with dashed guide lines: link columns, a WhatsApp call to action,
+// contact details, social links, and a huge KLEANKICKX wordmark in brand green
+// that fades into the background and is cropped by the bottom edge.
 import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { FaXTwitter } from 'react-icons/fa6';
+import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
 
-// Import your SDG images
-import SDG11 from '../assets/sus-image-1.jpeg';
-import SDG12 from '../assets/sus-image-2.jpeg';
-import SDG13 from '../assets/sus-image-3.jpeg';
+const WHATSAPP = 'https://wa.me/233536278834?text=' + encodeURIComponent('Hi KleanKickx, I would like to book a Klean.');
+const MAPS = 'https://maps.google.com/?q=KleanKickx+Sneaker+Care,+29+Golf+Hills+St,+Accra';
+const SWIFT = [0.77, 0, 0.18, 1];
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.8,
-      ease: [0.6, 0.05, 0.01, 0.9],
-    },
+const COLUMNS = [
+  {
+    title: 'KleanKickx',
+    links: [
+      { label: 'Services', to: '/#services' },
+      { label: 'Prices', to: '/rate-and-services' },
+      { label: 'Trade-In', to: '/#trade-in' },
+      { label: 'Gift vouchers', to: '/vouchers' },
+      { label: 'Impact', to: '/impact' },
+      { label: 'Studio', to: '/studio' },
+    ],
   },
-};
-
-const staggerChildren = {
-  visible: {
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
+  {
+    title: 'Help',
+    links: [
+      { label: 'Track my orders', to: '/orders' },
+      { label: 'Redeem a voucher', to: '/redeem' },
+      { label: 'Partner with us', to: '/partner/register' },
+      { label: 'Terms of Service', to: '/legal', state: { tab: 'terms' } },
+      { label: 'Privacy Policy', to: '/legal', state: { tab: 'privacy' } },
+      { label: 'Email us', href: 'mailto:info@kleankickx.com' },
+    ],
   },
-};
+];
+
+const SOCIAL = [
+  { label: 'Instagram', href: 'https://instagram.com/kleankickxgh', Icon: FaInstagram },
+  { label: 'X', href: 'https://x.com/KleanKickxgh', Icon: FaXTwitter },
+  { label: 'WhatsApp', href: 'https://wa.me/233536278834', Icon: FaWhatsapp },
+];
+
+const FootLink = ({ link }) => (link.href
+  ? <a href={link.href} className="kkf-link">{link.label}</a>
+  : <Link to={link.to} state={link.state} className="kkf-link">{link.label}</Link>);
 
 const Footer = () => {
-  const sdgs = [
-    { src: SDG11, alt: "Sustainable Cities", title: "SDG 11" },
-    { src: SDG12, alt: "Responsible Consumption", title: "SDG 12" },
-    { src: SDG13, alt: "Climate Action", title: "SDG 13" },
-  ];
+  const reduce = useReducedMotion();
+  // Text is always visible (no scroll-triggered hiding); only the wordmark rises in
+  const rise = () => ({});
 
   return (
-    <footer className="relative overflow-hidden">
-      {/* Background with gradient overlay */}
-      <div className="absolute inset-0 z-0">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${footerBg})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-black/95 to-primary/20"></div>
-      </div>
+    <footer className="kkf" aria-labelledby="kkf-title">
+      <style>{`
+        .kkf{--bg:#0B0D0B;--fg:#F2F5F0;--muted:#8E988C;--soft:#B8C1B6;--rule:rgba(242,245,240,.14);--green:#1A7A1A;--green-hi:#4CB84C;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--body:"League Spartan",system-ui,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
+          background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;position:relative}
+        .kkf-frame{position:relative;max-width:1200px;margin:0 auto;padding:0 20px}
+        .kkf-guides{position:relative;border-left:1px dashed var(--rule);border-right:1px dashed var(--rule);padding:64px 28px 0}
+        .kkf-grid{display:grid;grid-template-columns:1.1fr 1.1fr 1.6fr;gap:48px}
+        .kkf h2,.kkf h3{margin:0}
+        .kkf-col h3{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
+        .kkf-col ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+        .kkf-link{color:var(--soft);font-size:18px;line-height:1.3;text-decoration:none;position:relative;transition:color .2s}
+        .kkf-link::after{content:"";position:absolute;left:0;bottom:-2px;height:1px;width:100%;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.77,0,.18,1)}
+        .kkf-link:hover{color:var(--fg)}
+        .kkf-link:hover::after{transform:scaleX(1)}
+        .kkf-cta h2{font-size:26px;font-weight:600;line-height:1.2;letter-spacing:-.01em}
+        .kkf-cta p{margin:12px 0 22px;color:var(--soft);font-size:17px;line-height:1.55;max-width:38ch}
+        .kkf-field{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(242,245,240,.05);padding:6px 6px 6px 18px;
+          border:1px solid var(--rule)}
+        .kkf-field span{color:var(--muted);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .kkf-go{display:inline-flex;align-items:center;gap:8px;flex:none;background:var(--green);color:#fff;text-decoration:none;font-weight:700;font-size:16px;
+          padding:13px 18px;border-radius:8px;transition:background .2s,transform .25s var(--spring)}
+        .kkf-go:hover{background:var(--green-hi);color:#0B0D0B}
+        .kkf-go:active{transform:scale(.97)}
+        .kkf-go .ar{transition:transform .3s var(--spring)}
+        .kkf-go:hover .ar{transform:translateX(4px)}
+        .kkf-contact{margin-top:28px;display:grid;gap:6px;color:var(--soft);font-size:15px;font-style:normal}
+        .kkf-contact a{color:var(--soft);text-decoration:none}
+        .kkf-contact a:hover{color:var(--fg)}
+        .kkf-follow{margin-top:56px;padding-top:28px;border-top:1px dashed var(--rule);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px}
+        .kkf-follow h3{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+        .kkf-social{display:flex;flex-wrap:wrap;gap:28px}
+        .kkf-social a{display:inline-flex;align-items:center;gap:10px;color:var(--soft);font-size:18px;text-decoration:none;transition:color .2s}
+        .kkf-social a:hover{color:var(--fg)}
+        .kkf-social svg{transition:transform .3s var(--spring)}
+        .kkf-social a:hover svg{transform:translateY(-2px)}
+        .kkf-small{color:var(--muted);font-size:14px;line-height:1.6}
+        .kkf-mark{position:relative;margin-top:44px;height:clamp(84px,17vw,210px);overflow:hidden;user-select:none;pointer-events:none}
+        .kkf-mark span{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--display);font-weight:400;text-transform:uppercase;
+          font-size:clamp(104px,20.4vw,252px);line-height:.86;letter-spacing:-.005em;white-space:nowrap;
+          background:linear-gradient(180deg,rgba(76,184,76,.34) 0%,rgba(26,122,26,.18) 38%,rgba(26,122,26,0) 86%);
+          -webkit-background-clip:text;background-clip:text;color:transparent}
+        @media (max-width:900px){.kkf-grid{grid-template-columns:1fr 1fr}.kkf-cta{grid-column:1 / -1}}
+        @media (max-width:560px){
+          .kkf-frame{padding:0 12px}.kkf-guides{padding:44px 18px 0}.kkf-grid{gap:36px 20px}
+          .kkf-link,.kkf-social a{font-size:17px}.kkf-cta h2{font-size:23px}.kkf-cta p{font-size:16px}
+          .kkf-field span{font-size:15px}.kkf-go{font-size:15px;padding:12px 14px}
+        }
+      `}</style>
 
-      {/* Main Content */}
-      <div className="relative z-10 pt-20 pb-12 px-4 px-4 lg:px-24">
-        <div className="">
-          {/* Grid Layout */}
-          <motion.div 
-            className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16"
-            variants={staggerChildren}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-          >
-            {/* Contact Info - Span 4 */}
-            <motion.div 
-              className="lg:col-span-4"
-              variants={fadeInUp}
-            >
-              <h3 className="text-xl header font-semibold text-white mb-6 pb-2 border-b border-primary/30 inline-block">
-                Get In Touch
-              </h3>
-              
-              <div className="space-y-6">
-                <div className="flex items-start group hover:translate-x-2 transition-transform duration-300">
-                  <div className="bg-primary/10 p-3 rounded-lg mr-4 group-hover:bg-primary/20 transition-colors">
-                    <FaPhone className="text-primary text-lg" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">Phone Number</p>
-                    <a 
-                      href="tel:+233536278834" 
-                      className="text-white hover:text-primary transition-colors text-lg font-medium"
-                    >
-                      +233 53 627 8834
-                    </a>
-                  </div>
-                </div>
+      <div className="kkf-frame">
+        <div className="kkf-guides">
+          <h2 id="kkf-title" className="sr-only">KleanKickx</h2>
+          <div className="kkf-grid">
+            {COLUMNS.map((col, i) => (
+              <motion.nav key={col.title} className="kkf-col" aria-label={col.title} {...rise(i * 0.06)}>
+                <h3>{col.title}</h3>
+                <ul>{col.links.map((l) => <li key={l.label}><FootLink link={l} /></li>)}</ul>
+              </motion.nav>
+            ))}
 
-                <div className="flex items-start group hover:translate-x-2 transition-transform duration-300">
-                  <div className="bg-primary/10 p-3 rounded-lg mr-4 group-hover:bg-primary/20 transition-colors">
-                    <IoMdMail className="text-primary text-lg" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">Email Address</p>
-                    <a 
-                      href="mailto:info@kleankickx.com" 
-                      className="text-white hover:text-primary transition-colors text-lg font-medium break-all"
-                    >
-                      info@kleankickx.com
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-start group hover:translate-x-2 transition-transform duration-300">
-                  <div className="bg-primary/10 p-3 rounded-lg mr-4 group-hover:bg-primary/20 transition-colors">
-                    <FaMapMarkerAlt className="text-primary text-lg" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1 ">Our Location</p>
-                    <p className="text-white text-lg font-medium">
-                      29 Golf Hills St, Accra, Ghana
-                    </p>
-                  </div>
-                </div>
+            <motion.div className="kkf-cta" {...rise(0.14)}>
+              <h2>Fresh pairs start here.</h2>
+              <p>Book a Klean online, or message us and we'll sort pickup and delivery anywhere in Accra.</p>
+              <div className="kkf-field">
+                <span>+233 53 627 8834</span>
+                <a className="kkf-go" href={WHATSAPP} target="_blank" rel="noopener noreferrer">
+                  Chat on WhatsApp <span className="ar" aria-hidden="true">›</span>
+                </a>
               </div>
-
-              {/* Social Links */}
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <p className="text-gray-400 mb-4">Follow Us</p>
-                <div className="flex space-x-4">
-                  <a 
-                    href="https://x.com/KleanKickxgh" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="bg-white/5 hover:bg-primary/20 p-3 rounded-lg transition-all duration-300 hover:scale-110"
-                  >
-                    <FaXTwitter className="text-xl text-white" />
-                  </a>
-                  <a 
-                    href="https://instagram.com/kleankickxgh" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="bg-white/5 hover:bg-primary/20 p-3 rounded-lg transition-all duration-300 hover:scale-110"
-                  >
-                    <FaInstagram className="text-xl text-white" />
-                  </a>
-                </div>
-              </div>
+              <address className="kkf-contact">
+                <a href={MAPS} target="_blank" rel="noopener noreferrer">29 Golf Hills St, Accra</a>
+                <a href="mailto:info@kleankickx.com">info@kleankickx.com</a>
+              </address>
             </motion.div>
+          </div>
 
-            {/* Map - Span 4 */}
-            <motion.div 
-              className="lg:col-span-4"
-              variants={fadeInUp}
-            >
-              <h3 className="text-xl header font-semibold text-white mb-6 pb-2 border-b border-primary/30 inline-block">
-                Visit Our Place
-              </h3>
-              
-              <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-2xl shadow-primary/10">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3970.5545659560976!2d-0.22692922603032634!3d5.632567832877106!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xfdf99b47241bab3%3A0xd1639f177d0d42f6!2sKleankickx%20Sneaker%20Care!5e0!3m2!1sen!2sgh!4v1751371309949!5m2!1sen!2sgh"
-                  height="300"
-                  style={{ border: 0, width: "100%" }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="w-full"
-                />
-              </div>
-            </motion.div>
-
-            {/* SDGs Commitment - Span 4 */}
-            <motion.div 
-              className="lg:col-span-4"
-              variants={fadeInUp}
-            >
-              <h3 className="text-xl header font-semibold text-white mb-6 pb-2 border-b border-primary/30 inline-block">
-                Our Sustainable Commitment
-              </h3>
-              
-              <p className="text-gray-300 mb-8 leading-relaxed">
-                Every Klean keeps a pair in use for longer. Our work supports three UN
-                Sustainable Development Goals.
-              </p>
-              
-              <div className="grid grid-cols-3 gap-4 mb-8">
-                {sdgs.map((sdg, index) => (
-                  <motion.div 
-                    key={index}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    className="group cursor-pointer"
-                  >
-                    <div className="relative overflow-hidden rounded-lg bg-white/5 p-2 border border-white/10 group-hover:border-primary/50 transition-all duration-300">
-                      <img 
-                        src={sdg.src} 
-                        alt={sdg.alt} 
-                        className="w-full h-24 object-cover rounded-md"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-2">
-                        <span className="text-white text-xs font-medium">{sdg.title}</span>
-                      </div>
-                    </div>
-                    <p className="text-gray-400 text-xs mt-2 text-center group-hover:text-white transition-colors">
-                      {sdg.alt}
-                    </p>
-                  </motion.div>
+          <motion.div className="kkf-follow" {...rise(0.1)}>
+            <div>
+              <h3>Follow</h3>
+              <div className="kkf-social">
+                {SOCIAL.map(({ label, href, Icon }) => (
+                  <a key={label} href={href} target="_blank" rel="noopener noreferrer">
+                    <Icon aria-hidden="true" /> {label}
+                  </a>
                 ))}
               </div>
-              
-            </motion.div>
+            </div>
+            <p className="kkf-small">
+              © {new Date().getFullYear()} KleanKickx Sneaker Care Limited.<br />
+              Every Klean keeps a pair in use. Supporting UN SDGs 11, 12 and 13.
+            </p>
           </motion.div>
 
-          {/* Bottom Bar */}
-          <motion.div 
-            className="pt-8 border-t border-white/10"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+          <motion.div
+            className="kkf-mark"
+            aria-hidden="true"
+            initial={reduce ? false : { opacity: 0, y: 60 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 1.1, ease: SWIFT }}
           >
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-gray-400 text-sm">
-                © {new Date().getFullYear()} KleanKickx Sneaker Care Limited. All rights reserved.
-              </p>
-              
-              <div className="flex items-center space-x-6">
-                <Link 
-                  to="/legal" 
-                  state={{ tab: 'privacy' }}
-                  className="text-gray-400 hover:text-white text-sm transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-                <Link 
-                  to="/legal" 
-                  state={{ tab: 'terms' }}
-                  className="text-gray-400 hover:text-white text-sm transition-colors"
-                >
-                  Terms of Service
-                </Link>
-                <Link to="/studio" className="text-gray-400 hover:text-white text-sm transition-colors">
-                  Studio
-                </Link>
-                <Link to="/impact" className="text-gray-400 hover:text-white text-sm transition-colors">
-                  Impact
-                </Link>
-                <Link to="/vouchers" className="text-gray-400 hover:text-white text-sm transition-colors">
-                  Gift vouchers
-                </Link>
-              </div>
-            </div>
-            
+            <span>KleanKickx</span>
           </motion.div>
         </div>
       </div>
-
-      {/* Decorative Elements */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent"></div>
-      <div className="absolute top-10 left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-10 right-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl"></div>
     </footer>
   );
 };
