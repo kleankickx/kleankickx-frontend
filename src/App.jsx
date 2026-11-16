@@ -53,15 +53,7 @@ import KleanKickxLegal from './pages/KleanKickxLegal';
 import MaintenanceGate from './components/MaintenanceGate';
 
 
-// Loading component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-      <p className="mt-4 text-gray-600">Loading...</p>
-    </div>
-  </div>
-);
+import AppLoader from './components/AppLoader';
 
 // Component to conditionally render the appropriate navbar
 const ConditionalNavbar = () => {
@@ -114,7 +106,7 @@ const AppContent = () => {
   
   // Show loading spinner while auth is initializing (only on non-auth pages)
   if (authLoading && !isAuthPage) {
-    return <LoadingSpinner />;
+    return <AppLoader />;
   }
   
   return (

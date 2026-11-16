@@ -51,3 +51,12 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// The app has drawn its first frame: fade out the loading screen from index.html.
+// (If the app is still checking the login it shows the same loader, so nothing jumps.)
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  const splash = document.getElementById('kk-splash');
+  if (!splash) return;
+  splash.classList.add('kkl-out');
+  setTimeout(() => splash.remove(), 350);
+}));
