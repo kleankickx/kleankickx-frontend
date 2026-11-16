@@ -50,12 +50,14 @@ const Cart = () => {
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <section className="kk-cart kk-cart-page">
-      <div className="kk-cart-card">
-        <div className="kk-cart-head">
-          <h2>Your cart</h2>
-          {recovering && <span className="kk-cart-note">Restoring your cart…</span>}
-        </div>
+    <section className="kkc kkc-page">
+      <div className="kkc-card">
+        <header className="kkc-head">
+          <div>
+            <p className="kkc-eyebrow">{recovering ? 'Restoring your cart…' : 'Review your order'}</p>
+            <h1 className="kkc-title">Your cart</h1>
+          </div>
+        </header>
         <CartPanel />
       </div>
     </section>
