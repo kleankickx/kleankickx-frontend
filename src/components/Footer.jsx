@@ -100,12 +100,8 @@ const Footer = () => {
         .kkf-social svg{transition:transform .3s var(--spring)}
         .kkf-social a:hover svg{transform:translateY(-2px)}
         .kkf-small{color:var(--muted);font-size:14px;line-height:1.6}
-        .kkf-mark{position:relative;margin-top:44px;height:clamp(84px,17vw,210px);overflow:hidden;user-select:none;pointer-events:none}
-        .kkf-mark > span{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--display);font-weight:400;text-transform:uppercase;
-          font-size:clamp(104px,20.4vw,252px);line-height:.86;letter-spacing:-.005em;white-space:nowrap}
-        .kkf-mark b{font-weight:400;-webkit-background-clip:text;background-clip:text;color:transparent}
-        .kkf-mark .w{background-image:linear-gradient(180deg,rgba(242,245,240,.2) 0%,rgba(242,245,240,.09) 40%,rgba(242,245,240,0) 86%)}
-        .kkf-mark .x{background-image:linear-gradient(180deg,rgba(76,184,76,.75) 0%,rgba(26,122,26,.38) 42%,rgba(26,122,26,0) 88%)}
+        .kkf-mark{margin-top:44px;user-select:none;pointer-events:none;line-height:0}
+        .kkf-mark svg{display:block;width:100%;height:auto;overflow:hidden}
         .kkf-sdg h3{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
         .kkf-sdg ul{list-style:none;margin:0;padding:0;display:flex;gap:12px}
         .kkf-sdg li{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
@@ -186,7 +182,25 @@ const Footer = () => {
             viewport={{ once: true }}
             transition={{ duration: 1.1, ease: SWIFT }}
           >
-            <span><b className="w">KleanKick</b><b className="x">x</b></span>
+            {/* SVG text stretched to the footer's width: always fits, whatever the font or screen */}
+            <svg viewBox="0 0 1000 176" preserveAspectRatio="xMidYMin meet" role="presentation">
+              <defs>
+                <linearGradient id="kkf-w" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="182">
+                  <stop offset="0" stopColor="#F2F5F0" stopOpacity=".2" />
+                  <stop offset=".45" stopColor="#F2F5F0" stopOpacity=".08" />
+                  <stop offset="1" stopColor="#F2F5F0" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="kkf-x" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="182">
+                  <stop offset="0" stopColor="#4CB84C" stopOpacity=".78" />
+                  <stop offset=".48" stopColor="#1A7A1A" stopOpacity=".38" />
+                  <stop offset="1" stopColor="#1A7A1A" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <text x="0" y="200" textLength="1000" lengthAdjust="spacingAndGlyphs"
+                fontFamily='Anton, "Arial Narrow", Impact, sans-serif' fontSize="236">
+                <tspan fill="url(#kkf-w)">KLEANKICK</tspan><tspan fill="url(#kkf-x)">X</tspan>
+              </text>
+            </svg>
           </motion.div>
         </div>
       </div>
