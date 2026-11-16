@@ -17,6 +17,7 @@
     <meta name="google-site-verification" content="-NmMf8aQRlZaPSiHxeWQ1fPc6SwHoiNy2tKCO2HxyB4" />
     <meta name="theme-color" content="#0A0B0A" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preload" as="image" href="/images/kleankickx-logo.png" />
 
     <script id="messenger-widget-b" src="https://cdn.botpenguin.com/website-bot.js" defer>699ca7d8ebe8859455274524,699446f5ab58062378610112,agent</script>
     
@@ -31,15 +32,14 @@
          Only shown when JavaScript runs (kk-js); main.jsx fades it out once the app has drawn. -->
     <style>#kk-splash{display:none}.kk-js #kk-splash{display:flex}#kk-splash.kkl-out{opacity:0;transition:opacity .3s ease}
     .kkl{position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#F7F9F6}
-    .kkl-word{margin:0;font-family:"Anton","Arial Narrow",Impact,sans-serif;font-size:34px;letter-spacing:.02em;line-height:1;color:#0A0B0A}
-    .kkl-word b{display:inline-block;font-weight:400;color:#1A7A1A;animation:kklX 1.6s ease-in-out infinite}
+    .kkl-logo{display:block;width:168px;height:auto;animation:kklBreathe 1.6s ease-in-out infinite}
     .kkl-line{position:relative;width:132px;height:2px;background:#D9DFD7;overflow:hidden}
     .kkl-line::after{content:"";position:absolute;top:0;left:0;height:100%;width:38%;background:#1A7A1A;animation:kklGlide 1.6s cubic-bezier(.77,0,.18,1) infinite}
     @keyframes kklGlide{0%{transform:translateX(-100%)}100%{transform:translateX(265%)}}
-    @keyframes kklX{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.94)}}
-    @media (prefers-reduced-motion:reduce){.kkl-word b,.kkl-line::after{animation:none}.kkl-line::after{width:100%}}</style>
+    @keyframes kklBreathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.97)}}
+    @media (prefers-reduced-motion:reduce){.kkl-logo,.kkl-line::after{animation:none}.kkl-line::after{width:100%}}</style>
     <div id="kk-splash" class="kkl" role="status" aria-label="Loading KleanKickx">
-      <p class="kkl-word" aria-hidden="true">KLEANKICK<b>X</b></p>
+      <img class="kkl-logo" src="/images/kleankickx-logo.png" alt="" width="168" height="56" />
       <span class="kkl-line" aria-hidden="true"></span>
     </div>
     <div id="root"></div>
