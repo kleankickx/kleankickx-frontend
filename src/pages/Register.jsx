@@ -49,6 +49,7 @@ const Register = () => {
     setTouched(true);
     setError(''); setEmailTaken(false);
     if (!firstName.trim()) return setError('Please enter your first name.');
+    if (!lastName.trim()) return setError('Please enter your last name.');
     if (!validEmail(email)) return setError('Please enter a valid email address.');
     if (!pwOk) return setError(`Your password needs at least ${MIN_PW} characters.`);
 
@@ -109,8 +110,9 @@ const Register = () => {
           <Field id="firstName" label="First name" autoComplete="given-name" placeholder="Ama"
             value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading}
             invalid={touched && !firstName.trim()} />
-          <Field id="lastName" label="Last name" optional autoComplete="family-name" placeholder="Mensah"
-            value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading} />
+          <Field id="lastName" label="Last name" autoComplete="family-name" placeholder="Mensah"
+            value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading}
+            invalid={touched && !lastName.trim()} />
         </div>
         <Field id="email" label="Email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
           value={email} onChange={(e) => { setEmail(e.target.value); setEmailTaken(false); }} disabled={loading}
