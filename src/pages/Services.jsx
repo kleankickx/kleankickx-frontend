@@ -12,14 +12,8 @@ import { FaCheckCircle, FaExclamationTriangle, FaGift, FaTimes } from 'react-ico
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import { trackEvent } from '../utils/analytics';
+import { useCartNotice } from '../components/CartNotice';
 
-// Toast shown after adding: the customer stays on this page and can keep adding.
-const AddedToast = ({ name }) => (
-  <span>
-    {name} is in your cart.{' '}
-    <Link to="/cart" style={{ fontWeight: 700, textDecoration: 'underline' }}>View cart</Link>
-  </span>
-);
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -43,6 +37,7 @@ const Services = () => {
   
   // Get cart from context
   const { cart, addToCart } = useContext(CartContext);
+  const { showAdded } = useCartNotice();
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, refreshUserData } = useContext(AuthContext);
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
@@ -366,7 +361,7 @@ const handleAddToCart = async (service) => {
     try {
       // Add to cart first
       await addToCart(id, 1, { name, price });
-      toast.success(<AddedToast name={`Free ${name}`} />);
+      showAdded({ id, name: `Free ${name}`, price: 0, image: service.image });
     } catch (error) {
       console.error('Error adding free service:', error);
       toast.error('Failed to add free service. Please try again.');
@@ -388,7 +383,7 @@ const handleAddToCart = async (service) => {
         service_type: service.service_type,
       }
     );
-    toast.success(<AddedToast name={name} />);
+    showAdded({ id, name, price, image: service.image });
   } catch (error) {
     console.error('Error adding service:', error);
     toast.error('Failed to add service to cart. Please try again.');

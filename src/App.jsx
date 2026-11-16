@@ -33,6 +33,7 @@ import RedeemVoucher from './pages/RedeemVoucher';
 import VoucherPurchaseSuccess from './pages/VoucherPurchaseSuccess';
 import { useContext, useEffect } from 'react';
 import Seo from './components/Seo';
+import CartNoticeProvider from './components/CartNotice';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
@@ -328,9 +329,11 @@ function App() {
         <MaintenanceGate>
           <AuthProvider>
             <CartProvider>
-              <ScrollToTop />
-              <Seo />
-              <AppContent />
+              <CartNoticeProvider>
+                <ScrollToTop />
+                <Seo />
+                <AppContent />
+              </CartNoticeProvider>
             </CartProvider>
           </AuthProvider>
         </MaintenanceGate>
