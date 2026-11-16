@@ -100,10 +100,13 @@ export const trackAddToCart = (item, quantity = 1) => {
 //   send `claim_free_klean`, because GA4 drops ₵0 revenue and they would vanish.
 // - Uses the beacon transport so the hit still leaves if the tab closes.
 // ---------------------------------------------------------------------------
+// payment_status comes from the API: SUCCESS = paid, COVERED = nothing to pay (free Klean,
+// vouchers). Order status alone isn't enough: unpaid cash / MoMo Pay orders created by
+// staff are PROCESSING too, and must not count as revenue.
 const PAID = (order) =>
   order &&
   order.status !== 'CANCELLED' &&
-  (order.payment_status === 'SUCCESS' || order.status === 'PROCESSING' || order.status === 'FULFILLED');
+  (order.payment_status === 'SUCCESS' || order.payment_status === 'COVERED');
 
 const alreadySent = (ref) => {
   try { return localStorage.getItem(`ga4_purchase_${ref}`) === '1'; } catch { return false; }
