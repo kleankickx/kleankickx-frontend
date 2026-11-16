@@ -1,14 +1,4 @@
 import React from 'react';
-import {
-  FaInfoCircle,
-  FaSpinner,
-  FaTruck,
-  FaBroom,
-  FaCheckDouble,
-  FaCalendarAlt,
-  FaCheckCircle,
-  FaCheck,
-} from 'react-icons/fa';
 
 /*
  * Order progress: one step per order status, in the order the backend moves
@@ -17,13 +7,13 @@ import {
  * order was placed and the current step when it was last updated.
  */
 const STEPS = [
-  { status: 'PENDING', label: 'Pending', hint: 'Order received, awaiting confirmation', icon: FaInfoCircle },
-  { status: 'PROCESSING', label: 'Processing', hint: 'We are preparing your order', icon: FaSpinner },
-  { status: 'PICKUP', label: 'Pickup', hint: 'Your sneakers are being picked up', icon: FaTruck },
-  { status: 'CLEANING_ONGOING', label: 'Cleaning Ongoing', hint: 'Your sneakers are being cleaned', icon: FaBroom },
-  { status: 'CLEANING_COMPLETED', label: 'Cleaning Completed', hint: 'Cleaning is done', icon: FaCheckDouble },
-  { status: 'SCHEDULED_FOR_DELIVERY', label: 'Scheduled for Delivery', hint: 'Delivery is booked', icon: FaCalendarAlt },
-  { status: 'DELIVERED', label: 'Delivered', hint: 'Your sneakers are back with you', icon: FaCheckCircle },
+  { status: 'PENDING', label: 'Received', hint: 'Order received, awaiting confirmation' },
+  { status: 'PROCESSING', label: 'Processing', hint: 'We are preparing your order' },
+  { status: 'PICKUP', label: 'Pickup', hint: 'Your sneakers are being picked up', selfLabel: 'Drop-off', selfHint: 'Bring your sneakers to the studio' },
+  { status: 'CLEANING_ONGOING', label: 'Cleaning', hint: 'Your sneakers are being cleaned' },
+  { status: 'CLEANING_COMPLETED', label: 'Clean', hint: 'Cleaning is done', selfHint: 'Ready for you to collect' },
+  { status: 'SCHEDULED_FOR_DELIVERY', label: 'Delivery booked', hint: 'Delivery is booked' },
+  { status: 'DELIVERED', label: 'Delivered', hint: 'Your sneakers are back with you', selfLabel: 'Collected', selfHint: 'You collected your sneakers' },
 ];
 
 const formatDate = (value) =>
@@ -31,89 +21,67 @@ const formatDate = (value) =>
     ? new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : null;
 
-export default function OrderStatusStepper({ status, createdAt, updatedAt }) {
-  const steps = STEPS;
+export default function OrderStatusStepper({ status, createdAt, updatedAt, selfHandled = false }) {
   const key = status?.toUpperCase();
-  const current = Math.max(0, steps.findIndex((s) => s.status === key));
+  const current = Math.max(0, STEPS.findIndex((s) => s.status === key));
   const finished = key === 'DELIVERED';
+  const labelOf = (s) => (selfHandled && s.selfLabel) || s.label;
+  const hintOf = (s) => (selfHandled && s.selfHint) || s.hint;
 
-  const stateOf = (index) => (index < current || (finished && index === current) ? 'done' : index === current ? 'current' : 'upcoming');
-  const dateOf = (index) => (index === 0 ? formatDate(createdAt) : index === current && index > 0 ? formatDate(updatedAt) : null);
-
-  const circle = {
-    done: 'bg-primary text-white border-primary',
-    current: 'bg-white text-primary border-primary ring-4 ring-primary/15',
-    upcoming: 'bg-white text-gray-300 border-gray-200',
-  };
-  const text = { done: 'text-gray-900', current: 'text-primary', upcoming: 'text-gray-400' };
+  const stateOf = (i) => (i < current || (finished && i === current) ? 'done' : i === current ? 'now' : 'next');
+  const dateOf = (i) => (i === 0 ? formatDate(createdAt) : i === current && i > 0 ? formatDate(updatedAt) : null);
+  const step = STEPS[current];
 
   return (
-    <section aria-label="Order progress" className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Order progress</h2>
-        <span className="text-sm text-gray-500">
-          Step {current + 1} of {steps.length}
-        </span>
+    <section aria-label="Order progress" className="kks">
+      <style>{`
+        .kks{--ink:#0A0B0A;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;font-family:"League Spartan",system-ui,sans-serif;color:var(--ink);
+          background:#fff;border:1px solid var(--line);padding:22px 22px 20px}
+        .kks-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+        .kks-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+        .kks-count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+        .kks-now{margin:8px 0 0;font-family:"Anton","Arial Narrow",Impact,sans-serif;font-weight:400;text-transform:uppercase;font-size:clamp(34px,4vw,48px);line-height:.95}
+        .kks-hint{margin:6px 0 0;color:var(--muted);font-size:15px}
+        .kks ol{list-style:none;margin:22px 0 0;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+        .kks li{min-width:0}
+        .kks-bar{display:block;height:6px;background:var(--line);position:relative;overflow:hidden}
+        .kks li.done .kks-bar{background:var(--ink)}
+        .kks li.now .kks-bar{background:var(--line)}
+        .kks li.now .kks-bar::after{content:"";position:absolute;inset:0;width:55%;background:var(--green);animation:kksPulse 1.8s cubic-bezier(.77,0,.18,1) infinite alternate}
+        @keyframes kksPulse{from{width:25%}to{width:100%}}
+        .kks-n{display:block;margin-top:9px;font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--muted)}
+        .kks-l{display:block;margin-top:2px;font-size:13px;font-weight:600;line-height:1.2;color:var(--muted)}
+        .kks li.done .kks-l{color:var(--ink)}
+        .kks li.now .kks-l,.kks li.now .kks-n{color:var(--green)}
+        .kks-d{display:block;margin-top:3px;font-size:11.5px;color:var(--muted)}
+        @media (max-width:760px){
+          .kks{padding:18px 16px}
+          .kks ol{grid-template-columns:1fr;gap:0}
+          .kks li{display:grid;grid-template-columns:6px 34px 1fr;column-gap:12px;align-items:baseline;padding:0}
+          .kks-bar{grid-row:1 / span 2;height:auto;min-height:38px;align-self:stretch}
+          .kks-n{margin:10px 0 0}
+          .kks-l{margin:10px 0 0;font-size:15px}
+          .kks-d{grid-column:3;margin:0 0 8px}
+          .kks li.now .kks-bar::after{width:100%;height:55%;animation:none}
+        }
+        @media (prefers-reduced-motion:reduce){.kks li.now .kks-bar::after{animation:none;width:100%}}
+      `}</style>
+      <div className="kks-head">
+        <p className="kks-eyebrow">{finished ? 'Complete' : 'Where it is now'}</p>
+        <span className="kks-count">Step {String(current + 1).padStart(2, '0')} / {String(STEPS.length).padStart(2, '0')}</span>
       </div>
-
-      {/* Desktop: horizontal */}
-      <ol className="hidden md:flex items-start">
-        {steps.map((step, index) => {
-          const state = stateOf(index);
-          const Icon = state === 'done' ? FaCheck : step.icon;
-          const date = dateOf(index);
+      <p className="kks-now">{labelOf(step)}</p>
+      <p className="kks-hint">{hintOf(step)}</p>
+      <ol>
+        {STEPS.map((s, i) => {
+          const state = stateOf(i);
+          const date = dateOf(i);
           return (
-            <li
-              key={step.status}
-              className="relative flex-1 flex flex-col items-center text-center px-1"
-              aria-current={state === 'current' ? 'step' : undefined}
-            >
-              {index > 0 && (
-                <span
-                  aria-hidden="true"
-                  className={`absolute top-5 right-1/2 w-full h-0.5 -translate-y-1/2 ${
-                    index <= current ? 'bg-primary' : 'bg-gray-200'
-                  }`}
-                />
-              )}
-              <span
-                className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${circle[state]}`}
-              >
-                <Icon className="w-4 h-4" aria-hidden="true" />
-              </span>
-              <span className={`mt-3 text-sm font-medium ${text[state]}`}>{step.label}</span>
-              {state === 'current' && !finished && <span className="mt-1 text-xs text-gray-500">{step.hint}</span>}
-              {date && <span className="mt-1 text-xs text-gray-400">{date}</span>}
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* Mobile: vertical */}
-      <ol className="md:hidden">
-        {steps.map((step, index) => {
-          const state = stateOf(index);
-          const Icon = state === 'done' ? FaCheck : step.icon;
-          const date = dateOf(index);
-          const last = index === steps.length - 1;
-          return (
-            <li key={step.status} className="relative flex gap-4 pb-6 last:pb-0" aria-current={state === 'current' ? 'step' : undefined}>
-              {!last && (
-                <span
-                  aria-hidden="true"
-                  className={`absolute left-5 top-10 bottom-0 w-0.5 -translate-x-1/2 ${index < current ? 'bg-primary' : 'bg-gray-200'}`}
-                />
-              )}
-              <span
-                className={`relative z-10 flex flex-shrink-0 items-center justify-center w-10 h-10 rounded-full border-2 ${circle[state]}`}
-              >
-                <Icon className="w-4 h-4" aria-hidden="true" />
-              </span>
-              <div className="pt-2 min-w-0">
-                <p className={`text-sm font-medium ${text[state]}`}>{step.label}</p>
-                {state === 'current' && !finished && <p className="text-xs text-gray-500 mt-0.5">{step.hint}</p>}
-                {date && <p className="text-xs text-gray-400 mt-0.5">{date}</p>}
-              </div>
+            <li key={s.status} className={state} aria-current={state === 'now' ? 'step' : undefined}>
+              <span className="kks-bar" aria-hidden="true" />
+              <span className="kks-n">{String(i + 1).padStart(2, '0')}</span>
+              <span className="kks-l">{labelOf(s)}<span className="sr-only">{state === 'done' ? ' (done)' : state === 'now' ? ' (current)' : ''}</span></span>
+              {date ? <span className="kks-d">{date}</span> : <span className="kks-d" aria-hidden="true" />}
             </li>
           );
         })}
