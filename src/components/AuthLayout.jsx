@@ -20,12 +20,13 @@ export const AuthStyles = () => (
       --display:"Anton","Arial Narrow",Impact,sans-serif;--body:"League Spartan",system-ui,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
       min-height:100vh;display:grid;grid-template-columns:minmax(0,46fr) minmax(0,54fr);background:var(--paper);color:var(--ink);font-family:var(--body)}
     .kka-brand{position:relative;overflow:hidden;background:#0B0D0B;color:#F2F5F0;display:flex;flex-direction:column;justify-content:space-between;padding:36px 44px}
-    .kka-brand-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%;opacity:.42;filter:grayscale(.2)}
-    .kka-brand::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,11,.55) 0%,rgba(11,13,11,.2) 35%,rgba(11,13,11,.92) 100%)}
+    .kka-brand-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:58% 38%;opacity:.6}
+    .kka-brand::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,11,.5) 0%,rgba(11,13,11,.05) 22%,rgba(11,13,11,.15) 48%,rgba(11,13,11,.94) 74%,rgba(11,13,11,.98) 100%)}
+    .kka-brand-copy{margin-top:auto;margin-bottom:22px}
     .kka-brand > :not(.kka-brand-img){position:relative;z-index:1}
     .kka-logo{font-family:var(--display);font-size:30px;letter-spacing:.01em;color:#fff;text-decoration:none;line-height:1}
     .kka-logo b{font-weight:400;color:var(--green-hi)}
-    .kka-brand h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(52px,6vw,92px);line-height:.9;max-width:9ch}
+    .kka-brand h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(48px,5.2vw,80px);line-height:.9;max-width:11ch}
     .kka-perks{list-style:none;margin:26px 0 0;padding:0;display:grid;gap:12px}
     .kka-perks li{display:flex;align-items:center;gap:12px;font-size:17px;color:#DDE3DB}
     .kka-perks li span{flex:none;width:22px;height:22px;display:grid;place-items:center;background:var(--green);color:#fff}
@@ -81,7 +82,9 @@ export const AuthStyles = () => (
     .kka-legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
     @media (max-width:900px){
       .kka{grid-template-columns:1fr}
-      .kka-brand{min-height:220px;padding:66px 20px 22px;justify-content:flex-end;gap:14px}
+      .kka-brand{min-height:240px;padding:66px 20px 22px;justify-content:flex-end;gap:14px}
+      .kka-brand-copy{margin:0}
+      .kka-brand-img{object-position:50% 42%}
       .kka-brand .kka-logo{position:absolute;top:20px;left:20px}
       .kka-brand h2{font-size:48px}
       .kka-perks,.kka-brand small{display:none}
@@ -137,9 +140,11 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
     <div className="kka">
       <AuthStyles />
       <aside className="kka-brand" aria-hidden="false">
-        <img className="kka-brand-img" src="/images/before-after.jpg" alt="" />
+        {/* Stock photo for now (Pexels 4914662, free licence); replace with a photo of our own technician */}
+        <img className="kka-brand-img" src="/images/technician.jpg" alt=""
+          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/images/before-after.jpg'; }} />
         <Link to="/" className="kka-logo" aria-label="KleanKickx home">KLEANKICK<b>X</b></Link>
-        <div>
+        <div className="kka-brand-copy">
           <motion.h2 {...rise(0.05)}>{headline}</motion.h2>
           <ul className="kka-perks">
             {PERKS.map((p, i) => (
