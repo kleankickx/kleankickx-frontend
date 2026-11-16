@@ -41,6 +41,7 @@ import Footer from '../components/Footer';
 import api from '../api';
 import { trackOrderPurchase } from '../utils/analytics';
 import OrderStatusStepper from '../components/OrderStatusStepper';
+import PairPhotos from '../components/PairPhotos';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, orderRef, isDeleting }) => {
@@ -1073,6 +1074,9 @@ const GetOrder = () => {
                                         })}
                                     </motion.div>
                                 )}
+
+                                {/* Customer's photo of each pair (record of condition) */}
+                                <PairPhotos order={order} />
 
                                 {/* Order Items with Photos */}
                                 {order.items && order.items.length > 0 && (

@@ -7,6 +7,7 @@ import { CartContext } from "../context/CartContext";
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import { trackOrderPurchase } from '../utils/analytics';
+import PairPhotos from '../components/PairPhotos';
 
 const PaymentStatus = () => {
     const { reference, status } = useParams(); 
@@ -315,6 +316,13 @@ const PaymentStatus = () => {
                             }
                         </p>
                     </motion.div>
+
+                    {/* Straight after paying: a photo of each pair, as a record of condition */}
+                    {isSuccess && (
+                        <motion.div variants={itemVariants} className="text-left">
+                            <PairPhotos order={order} />
+                        </motion.div>
+                    )}
 
                     {/* Action Buttons */}
                     <motion.div

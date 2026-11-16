@@ -34,6 +34,7 @@ import VoucherPurchaseSuccess from './pages/VoucherPurchaseSuccess';
 import { useContext, useEffect } from 'react';
 import Seo from './components/Seo';
 import CartNoticeProvider from './components/CartNotice';
+import CartDrawerProvider from './components/CartDrawer';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
@@ -329,11 +330,13 @@ function App() {
         <MaintenanceGate>
           <AuthProvider>
             <CartProvider>
-              <CartNoticeProvider>
-                <ScrollToTop />
-                <Seo />
-                <AppContent />
-              </CartNoticeProvider>
+              <CartDrawerProvider>
+                <CartNoticeProvider>
+                  <ScrollToTop />
+                  <Seo />
+                  <AppContent />
+                </CartNoticeProvider>
+              </CartDrawerProvider>
             </CartProvider>
           </AuthProvider>
         </MaintenanceGate>
