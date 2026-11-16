@@ -109,44 +109,43 @@ const Line = ({ item, index }) => {
   );
 };
 
-/** Line art: an open shoebox with a sneaker outline that draws itself, and a puff of dust. */
+/** Sneaker sole prints walking across the empty cart, one step at a time; the last
+ *  lands in brand green, then the trail fades and walks again. */
+const SOLE = 'M3 11C3 5 9 1.5 18 2C25 2.4 29 4.5 34 4.5C41 4.5 47 5.5 49 11C51 17.5 44 21 35 20C29 19.5 26 17.5 21 17.5C14 17.5 10 20.5 6 20C3.5 19.7 3 15.5 3 11Z';
+const TREAD = 'M10 7v9M15 5v12M20 5.5v10M27 6v10M33 6.5v11M39 7v11M44 8v8';
+const STEPS = [
+  { x: 6, y: 64 }, { x: 50, y: 36 }, { x: 94, y: 64 }, { x: 138, y: 36 }, { x: 182, y: 64 },
+];
+const LOOP = 4.2;
+
 const EmptyArt = () => {
   const reduce = useReducedMotion();
-  const draw = (delay, duration = 1.1) => (reduce ? {} : {
-    initial: { pathLength: 0, opacity: 0 },
-    animate: { pathLength: 1, opacity: 1 },
-    transition: { pathLength: { delay, duration, ease: SWIFT }, opacity: { delay, duration: 0.01 } },
-  });
   return (
-    <svg className="kkc-art" viewBox="0 -16 220 166" aria-hidden="true">
-      {/* floor line */}
-      <motion.path d="M10 136H210" stroke="var(--line)" strokeWidth="2" {...draw(0, 0.6)} />
-      {/* box: back, lid flap, front */}
-      <motion.path d="M46 70L84 52H180L142 70" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.1)} />
-      <motion.path d="M84 52L70 34H166L180 52" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.25, 0.6)} />
-      <motion.path d="M46 70H142V128H46Z" fill="var(--paper)" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.2)} />
-      <motion.path d="M142 70L180 52V110L142 128" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.3)} />
-      {/* green label on the box */}
-      <motion.rect x="60" y="92" width="34" height="14" fill="var(--green)"
-        initial={reduce ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} style={{ originX: 0 }}
-        transition={{ delay: 1, duration: 0.5, ease: SWIFT }} />
-      {/* sneaker outline, floating above the empty box */}
-      <g transform="translate(14 -14)">
-      <motion.g initial={reduce ? false : { y: 0 }} animate={reduce ? undefined : { y: [0, -5, 0] }}
-        transition={{ delay: 1.6, duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}>
-        <motion.path
-          d="M58 34c6-1 14-6 19-12l6 3c2 4 8 6 13 5 9 6 21 9 33 10 7 1 11 5 11 9v3H58c-3 0-5-2-5-5v-8c0-3 2-5 5-5z"
-          fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" {...draw(0.45, 1.3)} />
-        <motion.path d="M54 47h86" fill="none" stroke="var(--ink)" strokeWidth="2" {...draw(1.1, 0.5)} />
-        <motion.path d="M80 26l5 8M88 24l4 8M96 28l3 6" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" {...draw(1.3, 0.5)} />
-      </motion.g>
-      </g>
-      {/* dust puff */}
-      {[[188, 30, 3], [198, 40, 2], [192, 18, 2]].map(([cx, cy, r], i) => (
-        <motion.circle key={i} cx={cx} cy={cy} r={r} fill="var(--muted)"
-          initial={reduce ? false : { opacity: 0, scale: 0 }} animate={{ opacity: [0, 0.6, 0], scale: [0, 1, 1.4] }}
-          transition={{ delay: 1.4 + i * 0.25, duration: 2.4, repeat: Infinity, repeatDelay: 1.2 }} />
-      ))}
+    <svg className="kkc-art" viewBox="0 0 240 110" aria-hidden="true">
+      <path d="M0 104H240" stroke="var(--line)" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
+      {STEPS.map(({ x, y }, i) => {
+        const last = i === STEPS.length - 1;
+        const at = (i * 0.42) / LOOP;          // when this step lands, as a fraction of the loop
+        return (
+          <g key={i} transform={`translate(${x} ${y}) rotate(${i % 2 ? -8 : 8} 26 11)`}>
+            <motion.g
+              style={{ originX: '26px', originY: '11px' }}
+              initial={reduce ? false : { opacity: 0, scale: 1.25 }}
+              animate={reduce ? { opacity: 1, scale: 1 } : {
+                opacity: [0, 0, 1, 1, 0],
+                scale: [1.25, 1.25, 1, 1, 1],
+              }}
+              transition={reduce ? undefined : {
+                duration: LOOP, repeat: Infinity, ease: 'easeOut',
+                times: [0, at, Math.min(at + 0.06, 0.98), 0.86, 1],
+              }}
+            >
+              <path d={SOLE} fill={last ? 'var(--green)' : 'var(--ink)'} />
+              <path d={TREAD} fill="none" stroke="var(--paper)" strokeWidth="1.6" strokeLinecap="round" opacity=".55" />
+            </motion.g>
+          </g>
+        );
+      })}
     </svg>
   );
 };
@@ -214,8 +213,8 @@ export const CartPanel = ({ onNavigate, inDrawer = false }) => {
       <div className="kkc-empty-wrap">
         <motion.div className="kkc-empty" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: SWIFT, delay: 0.05 }}>
           <EmptyArt />
-          <h3 className="kkc-empty-h">Your box is empty</h3>
-          <p className="kkc-empty-p">Your sneakers deserve better. Add a Klean below, or browse every service and bundle.</p>
+          <h3 className="kkc-empty-h">No pairs yet</h3>
+          <p className="kkc-empty-p">Take the first step: add a Klean below, or browse every service and bundle.</p>
         </motion.div>
         <QuickPicks />
         <div className="kkc-empty-foot">
@@ -319,7 +318,7 @@ const CartStyles = () => (
 
     .kkc-empty-wrap{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto}
     .kkc-empty{padding:26px 24px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
-    .kkc-art{width:220px;max-width:70%;height:auto;margin:4px 0 6px;overflow:visible}
+    .kkc-art{width:260px;max-width:84%;height:auto;margin:8px 0 10px;overflow:visible}
     .kkc-empty-h{margin:0;font-family:var(--display);font-weight:400;font-size:52px;line-height:.9;text-transform:uppercase;max-width:9ch}
     .kkc-empty-p{margin:0;color:var(--muted);font-size:15px;line-height:1.5;max-width:34ch}
     .kkc-picks{padding:18px 24px 6px}
