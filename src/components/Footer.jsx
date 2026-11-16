@@ -1,11 +1,15 @@
 // src/components/Footer.jsx
 // Dark footer with dashed guide lines: link columns, a WhatsApp call to action,
-// contact details, social links, and a huge KLEANKICKX wordmark in brand green
-// that fades into the background and is cropped by the bottom edge.
+// contact details, social handles, the UN Global Goals we support, and a huge
+// KLEANKICKX wordmark (only the X green, as in the logo) that fades into the
+// background and is cropped by the bottom edge.
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { FaXTwitter } from 'react-icons/fa6';
 import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
+import SDG11 from '../assets/sus-image-1.jpeg';
+import SDG12 from '../assets/sus-image-2.jpeg';
+import SDG13 from '../assets/sus-image-3.jpeg';
 
 const WHATSAPP = 'https://wa.me/233536278834?text=' + encodeURIComponent('Hi KleanKickx, I would like to book a Klean.');
 const MAPS = 'https://maps.google.com/?q=KleanKickx+Sneaker+Care,+29+Golf+Hills+St,+Accra';
@@ -36,10 +40,17 @@ const COLUMNS = [
   },
 ];
 
+// The icon names the platform, so the text shows the handle (no "X  X")
 const SOCIAL = [
-  { label: 'Instagram', href: 'https://instagram.com/kleankickxgh', Icon: FaInstagram },
-  { label: 'X', href: 'https://x.com/KleanKickxgh', Icon: FaXTwitter },
-  { label: 'WhatsApp', href: 'https://wa.me/233536278834', Icon: FaWhatsapp },
+  { platform: 'Instagram', handle: '@kleankickxgh', href: 'https://instagram.com/kleankickxgh', Icon: FaInstagram },
+  { platform: 'X', handle: '@KleanKickxgh', href: 'https://x.com/KleanKickxgh', Icon: FaXTwitter },
+  { platform: 'WhatsApp', handle: '+233 53 627 8834', href: 'https://wa.me/233536278834', Icon: FaWhatsapp },
+];
+
+const SDGS = [
+  { src: SDG11, goal: '11', name: 'Sustainable cities and communities' },
+  { src: SDG12, goal: '12', name: 'Responsible consumption and production' },
+  { src: SDG13, goal: '13', name: 'Climate action' },
 ];
 
 const FootLink = ({ link }) => (link.href
@@ -90,10 +101,19 @@ const Footer = () => {
         .kkf-social a:hover svg{transform:translateY(-2px)}
         .kkf-small{color:var(--muted);font-size:14px;line-height:1.6}
         .kkf-mark{position:relative;margin-top:44px;height:clamp(84px,17vw,210px);overflow:hidden;user-select:none;pointer-events:none}
-        .kkf-mark span{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--display);font-weight:400;text-transform:uppercase;
-          font-size:clamp(104px,20.4vw,252px);line-height:.86;letter-spacing:-.005em;white-space:nowrap;
-          background:linear-gradient(180deg,rgba(76,184,76,.34) 0%,rgba(26,122,26,.18) 38%,rgba(26,122,26,0) 86%);
-          -webkit-background-clip:text;background-clip:text;color:transparent}
+        .kkf-mark > span{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--display);font-weight:400;text-transform:uppercase;
+          font-size:clamp(104px,20.4vw,252px);line-height:.86;letter-spacing:-.005em;white-space:nowrap}
+        .kkf-mark b{font-weight:400;-webkit-background-clip:text;background-clip:text;color:transparent}
+        .kkf-mark .w{background-image:linear-gradient(180deg,rgba(242,245,240,.2) 0%,rgba(242,245,240,.09) 40%,rgba(242,245,240,0) 86%)}
+        .kkf-mark .x{background-image:linear-gradient(180deg,rgba(76,184,76,.75) 0%,rgba(26,122,26,.38) 42%,rgba(26,122,26,0) 88%)}
+        .kkf-sdg h3{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+        .kkf-sdg ul{list-style:none;margin:0;padding:0;display:flex;gap:12px}
+        .kkf-sdg li{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+        .kkf-sdg img{width:64px;height:64px;object-fit:cover;display:block;border:1px solid var(--rule);
+          filter:grayscale(.85) brightness(.8);transition:filter .35s,transform .35s var(--spring)}
+        .kkf-sdg li:hover img{filter:none;transform:translateY(-3px)}
+        .kkf-sdg span{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+        .kkf-legal{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 24px;margin-top:28px;color:var(--muted);font-size:13px}
         @media (max-width:900px){.kkf-grid{grid-template-columns:1fr 1fr}.kkf-cta{grid-column:1 / -1}}
         @media (max-width:560px){
           .kkf-frame{padding:0 12px}.kkf-guides{padding:44px 18px 0}.kkf-grid{gap:36px 20px}
@@ -133,18 +153,30 @@ const Footer = () => {
             <div>
               <h3>Follow</h3>
               <div className="kkf-social">
-                {SOCIAL.map(({ label, href, Icon }) => (
-                  <a key={label} href={href} target="_blank" rel="noopener noreferrer">
-                    <Icon aria-hidden="true" /> {label}
+                {SOCIAL.map(({ platform, handle, href, Icon }) => (
+                  <a key={platform} href={href} target="_blank" rel="noopener noreferrer" aria-label={`${platform}: ${handle}`}>
+                    <Icon aria-hidden="true" /> <span>{handle}</span>
                   </a>
                 ))}
               </div>
             </div>
-            <p className="kkf-small">
-              © {new Date().getFullYear()} KleanKickx Sneaker Care Limited.<br />
-              Every Klean keeps a pair in use. Supporting UN SDGs 11, 12 and 13.
-            </p>
+            <div className="kkf-sdg">
+              <h3>Supporting the UN Global Goals</h3>
+              <ul>
+                {SDGS.map((g) => (
+                  <li key={g.goal} title={`Goal ${g.goal}: ${g.name}`}>
+                    <img src={g.src} alt={`UN Sustainable Development Goal ${g.goal}: ${g.name}`} loading="lazy" />
+                    <span>Goal {g.goal}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </motion.div>
+
+          <div className="kkf-legal">
+            <span>© {new Date().getFullYear()} KleanKickx Sneaker Care Limited</span>
+            <span>Every Klean keeps a pair in use.</span>
+          </div>
 
           <motion.div
             className="kkf-mark"
@@ -154,7 +186,7 @@ const Footer = () => {
             viewport={{ once: true }}
             transition={{ duration: 1.1, ease: SWIFT }}
           >
-            <span>KleanKickx</span>
+            <span><b className="w">KleanKick</b><b className="x">x</b></span>
           </motion.div>
         </div>
       </div>
