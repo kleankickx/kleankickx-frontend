@@ -414,8 +414,8 @@ const Navbar = () => {
             transform:translateX(-102%);transition:transform .55s var(--swift);box-shadow:30px 0 80px -30px rgba(10,11,10,.5)}
           .kkm.open{transform:translateX(0)}
           .kkm-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:2px solid var(--ink)}
-          .kkm-logo{font-family:var(--display);font-size:26px;line-height:1;color:var(--ink);text-decoration:none;letter-spacing:.01em}
-          .kkm-logo b{font-weight:400;color:var(--green)}
+          .kkm-logo{display:block;line-height:0}
+          .kkm-logo img{height:40px;width:auto;display:block}
           .kkm-x{width:42px;height:42px;display:grid;place-items:center;border:2px solid var(--ink);background:none;color:var(--ink);cursor:pointer;
             transition:background .2s,color .2s,transform .3s var(--spring)}
           .kkm-x:hover{background:var(--ink);color:#fff;transform:rotate(90deg)}
@@ -476,8 +476,8 @@ const Navbar = () => {
           aria-hidden={!isMobileMenuOpen}
         >
           <div className="kkm-head">
-            <NavLink to="/" onClick={closeMobileMenu} className="kkm-logo" tabIndex={isMobileMenuOpen ? 0 : -1}>
-              KLEANKICK<b>X</b>
+            <NavLink to="/" onClick={closeMobileMenu} className="kkm-logo" tabIndex={isMobileMenuOpen ? 0 : -1} aria-label="KleanKickx home">
+              <img src={Logo} alt="KleanKickx" />
             </NavLink>
             <button className="kkm-x" onClick={closeMobileMenu} aria-label="Close menu" tabIndex={isMobileMenuOpen ? 0 : -1}>
               <svg viewBox="0 0 16 16" width="13" height="13"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" /></svg>

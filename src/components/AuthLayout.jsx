@@ -24,8 +24,8 @@ export const AuthStyles = () => (
     .kka-brand::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,11,.5) 0%,rgba(11,13,11,.05) 22%,rgba(11,13,11,.15) 48%,rgba(11,13,11,.94) 74%,rgba(11,13,11,.98) 100%)}
     .kka-brand-copy{margin-top:auto;margin-bottom:22px}
     .kka-brand > :not(.kka-brand-img){position:relative;z-index:1}
-    .kka-logo{font-family:var(--display);font-size:30px;letter-spacing:.01em;color:#fff;text-decoration:none;line-height:1}
-    .kka-logo b{font-weight:400;color:var(--green-hi)}
+    .kka-logo{display:block;line-height:0;align-self:flex-start}
+    .kka-logo img{width:150px;height:auto;display:block}
     .kka-brand h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(48px,5.2vw,80px);line-height:.9;max-width:11ch}
     .kka-perks{list-style:none;margin:26px 0 0;padding:0;display:grid;gap:12px}
     .kka-perks li{display:flex;align-items:center;gap:12px;font-size:17px;color:#DDE3DB}
@@ -143,7 +143,7 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
         {/* Stock photo for now (Pexels 4914662, free licence); replace with a photo of our own technician */}
         <img className="kka-brand-img" src="/images/technician.jpg" alt=""
           onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/images/before-after.jpg'; }} />
-        <Link to="/" className="kka-logo" aria-label="KleanKickx home">KLEANKICK<b>X</b></Link>
+        <Link to="/" className="kka-logo" aria-label="KleanKickx home"><img src="/images/kleankickx-logo-white.png" alt="KleanKickx" /></Link>
         <div className="kka-brand-copy">
           <motion.h2 {...rise(0.05)}>{headline}</motion.h2>
           <ul className="kka-perks">
