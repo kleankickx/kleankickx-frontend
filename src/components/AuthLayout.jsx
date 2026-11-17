@@ -91,20 +91,20 @@ export const AuthStyles = () => (
       .kka-main{padding:28px 20px 48px;align-items:flex-start}
       .kka-title{font-size:46px}
     }
-    /* Poster panel: sized to the poster (905x1280) so it is never cropped on desktop */
-    .kka:has(.kka-poster){grid-template-columns:minmax(0,min(46vw,70.7vh)) minmax(0,1fr)}
+    /* Poster panel: sized to the poster (951x1280) so it is never cropped on desktop */
+    .kka:has(.kka-poster){grid-template-columns:minmax(0,min(46vw,74.3vh)) minmax(0,1fr)}
     .kka-brand.kka-poster{position:sticky;top:0;height:100vh;align-self:start;padding:0}
     .kka-poster .kka-brand-img{opacity:1;object-position:50% 100%}
     .kka-poster::after{display:none}
-    .kka-poster .kka-poster-home{position:absolute;left:4%;top:2.5%;width:23%;height:6%}
+    .kka-poster .kka-poster-home{position:absolute;left:8%;top:3.5%;width:16%;height:5%}
     .kka-poster .kka-poster-home img{opacity:0;width:100%}
     .kka-poster-m{display:none}
     @media (max-width:900px){
       .kka:has(.kka-poster){grid-template-columns:1fr}
-      .kka-brand.kka-poster{position:relative;height:280px;padding:0}
-      .kka-poster .kka-brand-img{object-position:50% 3%}
+      .kka-brand.kka-poster{position:relative;height:250px;padding:0}
+      .kka-poster .kka-brand-img{object-position:50% 0%}
       .kka-poster::after{display:block;background:linear-gradient(180deg,rgba(11,13,11,0) 0%,rgba(11,13,11,0) 50%,rgba(11,13,11,.8) 100%)}
-      .kka-poster .kka-poster-home{left:4%;top:4px;width:24%;height:34px}
+      .kka-poster .kka-poster-home{left:8%;top:18px;width:16%;height:26px}
       .kka-poster .kka-poster-home img{opacity:0}
       .kka-poster-m{display:block;position:absolute;left:20px;bottom:18px;margin:0;font-family:var(--display);font-size:34px;line-height:.9;text-transform:uppercase;color:#fff}
     }
@@ -158,7 +158,7 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
       <AuthStyles />
       <aside className="kka-brand kka-poster">
         {/* Campaign poster: Jerry Akaminko, "Care is respect". Logo, headline and caption are part of the image. */}
-        <img className="kka-brand-img" src="/images/care-is-respect.jpg" width="905" height="1280"
+        <img className="kka-brand-img" src="/images/care-is-respect-v2.jpg" width="951" height="1280"
           alt="Care is respect. Jerry Akaminko, Ghanaian football icon and our first and biggest supporter, training in the gym." />
         <Link to="/" className="kka-logo kka-poster-home" aria-label="KleanKickx home"><img src="/images/kleankickx-logo-white.png" alt="" /></Link>
         <motion.p className="kka-poster-m" aria-hidden="true" {...rise(0.05)}>Care is respect</motion.p>
