@@ -9,6 +9,11 @@ const fadeInUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
+// Our recovery partner; every mention links to them.
+const KicksCtrl = ({ className = "underline underline-offset-4 decoration-2 decoration-primary hover:text-primary transition-colors" }) => (
+  <a className={className} href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer">KicksCTRL</a>
+);
+
 const pillars = [
   ['Extend', 'Every Klean adds wear to a pair that already exists. That is a pair that does not need replacing.'],
   ['Train', 'We train young people in Accra in technical cleaning, restoration and triage: the skills to judge a shoe and bring it back.'],
@@ -26,7 +31,7 @@ const steps = [
   'Sorted by hand: reuse, restore or recover.',
   'Kleaned and restored at the studio.',
   'Returned, resold or donated.',
-  'Unwearable pairs logged and handed to KicksCTRL.',
+  <>Unwearable pairs logged and handed to <KicksCtrl />.</>,
 ];
 
 const Impact = () => (
@@ -78,7 +83,7 @@ const Impact = () => (
               {title === 'Recover' ? (
                 <>
                   Pairs past saving go to our partner{' '}
-                  <a className="underline" href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer">KicksCTRL</a>,
+                  <KicksCtrl />,
                   which is building footwear recovery in Ghana. They stay out of landfill.
                 </>
               ) : text}
@@ -90,7 +95,7 @@ const Impact = () => (
 
     {/* PILOT */}
     <section className="bg-deep-gray py-16 px-4 md:px-8 lg:px-24">
-      <h2 className="text-white header text-4xl md:text-5xl">Accra pilot with KicksCTRL.</h2>
+      <h2 className="text-white header text-4xl md:text-5xl">Accra pilot with <KicksCtrl />.</h2>
       <p className="text-white/70 mt-3 mb-10">Two days. One collection point. Every pair tracked.</p>
       <div className="grid gap-8 md:grid-cols-3">
         {pilot.map(([n, text]) => (
@@ -101,7 +106,7 @@ const Impact = () => (
         ))}
       </div>
       <p className="text-white/50 text-sm mt-10">
-        From the KicksCTRL "Footwear Under Control" pilot report, 2026. Recovery feedstock is stored until recycling end-markets are verified.
+        From the <KicksCtrl /> "Footwear Under Control" pilot report, 2026. Recovery feedstock is stored until recycling end-markets are verified.
       </p>
     </section>
 
@@ -110,7 +115,7 @@ const Impact = () => (
       <h2 className="header text-4xl md:text-5xl">How a pair moves.</h2>
       <ol className="border-t-2 border-gray-900">
         {steps.map((s, i) => (
-          <li key={s} className="flex gap-5 py-4 border-b border-gray-200">
+          <li key={i} className="flex gap-5 py-4 border-b border-gray-200">
             <span className="font-bold tabular-nums">{String(i + 1).padStart(2, '0')}</span>
             <span>{s}</span>
           </li>
