@@ -3,10 +3,9 @@ import { useState, useContext, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { trackEvent } from '../utils/analytics';
-import AuthLayout, { Field, SubmitButton, apiError, useGoogleWidth } from '../components/AuthLayout';
+import AuthLayout, { Field, SubmitButton, apiError, GoogleButton } from '../components/AuthLayout';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 const validEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -14,7 +13,6 @@ const MIN_PW = 8;
 
 const Register = () => {
   const { googleLogin } = useContext(AuthContext);
-  const googleWidth = useGoogleWidth();
   const navigate = useNavigate();
   const location = useLocation();
   const message = location.state?.message;            // e.g. "Sign up to claim your free Standard Klean."
@@ -144,10 +142,7 @@ const Register = () => {
       </form>
 
       <div className="kka-or">or</div>
-      <div className="kka-google">
-        <GoogleLogin onSuccess={handleGoogle} onError={() => setError('Google sign-up failed. Please try again.')}
-          text="signup_with" shape="rectangular" theme="outline" size="large" width={googleWidth} />
-      </div>
+      <GoogleButton label="Sign up with Google" onToken={handleGoogle} onError={setError} />
 
       <p className="kka-switch">
         <span>Already have an account?</span>

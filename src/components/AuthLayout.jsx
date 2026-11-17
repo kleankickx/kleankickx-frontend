@@ -4,6 +4,7 @@
 // On phones the brand panel becomes a short strip above the form.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
@@ -75,6 +76,14 @@ export const AuthStyles = () => (
     .kka-or{display:flex;align-items:center;gap:14px;margin:24px 0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
     .kka-or::before,.kka-or::after{content:"";flex:1;height:1px;background:var(--line)}
     .kka-google{display:flex;justify-content:center;min-height:44px;max-width:100%;overflow:hidden}
+    .kka-gbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:54px;padding:0 18px;border:2px solid var(--ink);border-radius:2px;
+      background:#fff;color:var(--ink);font:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:background .2s,box-shadow .25s,transform .25s var(--spring)}
+    .kka-gbtn svg{flex:none}
+    .kka-gbtn:hover:not(:disabled){background:var(--paper);box-shadow:0 4px 0 0 var(--ink)}
+    .kka-gbtn:active:not(:disabled){transform:translateY(2px);box-shadow:0 2px 0 0 var(--ink)}
+    .kka-gbtn:disabled{cursor:default;opacity:.7}
+    .kka-gbtn:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+    .kka-spin.dark{border-color:rgba(10,11,10,.18);border-top-color:var(--ink)}
     .kka-main,.kka-form{min-width:0}
     .kka-switch{margin:24px 0 0;padding-top:20px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:15px}
     .kka-switch a{font-weight:700;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
@@ -152,6 +161,45 @@ export const useGoogleWidth = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return String(w);
+};
+
+/** Our own "Continue with Google" button (Google's popup flow). Calls onToken with
+ *  { access_token }, which AuthContext.googleLogin sends to the API. Keeps Google's
+ *  coloured G, as their branding rules require for custom buttons. */
+export const GoogleButton = ({ label = 'Continue with Google', onToken, onError, disabled }) => {
+  const [opening, setOpening] = useState(false);
+  const start = useGoogleLogin({
+    flow: 'implicit',
+    scope: 'openid email profile',
+    onSuccess: async (res) => {
+      try { await onToken({ access_token: res.access_token }); } finally { setOpening(false); }
+    },
+    onError: () => { setOpening(false); onError?.('Google sign-in failed. Please try again.'); },
+    onNonOAuthError: (err) => {
+      setOpening(false);
+      if (err?.type === 'popup_failed_to_open') onError?.('Your browser blocked the Google window. Allow pop-ups for this site and try again.');
+      // popup_closed: they closed it themselves; nothing to say.
+    },
+  });
+  const busy = opening || disabled;
+  return (
+    <button type="button" className="kka-gbtn" disabled={busy} onClick={() => {
+      setOpening(true);
+      start();
+      // Safety net: if Google's window never reports back, re-enable the button.
+      setTimeout(() => setOpening(false), 30000);
+    }}>
+      {busy ? <span className="kka-spin dark" aria-hidden="true" /> : (
+        <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+        </svg>
+      )}
+      <span>{busy ? 'Connecting to Google…' : label}</span>
+    </button>
+  );
 };
 
 export const SubmitButton = ({ busy, busyLabel, children }) => (
