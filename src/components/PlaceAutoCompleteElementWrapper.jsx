@@ -3,7 +3,6 @@ import LocationCard from './LocationCard';
 import { AnimatePresence, motion } from 'framer-motion';
 import REGION_CONFIG from '../utils/regionConfig';
 import { toast } from 'react-toastify';
-import { FaSpinner } from 'react-icons/fa';
 import api from '../api';
 
 const AVAILABLE_REGIONS = Object.keys(REGION_CONFIG);
@@ -286,10 +285,12 @@ const PlaceAutocompleteElementWrapper = ({
     inputContainerRef.current.innerHTML = '';
     autocomplete.placeholder = placeholder || 'Search for a place';
     autocomplete.style.width = '100%';
-    autocomplete.style.height = '45px';
-    autocomplete.style.border = '1px solid #D1D5DB';
-    autocomplete.style.borderRadius = '0.5rem';
-    autocomplete.style.padding = '0 1rem';
+    autocomplete.style.minHeight = '54px';
+    autocomplete.style.border = '1.5px solid #D9DFD7';
+    autocomplete.style.borderRadius = '2px';
+    autocomplete.style.background = '#fff';
+    autocomplete.style.colorScheme = 'light';
+    autocomplete.style.fontFamily = '"League Spartan", system-ui, sans-serif';
     inputContainerRef.current.appendChild(autocomplete);
     autocomplete.addEventListener('gmp-select', handlePlaceSelect);
 
@@ -393,21 +394,13 @@ const PlaceAutocompleteElementWrapper = ({
       return (
           <motion.div
               key="pickuptime"
-              initial={{ opacity: 0, y: 10 }}
+              className="kkco-when"
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className={`mt-2 p-3 rounded-lg border ${useSame ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-green-50 border-green-200 text-green-800'} text-sm`}
           >
-              <p className="font-semibold mb-1 flex items-center">
-                  🚛 Earliest Available Pickup:
-              </p>
-              <p className="pl-1">
-                  <span className="font-bold">{dateDisplay} ({dayOfWeek})</span>, between {' '}
-                  <span className={`font-bold text-base ${useSame ? 'text-blue-900' : 'text-green-900'}`}>{timeAmPmDisplay}</span>
-              </p>
-              <p className={`text-xs ${useSame ? 'text-blue-600' : 'text-green-600'} mt-1`}>
-                  This is the earliest hour-long window we can schedule your pickup.
-              </p>
+              Earliest pickup: <b>{dateDisplay}{dayOfWeek ? ` (${dayOfWeek})` : ''}, {timeAmPmDisplay}</b>
+              <small>The first hour-long window our rider can come.</small>
           </motion.div>
       );
   };
@@ -415,17 +408,15 @@ const PlaceAutocompleteElementWrapper = ({
   // Show loading while Google Maps is loading
   if (!googleMapsLoaded) {
     return (
-      <div className="relative mt-2">
-        <div className="w-full h-[45px] bg-gray-100 animate-pulse rounded-lg"></div>
-        <div className="mt-2 p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm text-center">
-          Loading location services...
-        </div>
+      <div className="kkco-vars">
+        <div className="kkco-skel" aria-hidden="true" />
+        <p className="kkco-placeholder">Loading address search…</p>
       </div>
     );
   }
 
   return (
-    <div className="relative mt-2">
+    <div className="relative kkco-vars">
       <div
         ref={inputContainerRef}
         className="w-full place-autocomplete-input-container"
@@ -434,16 +425,17 @@ const PlaceAutocompleteElementWrapper = ({
 
       <AnimatePresence>
         {loading ? (
-          <motion.div
+          <motion.p
             key="loading"
+            className="kkco-placeholder"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-2 p-3 rounded border border-gray-200 bg-gray-50 text-gray-600 text-sm flex flex-col items-center justify-center"
+            role="status"
           >
-            <FaSpinner className="animate-spin text-primary" />
-            <p className="mt-2 text-center">Checking availability and pricing...</p>
-          </motion.div>
+            <span className="kkco-spin" aria-hidden="true" /> Checking availability and price…
+          </motion.p>
         ) : selectedLocation ? (
           <>
             <LocationCard
@@ -454,25 +446,21 @@ const PlaceAutocompleteElementWrapper = ({
             />
             {shouldShowPickupTimeInfo() && renderPickupTimeInfo()}
             {selectedLocation.usingFallback && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700"
-              >
-                ℹ️ Currently serving <strong>Accra and Kasoa</strong> only. Other regions coming soon!
-              </motion.div>
+              <motion.p className="kkco-note warn" style={{ marginTop: 8 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                We currently pick up and deliver in <strong>Accra and Kasoa</strong> only. More areas soon.
+              </motion.p>
             )}
           </>
         ) : (
-          <motion.div
+          <motion.p
             key="placeholder"
+            className="kkco-placeholder"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-2 p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm text-center"
           >
-            No location selected yet
-          </motion.div>
+            Start typing, then pick your address from the list.
+          </motion.p>
         )}
       </AnimatePresence>
     </div>

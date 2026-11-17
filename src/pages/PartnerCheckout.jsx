@@ -12,6 +12,7 @@ import api from '../api';
 import PlaceAutocompleteElementWrapper from "../components/PlaceAutoCompleteElementWrapper";
 import MapHandler from "../components/MapHandler";
 import { GoogleMapsProvider } from "../components/GoogleMapsProvider";
+import { CHECKOUT_CSS } from "../components/checkoutUi";
 
 const PartnerCheckout = () => {
   const navigate = useNavigate();
@@ -378,6 +379,8 @@ const handlePlaceOrder = async () => {
     <GoogleMapsProvider
       onLoad={() => console.log('Google Maps API loaded for partner checkout!')}
     >
+      {/* Styles for the shared address search */}
+      <style>{CHECKOUT_CSS}</style>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-primary/90 text-white">
