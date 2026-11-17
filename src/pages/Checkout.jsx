@@ -84,6 +84,18 @@ const Checkout = () => {
   // Base URL for backend API
   const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
   
+  // Back from Paystack after a failed payment: the order already exists (unpaid), so
+  // send the customer to their orders to pay for it, rather than checking out again.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment_status') === 'failed') {
+      navigate('/orders', { replace: true });
+      // After the redirect, so the alert isn't lost while the app is still starting up.
+      setTimeout(() => toast.error("The payment didn't go through. Your order is saved under Orders, where you can pay for it.",
+        { toastId: 'payment-return', autoClose: 8000 }), 300);
+    }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       try {
