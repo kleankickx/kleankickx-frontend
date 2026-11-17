@@ -44,9 +44,7 @@ const VerifyEmail = () => {
         });
 
         if (cartExpired) {
-          toast.warn('Your cart was cleared due to expiration and synced with the server.', {
-            position: 'top-right',
-          });
+          toast.warn('Your cart was cleared due to expiration and synced with the server.');
         }
 
         const responseStatus = response.data.status;
@@ -74,7 +72,7 @@ const VerifyEmail = () => {
                 ? 'Email verified successfully!'
                 : 'Your email was already verified. Session updated.';
 
-              toast.success(successMessage, { position: 'top-right' });
+              toast.success(successMessage);
 
               // Redirect to the intended page
               setTimeout(() => {
@@ -87,7 +85,7 @@ const VerifyEmail = () => {
               const redirectPath = userEmail 
                 ? `/auth/login?email=${encodeURIComponent(userEmail)}&verified=true` 
                 : '/auth/login?verified=true';
-              toast.success('Email verified! Please log in to complete the process.', { position: 'top-right' });
+              toast.success('Email verified! Please log in to complete the process.');
               setTimeout(() => navigate(redirectPath), 1500);
             }
           } else {
@@ -100,7 +98,7 @@ const VerifyEmail = () => {
               ? 'Email verified successfully! Please log in to continue.'
               : 'This email is already verified. Please log in.';
 
-            toast.success(successMessage, { position: 'top-right' });
+            toast.success(successMessage);
             setTimeout(() => navigate(redirectPath), 1500);
           }
         }

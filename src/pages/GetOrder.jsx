@@ -249,7 +249,6 @@ const GetOrder = () => {
                     : 'Failed to load order details. Please try again.';
                 setError(errorMessage);
                 toast.error(errorMessage, {
-                    position: 'top-right',
                     autoClose: 3000,
                 });
             } finally {

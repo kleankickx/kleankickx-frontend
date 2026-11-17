@@ -39,7 +39,6 @@ const AuthProvider = ({ children }) => {
         console.log('[AUTH] Token expired - logging out');
         clearAuth();
         toast.info('Your session has expired. Please log in again.', {
-          position: 'top-right',
           autoClose: 5000,
         });
         navigate('/auth/login', { replace: true });
