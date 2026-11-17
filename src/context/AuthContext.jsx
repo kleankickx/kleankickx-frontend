@@ -227,7 +227,9 @@ const AuthProvider = ({ children }) => {
   const googleLogin = async (credentialResponse, referralCode = null) => {
     setAuthLoading(true);
     try {
-      const payload = { token: credentialResponse.credential };
+      const payload = credentialResponse?.access_token
+        ? { access_token: credentialResponse.access_token }
+        : { token: credentialResponse.credential };
       if (referralCode) payload.referral_code = referralCode;
 
       const response = await api.post('/api/users/google-login/', payload);

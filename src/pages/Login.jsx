@@ -2,7 +2,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { GoogleLogin } from '@react-oauth/google';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
@@ -10,7 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from "../assets/logo2.png";
 import api from '../api';
-import AuthLayout, { Field, SubmitButton, useGoogleWidth } from '../components/AuthLayout';
+import AuthLayout, { Field, SubmitButton, GoogleButton } from '../components/AuthLayout';
 
 // Forgot Password Modal Component
 const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
@@ -586,7 +585,6 @@ useEffect(() => {
   };
 
   const busy = loading || isMerging;
-  const googleWidth = useGoogleWidth();
   return (
     <>
       <ForgotPasswordModal
@@ -622,13 +620,7 @@ useEffect(() => {
         </form>
 
         <div className="kka-or">or</div>
-        <div className="kka-google">
-          <GoogleLogin
-            onSuccess={handleGoogleLoginSuccess}
-            onError={() => setError('Google login failed. Please try again.')}
-            text="signin_with" shape="rectangular" theme="outline" size="large" width={googleWidth}
-          />
-        </div>
+        <GoogleButton label="Continue with Google" onToken={handleGoogleLoginSuccess} onError={setError} disabled={busy} />
 
         <p className="kka-switch">
           <span>New to KleanKickx?</span>
