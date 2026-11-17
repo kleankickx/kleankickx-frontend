@@ -91,19 +91,21 @@ export const AuthStyles = () => (
       .kka-main{padding:28px 20px 48px;align-items:flex-start}
       .kka-title{font-size:46px}
     }
-    /* Poster panel: same 46% width as before. The poster (951x1280) sits whole in the
-       middle, on a blurred, darkened copy of itself that fills whatever space is left. */
-    .kka-brand.kka-poster{position:sticky;top:0;height:100vh;align-self:start;padding:0;background:#000}
+    /* Poster panel: full 46% width, edge to edge. It is at least as tall as the poster
+       (951x1280) at that width, so nothing is cropped; on short screens the page scrolls
+       to show the bottom of the poster while the form stays in view. */
+    .kka-brand.kka-poster{position:relative;align-self:start;min-height:100vh;aspect-ratio:951/1280;padding:0;background:#000}
     .kka-poster::after{display:none}
-    .kka-brand.kka-poster > .kka-poster-bg{position:absolute;z-index:0;inset:-40px;width:calc(100% + 80px);height:calc(100% + 80px);object-fit:cover;filter:blur(26px) brightness(.42) saturate(0);transform:scale(1.05)}
-    .kka-brand.kka-poster > .kka-poster-box{position:absolute;z-index:1;inset:0;margin:auto;width:min(100%,74.3vh);aspect-ratio:951/1280;height:auto;max-height:100%;
-      box-shadow:0 0 80px 10px rgba(0,0,0,.55)}
-    .kka-poster-box .kka-brand-img{opacity:1;object-fit:cover;object-position:50% 50%}
-    .kka-poster .kka-poster-home{position:absolute;left:8%;top:3.5%;width:16%;height:5%}
+    .kka-brand.kka-poster > .kka-poster-bg{display:none}
+    .kka-brand.kka-poster > .kka-poster-box{position:absolute;z-index:1;inset:0}
+    .kka-poster-box .kka-brand-img{opacity:1;object-fit:cover;object-position:15% 50%}
+    .kka:has(.kka-poster) > .kka-main{position:sticky;top:0;min-height:100vh;align-self:start}
+    .kka-poster .kka-poster-home{position:absolute;left:6%;top:3%;width:22%;height:6%}
     .kka-poster .kka-poster-home img{opacity:0;width:100%}
     .kka-poster-m{display:none}
     @media (max-width:900px){
-      .kka-brand.kka-poster{position:relative;height:250px;padding:0}
+      .kka-brand.kka-poster{position:relative;height:250px;min-height:0;aspect-ratio:auto;padding:0}
+      .kka:has(.kka-poster) > .kka-main{position:static;min-height:0}
       .kka-brand.kka-poster > .kka-poster-bg{display:none}
       .kka-brand.kka-poster > .kka-poster-box{width:100%;height:100%;aspect-ratio:auto;max-height:none;box-shadow:none}
       .kka-poster-box .kka-brand-img{object-position:50% 0%}
