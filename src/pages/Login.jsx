@@ -7,7 +7,7 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import logo from "../assets/logo2.png";
 import api from '../api';
 import AuthLayout, { Field, SubmitButton, useGoogleWidth } from '../components/AuthLayout';
@@ -19,17 +19,34 @@ const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  const close = () => {
+    if (loading) return;
+    onClose();
+    setTimeout(() => { setSubmitted(false); setError(''); }, 250);
+  };
+
+  // Esc closes; the page behind doesn't scroll while it's open.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKey = (e) => e.key === 'Escape' && close();
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, loading]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!email) {
-      setError('Please enter your email address');
+      setError('Enter your email address.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
+      setError("That doesn't look like an email address.");
       return;
     }
 
@@ -38,68 +55,102 @@ const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const response = await api.post('/api/users/password/reset/', { email });
-      
       if (response.data.success || response.status === 200) {
         setSubmitted(true);
         onSuccess?.(email);
-        toast.success('Password reset email sent! Check your inbox.');
-        
-        setTimeout(() => {
-          onClose();
-          setSubmitted(false);
-          setEmail('');
-        }, 3000);
       }
     } catch (err) {
+      // Same message either way, so the form never reveals whether an account exists.
       console.error('Password reset error:', err);
       setSubmitted(true);
-      toast.info('If an account exists with this email, you will receive a password reset link.');
-      
-      setTimeout(() => {
-        onClose();
-        setSubmitted(false);
-        setEmail('');
-      }, 3000);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="kka-modal" role="dialog" aria-modal="true" aria-labelledby="kka-reset-title" onClick={onClose}>
-      <style>{`
-        .kka-modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(10,11,10,.5);backdrop-filter:blur(3px)}
-        .kka-modal-card{width:100%;max-width:440px;background:#F7F9F6;border:2px solid #0A0B0A;padding:24px;font-family:"League Spartan",system-ui,sans-serif;color:#0A0B0A}
-        .kka-modal-card h3{margin:4px 0 8px;font-family:"Anton","Arial Narrow",Impact,sans-serif;font-weight:400;text-transform:uppercase;font-size:40px;line-height:.9}
-        .kka-modal-x{float:right;width:40px;height:40px;border:2px solid #0A0B0A;background:none;cursor:pointer;display:grid;place-items:center}
-        .kka-modal-x:hover{background:#0A0B0A;color:#fff}
-      `}</style>
-      <motion.div className="kka-modal-card" onClick={(e) => e.stopPropagation()}
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.77, 0, 0.18, 1] }}>
-        <button type="button" className="kka-modal-x" onClick={onClose} aria-label="Close">
-          <svg viewBox="0 0 16 16" width="13" height="13"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" /></svg>
-        </button>
-        <p className="kka-eyebrow">Forgot your password</p>
-        <h3 id="kka-reset-title">Reset it</h3>
-        {!submitted ? (
-          <>
-            <p className="kka-sub" style={{ marginBottom: 18 }}>Enter your email and we'll send you a link to choose a new password.</p>
-            {error && <p className="kka-note err" role="alert">{error}</p>}
-            <form onSubmit={handleSubmit} noValidate>
-              <Field id="reset-email" label="Email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
-                value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} autoFocus />
-              <SubmitButton busy={loading} busyLabel="Sending…">Send reset link</SubmitButton>
-            </form>
-          </>
-        ) : (
-          <p className="kka-note" role="status">
-            If an account exists for <strong>&nbsp;{email}&nbsp;</strong>, a reset link is on its way. Check your spam folder too.
-          </p>
-        )}
-      </motion.div>
-    </div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div className="kka-modal" onClick={close}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <style>{`
+            .kka-modal{--ink:#0A0B0A;--paper:#F7F9F6;--card:#fff;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--green-hi:#4CB84C;--red:#B42318;
+              --display:"Anton","Arial Narrow",Impact,sans-serif;--body:"League Spartan",system-ui,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
+              position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,11,10,.55);backdrop-filter:blur(3px);
+              font-family:var(--body);color:var(--ink)}
+            .kka-modal-card{width:100%;max-width:460px;background:var(--paper);border:2px solid var(--ink);box-shadow:0 40px 80px -40px rgba(10,11,10,.6)}
+            .kka-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:22px 22px 16px;border-bottom:2px solid var(--ink)}
+            .kka-modal-head h3{margin:6px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:40px;line-height:.92}
+            .kka-modal-x{flex:none;width:42px;height:42px;display:grid;place-items:center;border:2px solid var(--ink);background:none;color:var(--ink);cursor:pointer;
+              transition:background .2s,color .2s,transform .3s var(--spring)}
+            .kka-modal-x:hover{background:var(--ink);color:#fff;transform:rotate(90deg)}
+            .kka-modal-body{padding:20px 22px 22px}
+            .kka-modal-body .kka-sub{margin:0 0 18px}
+            .kka-modal-body .kka-field{margin-bottom:14px}
+            .kka-modal-done{text-align:left}
+            .kka-modal-mark{width:56px;height:56px;display:grid;place-items:center;background:var(--green);color:#fff;margin-bottom:16px}
+            .kka-modal-done h4{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:30px;line-height:.95}
+            .kka-modal-done p{margin:10px 0 0;color:var(--muted);line-height:1.55}
+            .kka-modal-done p b{color:var(--ink);overflow-wrap:anywhere}
+            .kka-modal-row{display:flex;gap:10px;margin-top:20px}
+            .kka-modal-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 16px;border:2px solid var(--ink);border-radius:2px;
+              background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+            .kka-modal-btn:hover{background:var(--ink);color:#fff}
+            .kka-modal-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+            .kka-modal-btn.go:hover{background:var(--ink);border-color:var(--ink)}
+            .kka-modal :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+            @media (max-width:520px){
+              .kka-modal{align-items:flex-end;padding:0}
+              .kka-modal-card{max-width:none;border-width:2px 0 0}
+              .kka-modal-head h3{font-size:34px}
+              .kka-modal-body{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+              .kka-modal-row{flex-direction:column-reverse}
+            }
+          `}</style>
+          <motion.div className="kka-modal-card" role="dialog" aria-modal="true" aria-labelledby="kka-reset-title"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.4, ease: [0.77, 0, 0.18, 1] }}>
+            <div className="kka-modal-head">
+              <div>
+                <p className="kka-eyebrow">Forgot your password?</p>
+                <h3 id="kka-reset-title">{submitted ? 'Check your inbox' : 'Reset it'}</h3>
+              </div>
+              <button type="button" className="kka-modal-x" onClick={close} aria-label="Close">
+                <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" /></svg>
+              </button>
+            </div>
+
+            <div className="kka-modal-body">
+              {!submitted ? (
+                <>
+                  <p className="kka-sub">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
+                  {error && <p className="kka-note err" role="alert">{error}</p>}
+                  <form onSubmit={handleSubmit} noValidate>
+                    <Field id="reset-email" label="Email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+                      value={email} onChange={(e) => { setEmail(e.target.value); if (error) setError(''); }} disabled={loading} autoFocus />
+                    <SubmitButton busy={loading} busyLabel="Sending…">Send reset link</SubmitButton>
+                  </form>
+                </>
+              ) : (
+                <motion.div className="kka-modal-done" role="status"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+                  <span className="kka-modal-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26"><path d="M3 6h18v12H3z M3 6l9 7 9-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
+                  </span>
+                  <h4>Link on its way</h4>
+                  <p>If there's an account for <b>{email}</b>, we've sent a link to reset the password. It can take a minute, so check spam or promotions too.</p>
+                  <div className="kka-modal-row">
+                    <button type="button" className="kka-modal-btn" onClick={() => setSubmitted(false)}>Use a different email</button>
+                    <button type="button" className="kka-modal-btn go" onClick={close}>Back to log in</button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
