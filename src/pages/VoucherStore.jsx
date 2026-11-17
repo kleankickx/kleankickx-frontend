@@ -34,6 +34,7 @@ const VoucherStore = () => {
 
   // Track if we've already processed the URL for this session
   const [hasProcessedInitialUrl, setHasProcessedInitialUrl] = useState(false);
+  const [redeemCode, setRedeemCode] = useState('');
 
   useEffect(() => {
     fetchVoucherTypes();
@@ -438,7 +439,21 @@ const VoucherStore = () => {
           background:var(--paper);color:var(--ink);font-family:var(--body)}
         .kkv-wrap{max-width:1200px;margin:0 auto;padding:0 20px}
         .kkv-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
-        .kkv-hero{padding:56px 0 34px;border-bottom:2px solid var(--ink)}
+        .kkv-hero{padding:56px 0 34px;border-bottom:2px solid var(--ink);display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:32px;align-items:end}
+        .kkv-redeem{background:var(--ink);color:#fff;padding:24px}
+        .kkv-redeem .kkv-eyebrow{color:#6FD46F}
+        .kkv-redeem h2{margin:6px 0 16px;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:38px;line-height:.95}
+        .kkv-redeem input{display:block;width:100%;height:54px;padding:0 14px;border:2px solid #fff;border-radius:2px;background:transparent;color:#fff;outline:none;
+          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:17px;font-weight:600;letter-spacing:.12em;transition:background .2s,box-shadow .2s}
+        .kkv-redeem input::placeholder{color:rgba(255,255,255,.45)}
+        .kkv-redeem input:focus{background:rgba(255,255,255,.06);box-shadow:0 4px 0 0 #4CB84C}
+        .kkv-redeem button{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:54px;margin-top:10px;border:2px solid var(--green);border-radius:2px;
+          background:var(--green);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+        .kkv-redeem button .ar{transition:transform .3s var(--spring)}
+        .kkv-redeem button:hover{background:#fff;border-color:#fff;color:var(--ink)}
+        .kkv-redeem button:hover .ar{transform:translateX(5px)}
+        .kkv-redeem :focus-visible{outline:2px solid #6FD46F;outline-offset:3px}
+        @media (max-width:900px){.kkv-hero{grid-template-columns:1fr;gap:26px}}
         .kkv-hero h1{margin:10px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(56px,9vw,120px);line-height:.88;max-width:11ch}
         .kkv-hero p{margin:18px 0 0;max-width:46ch;font-size:18px;line-height:1.5;color:var(--muted)}
         .kkv-facts{display:flex;flex-wrap:wrap;gap:10px 28px;margin:24px 0 0;padding:0;list-style:none}
@@ -549,17 +564,44 @@ const VoucherStore = () => {
 
       <div className="kkv-wrap">
         <header className="kkv-hero">
-          <p className="kkv-eyebrow">Gift vouchers</p>
-          <h1>Give a fresh pair</h1>
-          <p>Gift someone a Klean. Pick a voucher, pay, and it arrives by email, ready to redeem online or at the studio.</p>
-          <ul className="kkv-facts">
-            {['Delivered by email', 'Valid for 6 months', 'Redeem online or in the studio'].map((f) => (
-              <li key={f}>
-                <span aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3.2" /></svg></span>
-                {f}
-              </li>
-            ))}
-          </ul>
+          <div>
+            <p className="kkv-eyebrow">Gift vouchers</p>
+            <h1>Give a fresh pair</h1>
+            <p>Gift someone a Klean. Pick a voucher, pay, and it arrives by email, ready to redeem online or at the studio.</p>
+            <ul className="kkv-facts">
+              {['Delivered by email', 'Valid for 6 months', 'Redeem online or in the studio'].map((f) => (
+                <li key={f}>
+                  <span aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3.2" /></svg></span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Already have a voucher? Redeem it right here. */}
+          <form
+            className="kkv-redeem"
+            aria-labelledby="kkv-redeem-h"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const c = redeemCode.trim().toUpperCase();
+              navigate(c ? `/redeem?apply_voucher=${encodeURIComponent(c)}` : '/redeem');
+            }}
+          >
+            <p className="kkv-eyebrow">Already have one?</p>
+            <h2 id="kkv-redeem-h">Redeem a voucher</h2>
+            <label htmlFor="kkv-redeem-code" className="sr-only">Voucher code</label>
+            <input
+              id="kkv-redeem-code"
+              value={redeemCode}
+              onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+              placeholder="ENTER YOUR CODE"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+            />
+            <button type="submit">Redeem <span className="ar" aria-hidden="true">→</span></button>
+          </form>
         </header>
 
         <div className="kkv-bar">
