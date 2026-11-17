@@ -16,6 +16,7 @@ const PERKS = [
 
 export const AuthStyles = () => (
   <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400&display=swap');
     .kka{--ink:#0A0B0A;--paper:#F7F9F6;--card:#fff;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--green-hi:#4CB84C;--red:#B42318;
       --display:"Anton","Arial Narrow",Impact,sans-serif;--body:"League Spartan",system-ui,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
       min-height:100vh;display:grid;grid-template-columns:minmax(0,46fr) minmax(0,54fr);background:var(--paper);color:var(--ink);font-family:var(--body)}
@@ -91,27 +92,31 @@ export const AuthStyles = () => (
       .kka-main{padding:28px 20px 48px;align-items:flex-start}
       .kka-title{font-size:46px}
     }
-    /* Poster panel: full 46% width, edge to edge. It is at least as tall as the poster
-       (951x1280) at that width, so nothing is cropped; on short screens the page scrolls
-       to show the bottom of the poster while the form stays in view. */
-    .kka-brand.kka-poster{position:relative;align-self:start;min-height:100vh;aspect-ratio:951/1280;padding:0;background:#000}
-    .kka-poster::after{display:none}
-    .kka-brand.kka-poster > .kka-poster-bg{display:none}
-    .kka-brand.kka-poster > .kka-poster-box{position:absolute;z-index:1;inset:0}
-    .kka-poster-box .kka-brand-img{opacity:1;object-fit:cover;object-position:15% 50%}
-    .kka:has(.kka-poster) > .kka-main{position:sticky;top:0;min-height:100vh;align-self:start}
-    .kka-poster .kka-poster-home{position:absolute;left:6%;top:3%;width:22%;height:6%}
-    .kka-poster .kka-poster-home img{opacity:0;width:100%}
-    .kka-poster-m{display:none}
+    /* Care is respect: the photo fills the top of the panel and fades to black; the
+       logo, headline and caption are real text, so it fits any screen without cropping words. */
+    .kka-brand.kka-poster{position:sticky;top:0;height:100vh;align-self:start;display:block;padding:0;background:#000}
+    .kka-poster .kka-brand-img{position:absolute;left:0;top:0;width:100%;height:74%;object-fit:cover;object-position:62% 30%;opacity:1}
+    .kka-poster::after{content:"";position:absolute;inset:0;pointer-events:none;
+      background:linear-gradient(180deg,rgba(0,0,0,.38) 0%,rgba(0,0,0,0) 16%,rgba(0,0,0,0) 38%,rgba(0,0,0,.72) 58%,#000 74%)}
+    .kka-brand.kka-poster > .kka-poster-logo{position:absolute;top:32px;left:40px;z-index:2;line-height:0}
+    .kka-poster-logo img{width:140px;height:auto;display:block}
+    .kka-brand.kka-poster > .kka-poster-copy{position:absolute;left:40px;right:40px;bottom:34px;z-index:2}
+    .kka-brand .kka-poster-h{margin:0;max-width:none;font-family:"Bodoni Moda","Bodoni 72",Didot,"Times New Roman",serif;font-weight:400;text-transform:uppercase;color:#fff;
+      font-size:clamp(40px,min(5.6vw,8.6vh),96px);line-height:1.1;letter-spacing:.06em}
+    .kka-poster-h span{display:block}
+    .kka-poster-cap{margin-top:clamp(16px,3vh,34px);padding-top:14px;border-top:1px solid rgba(255,255,255,.22);max-width:54ch}
+    .kka-poster-cap p{margin:4px 0 0;font-size:14px;line-height:1.5;color:#B9C1B7}
+    .kka-poster-cap p.n{margin:0;font-family:"Bodoni Moda","Bodoni 72",Didot,"Times New Roman",serif;font-size:19px;letter-spacing:.02em;color:#fff}
     @media (max-width:900px){
-      .kka-brand.kka-poster{position:relative;height:250px;min-height:0;aspect-ratio:auto;padding:0}
-      .kka:has(.kka-poster) > .kka-main{position:static;min-height:0}
-      .kka-brand.kka-poster > .kka-poster-bg{display:none}
-      .kka-brand.kka-poster > .kka-poster-box{width:100%;height:100%;aspect-ratio:auto;max-height:none;box-shadow:none}
-      .kka-poster-box .kka-brand-img{object-position:50% 0%}
-      .kka-poster::after{display:block;background:linear-gradient(180deg,rgba(11,13,11,0) 0%,rgba(11,13,11,0) 50%,rgba(11,13,11,.8) 100%)}
-      .kka-poster .kka-poster-home{left:8%;top:18px;width:16%;height:26px}
-      .kka-poster-m{display:block;position:absolute;left:20px;bottom:18px;margin:0;font-family:var(--display);font-size:34px;line-height:.9;text-transform:uppercase;color:#fff}
+      .kka-brand.kka-poster{position:relative;height:300px;min-height:0}
+      .kka-poster .kka-brand-img{height:100%;object-position:60% 28%}
+      .kka-poster::after{background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 45%,rgba(0,0,0,.85) 100%)}
+      .kka-brand.kka-poster > .kka-poster-logo{top:18px;left:20px}
+      .kka-poster-logo img{width:118px}
+      .kka-brand.kka-poster > .kka-poster-copy{left:20px;right:20px;bottom:18px}
+      .kka-brand .kka-poster-h{font-size:clamp(28px,8vw,40px);letter-spacing:.04em}
+      .kka-poster-h span{display:inline}
+      .kka-poster-cap{display:none}
     }
     @media (max-width:420px){.kka-grid2{grid-template-columns:1fr;gap:0}}
   `}</style>
@@ -162,14 +167,21 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
     <div className="kka">
       <AuthStyles />
       <aside className="kka-brand kka-poster">
-        {/* Campaign poster: Jerry Akaminko, "Care is respect". Logo, headline and caption are part of the image. */}
-        <img className="kka-poster-bg" src="/images/care-is-respect-v2.jpg" alt="" aria-hidden="true" />
-        <div className="kka-poster-box">
-          <img className="kka-brand-img" src="/images/care-is-respect-v2.jpg" width="951" height="1280"
-            alt="Care is respect. Jerry Akaminko, Ghanaian football icon and our first and biggest supporter, training in the gym." />
-          <Link to="/" className="kka-logo kka-poster-home" aria-label="KleanKickx home"><img src="/images/kleankickx-logo-white.png" alt="" /></Link>
+        {/* Photo cut from the Care is respect poster (logo removed); the words are set as text. */}
+        <img className="kka-brand-img" src="/images/care-is-respect-photo.jpg" width="951" height="628"
+          alt="Jerry Akaminko, Ghanaian football icon, training in the gym." />
+        <Link to="/" className="kka-poster-logo" aria-label="KleanKickx home">
+          <img src="/images/kleankickx-logo-white.png" alt="KleanKickx" width="140" height="47" />
+        </Link>
+        <div className="kka-poster-copy">
+          <motion.h2 className="kka-poster-h" {...rise(0.05)}>
+            <span>Care </span><span>is </span><span>respect</span>
+          </motion.h2>
+          <motion.div className="kka-poster-cap" {...rise(0.15)}>
+            <p className="n">Jerry Akaminko</p>
+            <p>A Ghanaian football icon. Our first and biggest supporter. A reminder that resilience, care and the will to keep going can give everything a longer story.</p>
+          </motion.div>
         </div>
-        <motion.p className="kka-poster-m" aria-hidden="true" {...rise(0.05)}>Care is respect</motion.p>
       </aside>
       <main className="kka-main">
         <motion.div className="kka-form" {...rise(0.1)}>
