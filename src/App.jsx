@@ -16,6 +16,7 @@ import Home from './pages/Home';
 import Studio from './pages/Studio';
 import Impact from './pages/Impact';
 import ChangePassword from './pages/ChangePassword';
+import AccountProfile from './pages/AccountProfile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Promotions from './pages/Promotions';
@@ -253,6 +254,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountProfile />
               </ProtectedRoute>
             }
           />

@@ -126,10 +126,10 @@ const Navbar = () => {
     { to: '/orders', label: 'Orders', hint: 'Track Kleans in progress and past orders' },
     { to: '/account/vouchers', label: 'Vouchers', hint: 'Vouchers you bought or were given' },
     { to: '/referral-dashboard', label: 'Referrals', hint: 'Invite friends, earn rewards' },
+    { to: '/account', label: 'Account details', hint: 'Name, phone and password' },
   ];
   const accountExtras = [
     { to: '/redeem', label: 'Redeem a voucher' },
-    { to: '/change-password', label: 'Change password' },
   ];
 
   // Desktop dropdown toggle (top nav bar)
