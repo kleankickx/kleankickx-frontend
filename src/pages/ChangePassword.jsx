@@ -2,7 +2,7 @@
 // Change the password, or set a first one for accounts made with Google sign-in.
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api';
 import Footer from '../components/Footer';
 import { ACCOUNT_CSS, PasswordField, firstError } from '../components/AccountShell';
@@ -20,7 +20,11 @@ const STRENGTH_LABEL = ['', 'Okay', 'Good', 'Strong', 'Very strong'];
 
 const ChangePassword = () => {
   const navigate = useNavigate();
-  const [hasPassword, setHasPassword] = useState(true);
+  const location = useLocation();
+  // Known straight away when we come from Account details; otherwise null until the
+  // profile loads, so Google accounts never see the "Change password" form first.
+  const passed = location.state?.hasPassword;
+  const [hasPassword, setHasPassword] = useState(typeof passed === 'boolean' ? passed : null);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,7 +35,7 @@ const ChangePassword = () => {
   useEffect(() => {
     api.get('/api/users/profile/')
       .then(({ data }) => setHasPassword(data.has_password !== false))
-      .catch(() => {});
+      .catch(() => setHasPassword((v) => (v === null ? true : v)));
   }, []);
 
   const handleSubmit = async (e) => {
@@ -78,6 +82,12 @@ const ChangePassword = () => {
       <style>{ACCOUNT_CSS}</style>
       <div className="kkac-wrap" style={{ maxWidth: 760 }}>
         <Link to="/account" className="kkac-back"><span aria-hidden="true">←</span> Account details</Link>
+        {hasPassword === null ? (
+          <div aria-busy="true" aria-label="Loading">
+            <div className="kkac-skel" style={{ height: 120, marginTop: 18 }} />
+            <div className="kkac-skel" style={{ height: 300, marginTop: 26 }} />
+          </div>
+        ) : (<>
         <header className="kkac-hero">
           <div>
             <p className="kkac-eyebrow">Sign-in</p>
@@ -127,6 +137,7 @@ const ChangePassword = () => {
             </p>
           )}
         </form>
+        </>)}
       </div>
       <Footer />
     </div>

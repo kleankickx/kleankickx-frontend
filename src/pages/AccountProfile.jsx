@@ -187,7 +187,7 @@ export default function AccountProfile() {
                   <div><dt>Password</dt><dd>{profile.has_password === false ? 'Not set (Google sign-in)' : '••••••••'}</dd></div>
                   <div><dt>Member since</dt><dd>{formatDate(profile.date_joined)}</dd></div>
                 </dl>
-                <Link to="/change-password" className="kkac-btn" style={{ width: '100%', marginTop: 18 }}>
+                <Link to="/change-password" state={{ hasPassword: profile.has_password !== false }} className="kkac-btn" style={{ width: '100%', marginTop: 18 }}>
                   {profile.has_password === false ? 'Set a password' : 'Change password'} <span className="ar" aria-hidden="true">→</span>
                 </Link>
               </section>
