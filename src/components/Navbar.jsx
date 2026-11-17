@@ -9,13 +9,6 @@ import {
   faTimes,
   faChevronDown,
   faChevronRight,
-  faUserFriends,
-  faKey,
-  faRightFromBracket,
-  faGift,
-  faTicket,
-  faClipboardList,
-  faFire,
 } from '@fortawesome/free-solid-svg-icons';
 import { useCartDrawer } from './CartDrawer';
 import { CartContext } from '../context/CartContext';
@@ -117,13 +110,6 @@ const Navbar = () => {
     }
   };
 
-  const handleReferralRoute = (e) => {
-    e.stopPropagation();
-    closeMobileMenu();
-    navigate('/referral-dashboard');
-    setIsDropdownOpen(false);
-  };
-
   // Main navigation: four links and one call to action. Hash links point at
   // sections on the homepage; ScrollToTop scrolls to them from any page.
   const navGroups = [
@@ -134,12 +120,16 @@ const Navbar = () => {
     { label: 'Studio', to: '/studio', simple: true },
   ];
 
-  // Account links, shown in the user menu (desktop) and the drawer (mobile).
+  // Account menu: account things only (Baymard: primary paths first, minor ones
+  // set apart). Shared by the desktop menu and the mobile drawer.
   const accountLinks = [
-    { to: '/orders', label: 'My orders', icon: faClipboardList, color: 'text-green-600' },
-    { to: '/account/vouchers', label: 'My vouchers', icon: faGift, color: 'text-purple-500' },
-    { to: '/redeem', label: 'Redeem a voucher', icon: faTicket, color: 'text-green-600' },
-    { to: '/promotions', label: 'Promotions', icon: faFire, color: 'text-orange-500' },
+    { to: '/orders', label: 'Orders', hint: 'Track Kleans in progress and past orders' },
+    { to: '/account/vouchers', label: 'Vouchers', hint: 'Vouchers you bought or were given' },
+    { to: '/referral-dashboard', label: 'Referrals', hint: 'Invite friends, earn rewards' },
+  ];
+  const accountExtras = [
+    { to: '/redeem', label: 'Redeem a voucher' },
+    { to: '/change-password', label: 'Change password' },
   ];
 
   // Desktop dropdown toggle (top nav bar)
@@ -248,18 +238,17 @@ const Navbar = () => {
               Book a Klean
             </Link>
 
-            {/* Orders: one click from anywhere once signed in */}
+            {/* Orders: one click from anywhere once signed in (like Amazon's "Returns & Orders") */}
             {isAuthenticated && (
               <NavLink
                 to="/orders"
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  `px-3 py-2.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
                     isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100 hover:text-green-700'
                   }`
                 }
               >
-                <FontAwesomeIcon icon={faClipboardList} className="w-4 h-4" />
-                <span>Orders</span>
+                Orders
               </NavLink>
             )}
 
@@ -284,13 +273,14 @@ const Navbar = () => {
               )}
             </button>
 
-            {/* Account menu: opens on hover or click */}
+            {/* Account menu: account things only. Opens on hover or click. */}
             {isAuthenticated ? (
               <div
                 className="relative"
                 ref={dropdownRef}
                 onMouseEnter={() => { clearTimeout(hoverTimer.current); setIsDropdownOpen(true); }}
                 onMouseLeave={() => { hoverTimer.current = setTimeout(() => setIsDropdownOpen(false), 180); }}
+                onKeyDown={(e) => { if (e.key === 'Escape') setIsDropdownOpen(false); }}
               >
                 <button
                   type="button"
@@ -303,54 +293,64 @@ const Navbar = () => {
                   <span className="w-8 h-8 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-bold uppercase" aria-hidden="true">
                     {(user?.first_name?.trim() || user?.email || '?').charAt(0)}
                   </span>
-                  <span className="hidden xl:flex flex-col items-start leading-tight text-left">
-                    <span className="text-[11px] font-semibold uppercase tracking-[.12em] text-gray-500">Account</span>
-                    <span className="truncate max-w-[110px] font-medium text-sm">{userDisplayName}</span>
-                  </span>
+                  <span className="hidden xl:block truncate max-w-[120px] font-medium">Hi, {userDisplayName}</span>
                   <FontAwesomeIcon icon={faChevronDown} className={`w-3 h-3 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isDropdownOpen && (
-                  <div role="menu" className="absolute right-0 top-full pt-2 z-50">
-                    <div className="w-72 bg-white border-2 border-gray-900 shadow-[0_24px_60px_-30px_rgba(10,11,10,.5)]">
-                      <div className="px-4 pt-4 pb-3 border-b border-gray-200">
-                        <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-green-700">Signed in as</p>
-                        <p className="mt-1 font-semibold truncate">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || userDisplayName}</p>
-                        <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                  <div className="kkam" role="menu" aria-label="Your account">
+                    <style>{`
+                      .kkam{position:absolute;right:0;top:100%;padding-top:10px;z-index:50;font-family:"League Spartan",system-ui,sans-serif;
+                        animation:kkamIn .28s cubic-bezier(.77,0,.18,1)}
+                      @keyframes kkamIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+                      .kkam-panel{width:300px;background:#F7F9F6;color:#0A0B0A;border:2px solid #0A0B0A;box-shadow:0 30px 60px -34px rgba(10,11,10,.55)}
+                      .kkam-head{padding:18px 20px 14px;border-bottom:2px solid #0A0B0A}
+                      .kkam-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#1A7A1A}
+                      .kkam-name{margin:6px 0 0;font-family:"Anton","Arial Narrow",Impact,sans-serif;font-size:28px;line-height:.95;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                      .kkam-mail{margin:4px 0 0;font-size:13px;color:#4D564C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                      .kkam-main{list-style:none;margin:0;padding:0 20px}
+                      .kkam-main button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 0;border:0;border-bottom:1px solid #D9DFD7;
+                        background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+                      .kkam-main li:last-child button{border-bottom:0}
+                      .kkam-main b{display:block;font-size:16px;font-weight:700}
+                      .kkam-main small{display:block;margin-top:2px;font-size:13px;color:#4D564C}
+                      .kkam-ar{font-size:17px;transition:transform .3s cubic-bezier(.2,1.25,.3,1),color .2s}
+                      .kkam-main button:hover b,.kkam-main button:focus-visible b{color:#1A7A1A}
+                      .kkam-main button:hover .kkam-ar,.kkam-main button:focus-visible .kkam-ar{transform:translateX(5px);color:#1A7A1A}
+                      .kkam-more{display:flex;flex-wrap:wrap;gap:6px 18px;padding:12px 20px 14px;border-top:1px solid #D9DFD7;background:#fff}
+                      .kkam-more button{border:0;background:none;padding:0;font:inherit;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+                        color:#4D564C;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#D9DFD7}
+                      .kkam-more button:hover{color:#0A0B0A;text-decoration-color:currentColor}
+                      .kkam-out{display:block;width:100%;padding:13px 20px;border:0;border-top:2px solid #0A0B0A;background:none;font:inherit;font-size:14px;font-weight:700;
+                        color:#0A0B0A;text-align:left;cursor:pointer;transition:background .2s,color .2s}
+                      .kkam-out:hover{background:#0A0B0A;color:#fff}
+                      .kkam button:focus-visible{outline:2px solid #1A7A1A;outline-offset:2px}
+                      @media (prefers-reduced-motion:reduce){.kkam{animation:none}}
+                    `}</style>
+                    <div className="kkam-panel">
+                      <div className="kkam-head">
+                        <p className="kkam-eyebrow">Your account</p>
+                        <p className="kkam-name">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || userDisplayName}</p>
+                        {user?.email && <p className="kkam-mail">{user.email}</p>}
                       </div>
-                      <div className="p-2">
+                      <ul className="kkam-main">
                         {accountLinks.map((item) => (
-                          <button
-                            key={item.to}
-                            role="menuitem"
-                            onClick={(e) => { e.stopPropagation(); navigate(item.to); setIsDropdownOpen(false); }}
-                            className="group flex items-center justify-between w-full text-left px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
-                          >
-                            <span className="flex items-center gap-3">
-                              <FontAwesomeIcon icon={item.icon} className={`w-4 h-4 ${item.color}`} />
-                              <span>{item.label}</span>
-                            </span>
-                            <span className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" aria-hidden="true">→</span>
+                          <li key={item.to}>
+                            <button type="button" role="menuitem" onClick={() => { navigate(item.to); setIsDropdownOpen(false); }}>
+                              <span><b>{item.label}</b><small>{item.hint}</small></span>
+                              <span className="kkam-ar" aria-hidden="true">→</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="kkam-more">
+                        {accountExtras.map((item) => (
+                          <button key={item.to} type="button" role="menuitem" onClick={() => { navigate(item.to); setIsDropdownOpen(false); }}>
+                            {item.label}
                           </button>
                         ))}
-                        <div className="border-t border-gray-200 my-2" />
-                        <button role="menuitem" onClick={handleReferralRoute}
-                          className="flex items-center gap-3 w-full text-left px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
-                          <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-500" />
-                          <span>Referrals</span>
-                        </button>
-                        <button role="menuitem"
-                          onClick={(e) => { e.stopPropagation(); navigate('/change-password'); setIsDropdownOpen(false); }}
-                          className="flex items-center gap-3 w-full text-left px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
-                          <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-500" />
-                          <span>Change password</span>
-                        </button>
                       </div>
-                      <button role="menuitem" onClick={handleLogout}
-                        className="flex items-center gap-3 w-full text-left px-5 py-3 border-t border-gray-200 cursor-pointer text-red-600 hover:bg-red-50 transition-colors">
-                        <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
-                        <span>Log out</span>
-                      </button>
+                      <button type="button" role="menuitem" className="kkam-out" onClick={handleLogout}>Log out</button>
                     </div>
                   </div>
                 )}
@@ -374,10 +374,9 @@ const Navbar = () => {
               <NavLink
                 to="/orders"
                 onClick={closeMobileMenu}
-                className={({ isActive }) => `flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100'}`}
+                className={({ isActive }) => `px-2.5 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100'}`}
               >
-                <FontAwesomeIcon icon={faClipboardList} className="w-4 h-4" />
-                <span>Orders</span>
+                Orders
               </NavLink>
             )}
             {/* Cart for mobile */}
@@ -535,7 +534,7 @@ const Navbar = () => {
                   <p className="mail">{user?.email}</p>
                 </div>
                 <ul className="kkm-acc">
-                  {[...accountLinks, { to: '/referral-dashboard', label: 'Referrals' }, { to: '/change-password', label: 'Change password' }].map((item) => (
+                  {[...accountLinks, ...accountExtras].map((item) => (
                     <li key={item.to}>
                       <button
                         type="button"

@@ -24,6 +24,7 @@ const COLUMNS = [
       { label: 'Prices', to: '/rate-and-services' },
       { label: 'Trade-In', to: '/#trade-in' },
       { label: 'Gift vouchers', to: '/vouchers' },
+      { label: 'Promotions', to: '/promotions' },
       { label: 'Impact', to: '/impact' },
       { label: 'Studio', to: '/studio' },
     ],
