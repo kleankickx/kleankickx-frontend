@@ -1,183 +1,134 @@
-import React, { useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+// src/pages/ChangePassword.jsx
+// Change the password, or set a first one for accounts made with Google sign-in.
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import api from '../api';
+import Footer from '../components/Footer';
+import { ACCOUNT_CSS, PasswordField, firstError } from '../components/AccountShell';
+
+// 0-4: length, mixed case, a number, a symbol
+const strength = (pw) => {
+  if (!pw) return 0;
+  let s = pw.length >= 8 ? 1 : 0;
+  if (pw.length >= 12) s += 1;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s += 1;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s += 1;
+  return Math.min(4, s);
+};
+const STRENGTH_LABEL = ['', 'Okay', 'Good', 'Strong', 'Very strong'];
 
 const ChangePassword = () => {
-  const { accessToken } = useContext(AuthContext);
   const navigate = useNavigate();
-
+  const [hasPassword, setHasPassword] = useState(true);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [formErrors, setFormErrors] = useState({});
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
+  // Accounts made with Google sign-in have no password yet: they set one instead.
+  useEffect(() => {
+    api.get('/api/users/profile/')
+      .then(({ data }) => setHasPassword(data.has_password !== false))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setFormErrors({});
+    const next = {};
+    if (hasPassword && !oldPassword) next.old_password = 'Enter your current password.';
+    if (newPassword.length < 8) next.new_password = 'Use at least 8 characters.';
+    else if (hasPassword && newPassword === oldPassword) next.new_password = 'Choose a password different from your current one.';
+    if (confirmPassword !== newPassword) next.confirm_password = "The passwords don't match.";
+    setErrors(next);
+    if (Object.keys(next).length) return;
 
+    setLoading(true);
     try {
-      await api.post(
-        `${backendUrl}/api/users/password/change/`,
-        {
-          old_password: oldPassword,
-          new_password: newPassword,
-          confirm_password: confirmPassword,
-        },
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-      toast.success('Password changed successfully.');
-      navigate('/services');
+      await api.post('/api/users/password/change/', {
+        old_password: hasPassword ? oldPassword : '',
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+      toast.success(hasPassword ? 'Password changed.' : 'Password set. You can now log in with your email too.');
+      navigate('/account');
     } catch (err) {
-      const data = err.response?.data;
-      if (data) {
-        setFormErrors(data);
-        toast.error('Please fix the errors below.');
+      const d = err.response?.data;
+      if (d) {
+        setErrors({
+          old_password: firstError(d, 'old_password'),
+          new_password: firstError(d, 'new_password'),
+          confirm_password: firstError(d, 'confirm_password'),
+          form: firstError(d, 'non_field_errors') || firstError(d, 'error') || firstError(d, 'detail'),
+        });
       } else {
-        toast.error('Something went wrong.');
+        toast.error('Something went wrong. Try again.');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const score = strength(newPassword);
+  const clear = (key, setter) => (e) => { setter(e.target.value); setErrors((er) => ({ ...er, [key]: null, form: null })); };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-green-100 to-blue-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-center  mb-6">
-          Change Password
-        </h2>
-
-        {formErrors.non_field_errors && (
-          <div className="text-red-600 text-sm mb-4 text-center">
-            {formErrors.non_field_errors[0]}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* OLD PASSWORD */}
+    <div className="kkac">
+      <style>{ACCOUNT_CSS}</style>
+      <div className="kkac-wrap" style={{ maxWidth: 760 }}>
+        <Link to="/account" className="kkac-back"><span aria-hidden="true">←</span> Account details</Link>
+        <header className="kkac-hero">
           <div>
-            <label htmlFor="oldPassword" className="block text-sm font-medium text-gray-700">
-              Old Password
-            </label>
-            <div className="relative">
-              <input
-                type={showOld ? 'text' : 'password'}
-                id="oldPassword"
-                value={oldPassword}
-                onChange={(e) => {
-                  setOldPassword(e.target.value);
-                  setFormErrors((prev) => ({ ...prev, old_password: null }));
-                }}
-                className="mt-1 p-2 w-full border border-gray-300 rounded-md outline-none"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowOld((prev) => !prev)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                tabIndex={-1}
-              >
-                {showOld ? <FaEyeSlash className='cursor-pointer' /> : <FaEye className='cursor-pointer' />}
-              </button>
+            <p className="kkac-eyebrow">Sign-in</p>
+            <h1>{hasPassword ? 'Change password' : 'Set a password'}</h1>
+            <p className="sub">
+              {hasPassword
+                ? 'Enter your current password, then choose a new one.'
+                : 'You signed up with Google. Set a password to also log in with your email.'}
+            </p>
+          </div>
+        </header>
+
+        <form className="kkac-card" style={{ marginTop: 26 }} onSubmit={handleSubmit} noValidate>
+          {errors.form && <p className="kkac-help err" role="alert" style={{ marginBottom: 14 }}>{errors.form}</p>}
+
+          {hasPassword && (
+            <PasswordField id="pw-old" label="Current password" autoComplete="current-password" autoFocus
+              value={oldPassword} onChange={clear('old_password', setOldPassword)} error={errors.old_password} />
+          )}
+
+          <PasswordField id="pw-new" label="New password" hint="At least 8 characters" autoComplete="new-password" autoFocus={!hasPassword}
+            value={newPassword} onChange={clear('new_password', setNewPassword)} error={errors.new_password} />
+          {newPassword && (
+            <div style={{ margin: '-6px 0 16px' }} aria-live="polite">
+              <div className={`kkac-meter ${score <= 1 ? 'weak' : ''}`} aria-hidden="true">
+                {[1, 2, 3, 4].map((i) => <span key={i} className={i <= score ? 'on' : ''} />)}
+              </div>
+              <p className="kkac-help" style={{ marginTop: 6 }}>
+                {newPassword.length < 8 ? `${8 - newPassword.length} more character${8 - newPassword.length === 1 ? '' : 's'}` : `Strength: ${STRENGTH_LABEL[score]}`}
+              </p>
             </div>
-            {formErrors.old_password && (
-              <p className="text-red-500 text-sm mt-1">{formErrors.old_password[0]}</p>
-            )}
+          )}
+
+          <PasswordField id="pw-confirm" label="Confirm new password" autoComplete="new-password"
+            value={confirmPassword} onChange={clear('confirm_password', setConfirmPassword)} error={errors.confirm_password} />
+
+          <div className="kkac-actions">
+            <button type="submit" className="kkac-btn go" disabled={loading}>
+              {loading ? <><span className="kkac-spin" aria-hidden="true" /> Saving…</> : <>{hasPassword ? 'Change password' : 'Set password'} <span className="ar" aria-hidden="true">→</span></>}
+            </button>
+            <Link to="/account" className="kkac-btn">Cancel</Link>
           </div>
 
-          {/* NEW PASSWORD */}
-          <div>
-            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <div className="relative">
-              <input
-                type={showNew ? 'text' : 'password'}
-                id="newPassword"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  setFormErrors((prev) => ({ ...prev, new_password: null }));
-                }}
-                className="mt-1 p-2 w-full border border-gray-300 rounded-md outline-none"
-                required
-                minLength={8}
-              />
-              <button
-                type="button"
-                onClick={() => setShowNew((prev) => !prev)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                tabIndex={-1}
-              >
-                {showNew ? <FaEyeSlash className='cursor-pointer' /> : <FaEye className='cursor-pointer' />}
-              </button>
-            </div>
-            {formErrors.new_password && (
-              <p className="text-red-500 text-sm mt-1">{formErrors.new_password[0]}</p>
-            )}
-          </div>
-
-          {/* CONFIRM PASSWORD */}
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirm ? 'text' : 'password'}
-                id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  setFormErrors((prev) => ({ ...prev, confirm_password: null }));
-                }}
-                className="mt-1 p-2 w-full border border-gray-300 rounded-md outline-none"
-                required
-                minLength={8}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm((prev) => !prev)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                tabIndex={-1}
-              >
-                {showConfirm ? <FaEyeSlash className='cursor-pointer ' /> : <FaEye className='cursor-pointer ' />}
-              </button>
-            </div>
-            {formErrors.confirm_password && (
-              <p className="text-red-500 text-sm mt-1">{formErrors.confirm_password[0]}</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary hover:bg-primary/80 text-white font-semibold py-2 rounded-md transition disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? 'Changing...' : 'Change Password'}
-          </button>
+          {hasPassword && (
+            <p className="kkac-help" style={{ marginTop: 18 }}>
+              Forgot your current password? Log out and use <b>Forgot password</b> on the login page.
+            </p>
+          )}
         </form>
-
-        <p className="mt-6 text-center text-sm text-gray-600">
-          <Link to="/services" className="text-primary cursor-pointer hover:underline">
-            Back to Services
-          </Link>
-        </p>
       </div>
+      <Footer />
     </div>
   );
 };
