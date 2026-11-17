@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FaCheck, FaShoppingCart, FaUser, FaTruck, FaCreditCard } from 'react-icons/fa';
+import { FaUser, FaTruck, FaCreditCard } from 'react-icons/fa';
 
 /*
  * Checkout progress. "Cart" is the page before checkout, so it is always done
@@ -14,106 +13,63 @@ export const CHECKOUT_STEPS = [
   { key: 'pay', label: 'Review & pay', hint: 'Check everything, then pay securely', icon: FaCreditCard },
 ];
 
-const spring = { type: 'spring', stiffness: 380, damping: 28 };
-
-function Circle({ state, Icon }) {
-  return (
-    <motion.span
-      initial={false}
-      animate={{ scale: state === 'current' ? 1.08 : 1 }}
-      transition={spring}
-      className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors duration-300 ${
-        state === 'done'
-          ? 'bg-primary border-primary text-white'
-          : state === 'current'
-            ? 'bg-white border-primary text-primary shadow-[0_0_0_6px_rgba(0,127,3,0.12)]'
-            : 'bg-white border-gray-200 text-gray-400'
-      }`}
-    >
-      {state === 'done' ? (
-        <motion.span
-          key="check"
-          initial={{ scale: 0, rotate: -45 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={spring}
-          className="flex"
-        >
-          <FaCheck className="w-4 h-4" aria-hidden="true" />
-        </motion.span>
-      ) : (
-        <Icon className="w-4 h-4" aria-hidden="true" />
-      )}
-      {state === 'current' && (
-        <motion.span
-          aria-hidden="true"
-          className="absolute inset-0 rounded-full border-2 border-primary"
-          initial={{ opacity: 0.6, scale: 1 }}
-          animate={{ opacity: 0, scale: 1.6 }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-        />
-      )}
-    </motion.span>
-  );
-}
+const css = `
+  .kkcs{margin-top:22px}
+  .kkcs ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .kkcs li{min-width:0}
+  .kkcs a,.kkcs button,.kkcs .st{display:block;width:100%;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:left;text-decoration:none}
+  .kkcs a,.kkcs button{cursor:pointer}
+  .kkcs .bar{display:block;height:6px;background:var(--line,#D9DFD7);position:relative;overflow:hidden}
+  .kkcs li.done .bar{background:var(--ink,#0A0B0A)}
+  .kkcs li.now .bar{background:var(--green,#1A7A1A)}
+  .kkcs .n{display:block;margin-top:9px;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--muted,#4D564C)}
+  .kkcs .l{display:block;margin-top:2px;font-size:14px;font-weight:700;color:var(--muted,#4D564C);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kkcs li.done .l{color:var(--ink,#0A0B0A)}
+  .kkcs li.now .l,.kkcs li.now .n{color:var(--green,#1A7A1A)}
+  .kkcs a:hover .l,.kkcs button:hover .l{text-decoration:underline;text-underline-offset:3px}
+  .kkcs a:hover .bar,.kkcs button:hover .bar{background:var(--green,#1A7A1A)}
+  .kkcs .mob{display:none}
+  @media (max-width:640px){
+    .kkcs .l{display:none}
+    .kkcs .mob{display:flex;justify-content:space-between;margin:10px 0 0;font-size:13px;color:var(--muted,#4D564C)}
+    .kkcs .mob b{color:var(--ink,#0A0B0A)}
+  }
+`;
 
 export default function CheckoutStepper({ step, onStepClick }) {
   // Index 0 is the cart; checkout steps follow.
-  const all = [{ key: 'cart', label: 'Cart', icon: FaShoppingCart }, ...CHECKOUT_STEPS];
+  const all = [{ key: 'cart', label: 'Cart' }, ...CHECKOUT_STEPS];
   const active = step + 1;
-  const progress = (active / (all.length - 1)) * 100;
 
   return (
-    <nav aria-label="Checkout progress" className="bg-white rounded-2xl border border-gray-200 shadow-sm px-2 py-4 sm:px-6 sm:py-5">
-      <ol className="relative flex">
-        {/* Track and animated fill, from the first circle centre (12.5%) to the last (87.5%) */}
-        <span aria-hidden="true" className="absolute top-5 left-[12.5%] right-[12.5%] h-0.5 -translate-y-1/2 bg-gray-200 rounded-full" />
-        <span aria-hidden="true" className="absolute top-5 left-[12.5%] right-[12.5%] h-0.5 -translate-y-1/2">
-          <motion.span
-            className="block h-full bg-primary rounded-full origin-left"
-            initial={false}
-            animate={{ scaleX: progress / 100 }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
-          />
-        </span>
-
+    <nav aria-label="Checkout progress" className="kkcs">
+      <style>{css}</style>
+      <ol>
         {all.map((item, index) => {
-          const state = index < active ? 'done' : index === active ? 'current' : 'upcoming';
-          const label = (
-            <span
-              className={`mt-2 text-xs sm:text-sm font-medium text-center transition-colors ${
-                state === 'upcoming' ? 'text-gray-400' : state === 'current' ? 'text-primary' : 'text-gray-900'
-              } ${state === 'current' ? '' : 'hidden sm:block'}`}
-            >
-              {item.label}
-            </span>
-          );
+          const state = index < active ? 'done' : index === active ? 'now' : 'next';
           const inner = (
             <>
-              <Circle state={state} Icon={item.icon} />
-              {label}
+              <span className="bar" aria-hidden="true" />
+              <span className="n">{String(index).padStart(2, '0')}</span>
+              <span className="l">{item.label}</span>
             </>
           );
-          const base = "flex flex-col items-center min-w-0 px-1";
-
           return (
-            <li key={item.key} className="relative flex-1 flex justify-center" aria-current={state === 'current' ? 'step' : undefined}>
+            <li key={item.key} className={state} aria-current={state === 'now' ? 'step' : undefined}>
               {index === 0 ? (
-                <Link to="/cart" className={`${base} group`} aria-label="Back to cart">
-                  {inner}
-                </Link>
+                <Link to="/cart" aria-label="Back to cart">{inner}</Link>
               ) : state === 'done' ? (
-                <button type="button" onClick={() => onStepClick(index - 1)} className={`${base} cursor-pointer group`}>
-                  {inner}
-                </button>
+                <button type="button" onClick={() => onStepClick(index - 1)} aria-label={`Back to ${item.label}`}>{inner}</button>
               ) : (
-                <div className={base}>{inner}</div>
+                <div className="st">{inner}</div>
               )}
             </li>
           );
         })}
       </ol>
-      <p className="sm:hidden mt-3 text-center text-xs text-gray-500">
-        Step {step + 1} of {CHECKOUT_STEPS.length}
+      <p className="mob" aria-hidden="true">
+        <b>{CHECKOUT_STEPS[step].label}</b>
+        <span>Step {step + 1} of {CHECKOUT_STEPS.length}</span>
       </p>
     </nav>
   );
