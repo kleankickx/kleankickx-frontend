@@ -1,6 +1,6 @@
 // src/pages/AccountVouchers.jsx
 // The customer's vouchers: ready to use, gifts they sent, and history.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -38,6 +38,10 @@ const AccountVouchers = () => {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
+  const [legacy, setLegacy] = useState(false);
+  const [historyPage, setHistoryPage] = useState({ results: [], next: null, previous: null, n: 1 });
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const historyRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -51,11 +55,23 @@ const AccountVouchers = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
+  // Current vouchers in one go; history one cursor page at a time.
   const fetchUserVouchers = async () => {
     setFailed(false);
     try {
-      const { data } = await api.get('/api/vouchers/user-vouchers/');
-      setVouchers(Array.isArray(data) ? data : []);
+      const [cur, hist] = await Promise.all([
+        api.get('/api/vouchers/user-vouchers/', { params: { scope: 'current' } }),
+        api.get('/api/vouchers/user-vouchers/', { params: { scope: 'history' } }),
+      ]);
+      if (Array.isArray(hist.data)) {
+        // Older API without scopes: both calls return the full list.
+        setLegacy(true);
+        setVouchers(Array.isArray(cur.data) ? cur.data : []);
+      } else {
+        setLegacy(false);
+        setVouchers(Array.isArray(cur.data) ? cur.data : []);
+        setHistoryPage({ results: hist.data.results || [], next: hist.data.next, previous: hist.data.previous, n: 1 });
+      }
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Please sign in to view your vouchers');
@@ -78,9 +94,28 @@ const AccountVouchers = () => {
     }
   };
 
+  // Follow a cursor link from the API. Only the cursor value is used, so the request
+  // goes through our own API base URL (the link's host/scheme may be the proxy's).
+  const goHistory = async (link, dir) => {
+    const cursor = link ? new URL(link, window.location.origin).searchParams.get('cursor') : null;
+    if (!cursor || historyBusy) return;
+    setHistoryBusy(true);
+    try {
+      const { data } = await api.get('/api/vouchers/user-vouchers/', { params: { scope: 'history', cursor } });
+      setHistoryPage((p) => ({ results: data.results || [], next: data.next, previous: data.previous, n: p.n + dir }));
+      const top = historyRef.current?.getBoundingClientRect().top;
+      if (top !== undefined && top < 0) historyRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      toast.error("Couldn't load more history. Try again.");
+    } finally {
+      setHistoryBusy(false);
+    }
+  };
+
   const ready = vouchers.filter((v) => !v.is_gift && v.bought_by_me !== false && isLive(v));
   const gifts = vouchers.filter((v) => v.is_gift);
-  const history = vouchers.filter((v) => !v.is_gift && !isLive(v));
+  const history = legacy ? vouchers.filter((v) => !v.is_gift && !isLive(v)) : historyPage.results;
+  const historyPaged = !legacy && (historyPage.next || historyPage.previous);
 
   const Code = ({ v, dark = false }) => (
     <button type="button" className={`kkav-code ${dark ? 'dark' : ''}`} onClick={() => copyToClipboard(v.code)}
@@ -169,7 +204,14 @@ const AccountVouchers = () => {
         .kkav-quote{margin:0;padding-left:12px;border-left:3px solid var(--green);font-size:15px;line-height:1.5;color:var(--ink);font-style:italic}
         .kkav-gift-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 
-        .kkav-hist{list-style:none;margin:0;padding:0}
+        .kkav-hist{list-style:none;margin:0;padding:0;transition:opacity .2s}
+        .kkav-hist.busy{opacity:.45;pointer-events:none}
+        .kkav-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+        .kkav-pager > span{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+        .kkav-btn:disabled{opacity:.35;cursor:default}
+        .kkav-btn:disabled:hover{background:transparent;color:var(--ink)}
+        .kkav-btn:hover:not(:disabled) .ar.back{transform:translateX(-5px)}
+        .kkav-btn:hover .ar.back{transform:translateX(-5px)}
         .kkav-hist li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 150px minmax(0,1fr);align-items:center;gap:16px;padding:14px 4px;border-bottom:1px solid var(--line)}
         .kkav-hist .name{font-weight:700}
         .kkav-hist .name small{display:block;margin-top:2px;font-weight:500;font-size:13px;color:var(--muted)}
@@ -231,7 +273,7 @@ const AccountVouchers = () => {
             <p>Something went wrong on our side. Try again in a moment.</p>
             <div><button type="button" className="kkav-btn" onClick={() => { setLoading(true); fetchUserVouchers(); }}>Try again</button></div>
           </div>
-        ) : vouchers.length === 0 ? (
+        ) : vouchers.length === 0 && history.length === 0 ? (
           <div className="kkav-empty">
             <h2>No vouchers yet</h2>
             <p>Give someone a Klean, or treat yourself to a bundle for later. Got a code from a friend? Redeem it and it shows up here.</p>
@@ -315,9 +357,12 @@ const AccountVouchers = () => {
             )}
 
             {history.length > 0 && (
-              <section className="kkav-sec" aria-labelledby="kkav-hist">
-                <div className="kkav-sec-head"><h2 id="kkav-hist">History</h2><span>{history.length}</span></div>
-                <ul className="kkav-hist">
+              <section className="kkav-sec" aria-labelledby="kkav-hist" ref={historyRef}>
+                <div className="kkav-sec-head">
+                  <h2 id="kkav-hist">History</h2>
+                  {!historyPaged && <span>{history.length}</span>}
+                </div>
+                <ul className={`kkav-hist ${historyBusy ? 'busy' : ''}`} aria-busy={historyBusy}>
                   {history.map((v) => {
                     const st = statusOf(v);
                     return (
@@ -337,6 +382,19 @@ const AccountVouchers = () => {
                     );
                   })}
                 </ul>
+                {historyPaged && (
+                  <nav className="kkav-pager" aria-label="History pages">
+                    <button type="button" className="kkav-btn sm" onClick={() => goHistory(historyPage.previous, -1)}
+                      disabled={!historyPage.previous || historyBusy}>
+                      <span className="ar back" aria-hidden="true">←</span> Newer
+                    </button>
+                    <span aria-live="polite">{historyBusy ? 'Loading…' : `Page ${historyPage.n}`}</span>
+                    <button type="button" className="kkav-btn sm" onClick={() => goHistory(historyPage.next, 1)}
+                      disabled={!historyPage.next || historyBusy}>
+                      Older <span className="ar" aria-hidden="true">→</span>
+                    </button>
+                  </nav>
+                )}
               </section>
             )}
           </>
