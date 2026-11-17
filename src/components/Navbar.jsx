@@ -12,7 +12,6 @@ import {
   faUserFriends,
   faKey,
   faRightFromBracket,
-  faShoePrints,
   faGift,
   faTicket,
   faClipboardList,
@@ -48,6 +47,7 @@ const Navbar = () => {
   const [mobileAccordion, setMobileAccordion] = useState(null);
 
   const dropdownRef = useRef(null);
+  const hoverTimer = useRef(null);
   const mobileMenuRef = useRef(null);
   const navigate = useNavigate();
 
@@ -129,16 +129,16 @@ const Navbar = () => {
   const navGroups = [
     { label: 'Services', to: '/#services', simple: true, hash: true },
     { label: 'Trade-In', to: '/#trade-in', simple: true, hash: true },
+    { label: 'Gift vouchers', to: '/vouchers', simple: true },
     { label: 'Impact', to: '/impact', simple: true },
     { label: 'Studio', to: '/studio', simple: true },
   ];
 
   // Account links, shown in the user menu (desktop) and the drawer (mobile).
   const accountLinks = [
-    { to: '/orders', label: 'My Orders', icon: faClipboardList, color: 'text-green-600' },
-    { to: '/account/vouchers', label: 'My Vouchers', icon: faGift, color: 'text-purple-500' },
-    { to: '/redeem', label: 'Redeem Voucher', icon: faTicket, color: 'text-green-600' },
-    { to: '/vouchers', label: 'Buy Gift Vouchers', icon: faShoePrints, color: 'text-gray-600' },
+    { to: '/orders', label: 'My orders', icon: faClipboardList, color: 'text-green-600' },
+    { to: '/account/vouchers', label: 'My vouchers', icon: faGift, color: 'text-purple-500' },
+    { to: '/redeem', label: 'Redeem a voucher', icon: faTicket, color: 'text-green-600' },
     { to: '/promotions', label: 'Promotions', icon: faFire, color: 'text-orange-500' },
   ];
 
@@ -163,7 +163,7 @@ const Navbar = () => {
           </NavLink>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center justify-center flex-1 gap-1">
+          <div className="hidden lg:flex items-center justify-center flex-1 gap-0 xl:gap-1">
             {navGroups.map((group) => {
               if (group.authOnly && !isAuthenticated) return null;
 
@@ -173,7 +173,7 @@ const Navbar = () => {
                     <NavLink
                       to={group.to}
                       className={({ isActive }) =>
-                        `flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                        `flex items-center gap-2 px-3 xl:px-4 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap ${
                           isActive && !group.hash
                             ? 'bg-green-50 text-green-700'
                             : 'hover:bg-gray-100 hover:text-green-700'
@@ -240,30 +240,39 @@ const Navbar = () => {
           </div>
 
           {/* Right Side Actions */}
-          <div className="hidden lg:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-2 xl:gap-3">
             <Link
               to="/#services"
-              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
             >
               Book a Klean
             </Link>
-            {/* Cart - Smooth display without disappearing */}
+
+            {/* Orders: one click from anywhere once signed in */}
+            {isAuthenticated && (
+              <NavLink
+                to="/orders"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                    isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100 hover:text-green-700'
+                  }`
+                }
+              >
+                <FontAwesomeIcon icon={faClipboardList} className="w-4 h-4" />
+                <span>Orders</span>
+              </NavLink>
+            )}
+
+            {/* Cart */}
             <button
               onClick={openCart}
               className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Shopping cart"
             >
               <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-
-              {/* Show loading spinner only on initial load */}
               {cartLoading ? (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                  <svg
-                    className="animate-spin h-3 w-3 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -275,90 +284,83 @@ const Navbar = () => {
               )}
             </button>
 
-            {/* User Actions */}
+            {/* Account menu: opens on hover or click */}
             {isAuthenticated ? (
-              <div className="relative">
+              <div
+                className="relative"
+                ref={dropdownRef}
+                onMouseEnter={() => { clearTimeout(hoverTimer.current); setIsDropdownOpen(true); }}
+                onMouseLeave={() => { hoverTimer.current = setTimeout(() => setIsDropdownOpen(false), 180); }}
+              >
                 <button
+                  type="button"
                   onClick={() => setIsDropdownOpen((p) => !p)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                  aria-haspopup="menu"
+                  aria-label="Account menu"
+                  aria-expanded={isDropdownOpen}
+                  className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
                 >
-                  <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center">
-                    <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
-                  </div>
-                  <span className="truncate max-w-[120px] font-medium">
-                    {userDisplayName}
+                  <span className="w-8 h-8 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-bold uppercase" aria-hidden="true">
+                    {(user?.first_name?.trim() || user?.email || '?').charAt(0)}
                   </span>
-                  <FontAwesomeIcon
-                    icon={faChevronDown}
-                    className={`w-3 h-3 transition-transform duration-200 ${
-                      isDropdownOpen ? 'rotate-180' : ''
-                    }`}
-                  />
+                  <span className="hidden xl:flex flex-col items-start leading-tight text-left">
+                    <span className="text-[11px] font-semibold uppercase tracking-[.12em] text-gray-500">Account</span>
+                    <span className="truncate max-w-[110px] font-medium text-sm">{userDisplayName}</span>
+                  </span>
+                  <FontAwesomeIcon icon={faChevronDown} className={`w-3 h-3 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isDropdownOpen && (
-                  <div
-                    className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2"
-                    ref={dropdownRef}
-                  >
-                    <div className="space-y-1">
-                      {accountLinks.map((item) => (
-                        <button
-                          key={item.to}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(item.to);
-                            setIsDropdownOpen(false);
-                          }}
-                          className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
-                        >
-                          <FontAwesomeIcon icon={item.icon} className={`w-4 h-4 ${item.color}`} />
-                          <span>{item.label}</span>
+                  <div role="menu" className="absolute right-0 top-full pt-2 z-50">
+                    <div className="w-72 bg-white border-2 border-gray-900 shadow-[0_24px_60px_-30px_rgba(10,11,10,.5)]">
+                      <div className="px-4 pt-4 pb-3 border-b border-gray-200">
+                        <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-green-700">Signed in as</p>
+                        <p className="mt-1 font-semibold truncate">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || userDisplayName}</p>
+                        <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                      </div>
+                      <div className="p-2">
+                        {accountLinks.map((item) => (
+                          <button
+                            key={item.to}
+                            role="menuitem"
+                            onClick={(e) => { e.stopPropagation(); navigate(item.to); setIsDropdownOpen(false); }}
+                            className="group flex items-center justify-between w-full text-left px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="flex items-center gap-3">
+                              <FontAwesomeIcon icon={item.icon} className={`w-4 h-4 ${item.color}`} />
+                              <span>{item.label}</span>
+                            </span>
+                            <span className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" aria-hidden="true">→</span>
+                          </button>
+                        ))}
+                        <div className="border-t border-gray-200 my-2" />
+                        <button role="menuitem" onClick={handleReferralRoute}
+                          className="flex items-center gap-3 w-full text-left px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
+                          <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-500" />
+                          <span>Referrals</span>
                         </button>
-                      ))}
-                      <div className="border-t border-gray-200 my-2" />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/change-password');
-                          setIsDropdownOpen(false);
-                        }}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-500" />
-                        <span>Change Password</span>
-                      </button>
-                      <button
-                        onClick={handleReferralRoute}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <FontAwesomeIcon icon={faUserFriends} className="w-4 h-4 text-blue-500" />
-                        <span>Referrals</span>
-                      </button>
-                      <div className="border-t border-gray-200 my-2" />
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 w-full text-left rounded-lg px-3 py-2.5 cursor-pointer hover:bg-red-500/10 text-red-600 hover:text-red-700 transition-colors"
-                      >
+                        <button role="menuitem"
+                          onClick={(e) => { e.stopPropagation(); navigate('/change-password'); setIsDropdownOpen(false); }}
+                          className="flex items-center gap-3 w-full text-left px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
+                          <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-yellow-500" />
+                          <span>Change password</span>
+                        </button>
+                      </div>
+                      <button role="menuitem" onClick={handleLogout}
+                        className="flex items-center gap-3 w-full text-left px-5 py-3 border-t border-gray-200 cursor-pointer text-red-600 hover:bg-red-50 transition-colors">
                         <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
-                        <span>Logout</span>
+                        <span>Log out</span>
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <NavLink
-                  to="/auth/login"
-                  className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
+              <div className="flex items-center gap-2">
+                <NavLink to="/auth/login" className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                   Login
                 </NavLink>
-                <NavLink
-                  to="/auth/register"
-                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors font-medium"
-                >
+                <NavLink to="/auth/register" className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors font-medium">
                   Sign up
                 </NavLink>
               </div>
@@ -366,7 +368,18 @@ const Navbar = () => {
           </div>
 
           {/* Mobile menu toggle - moved to left side */}
-          <div className="lg:hidden flex gap-4 items-center">
+          <div className="lg:hidden flex gap-2 sm:gap-4 items-center">
+            {/* Orders for mobile, when signed in */}
+            {isAuthenticated && (
+              <NavLink
+                to="/orders"
+                onClick={closeMobileMenu}
+                className={({ isActive }) => `flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100'}`}
+              >
+                <FontAwesomeIcon icon={faClipboardList} className="w-4 h-4" />
+                <span>Orders</span>
+              </NavLink>
+            )}
             {/* Cart for mobile */}
             <button
               onClick={openCart}
