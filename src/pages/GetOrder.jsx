@@ -219,14 +219,18 @@ const GetOrder = () => {
     }, [order]);
 
     useEffect(() => {
-        const paymentStatus = searchParams.get('payment');
+        // Paystack sends customers back with ?payment_status=success|pending|failed
+        // (older links used ?payment=). toastId stops a double alert in dev StrictMode.
+        const paymentStatus = searchParams.get('payment_status') || searchParams.get('payment');
 
         if (paymentStatus === 'success') {
-            toast.success('Payment completed successfully!');
+            toast.success("Order placed and paid. We'll be in touch about pickup.", { toastId: 'payment-return', autoClose: 6000 });
             sessionStorage.removeItem('pending_order_ref');
             sessionStorage.removeItem('paystack_ref');
+        } else if (paymentStatus === 'pending') {
+            toast.info("Your order is placed. We're still confirming the payment, which can take a minute for Mobile Money.", { toastId: 'payment-return', autoClose: 8000 });
         } else if (paymentStatus === 'failed') {
-            toast.error('Payment was not completed');
+            toast.error("The payment didn't go through. Your order is saved, so you can try again from here.", { toastId: 'payment-return', autoClose: 8000 });
         }
 
         if (paymentStatus) {
