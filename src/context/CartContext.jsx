@@ -101,7 +101,7 @@ export const CartProvider = ({ children }) => {
     async (serviceId, quantity = 1, serviceData = null) => {
       if (isPartner) {
         toast.info("Partners order directly from wholesale catalog", {
-          position: "top-right", autoClose: 3000,
+          autoClose: 3000,
         });
         return null;
       }

@@ -119,7 +119,6 @@ const PartnerRoute = ({ children }) => {
     if (statusInfo.toastId && !toast.isActive(statusInfo.toastId)) {
       toast[statusInfo.toastType](statusInfo.message, {
         toastId: statusInfo.toastId,
-        position: 'top-right',
         autoClose: 5000,
         hideProgressBar: false,
         closeOnClick: true,

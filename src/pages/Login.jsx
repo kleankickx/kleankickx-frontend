@@ -408,7 +408,6 @@ useEffect(() => {
         ? `Email verified! You can now login with ${email}`
         : 'Email verified successfully! Please login to continue.',
       { 
-        position: 'top-right',
         autoClose: 5000
       }
     );

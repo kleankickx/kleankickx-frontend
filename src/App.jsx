@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CartProvider } from './context/CartContext';
-import { ToastContainer } from 'react-toastify';
+import AppToasts from './components/AppToasts';
 import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
 import PartnerNavbar from './components/PartnerNavbar';
@@ -308,7 +308,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <AppToasts />
     </div>
   );
 };

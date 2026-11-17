@@ -64,7 +64,7 @@ const MyOrders = () => {
         console.error('Error fetching orders:', err);
         const errorMessage = err.response?.data?.detail || 'Failed to load orders. Please try again.';
         setError(errorMessage);
-        toast.error(errorMessage, { position: 'top-right', autoClose: 3000 });
+        toast.error(errorMessage, { autoClose: 3000 });
       })
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);

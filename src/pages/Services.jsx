@@ -122,7 +122,6 @@ const Services = () => {
       
       if (location.state?.showSuccessMessage) {
         toast.success(location.state.showSuccessMessage, {
-          position: 'top-right',
           autoClose: 5000,
         });
       }
