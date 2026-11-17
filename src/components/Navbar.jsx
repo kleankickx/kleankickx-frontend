@@ -304,10 +304,15 @@ const Navbar = () => {
                         animation:kkamIn .28s cubic-bezier(.77,0,.18,1)}
                       @keyframes kkamIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
                       .kkam-panel{width:300px;background:#F7F9F6;color:#0A0B0A;border:2px solid #0A0B0A;box-shadow:0 30px 60px -34px rgba(10,11,10,.55)}
-                      .kkam-head{padding:18px 20px 14px;border-bottom:2px solid #0A0B0A}
-                      .kkam-eyebrow{margin:0;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#1A7A1A}
-                      .kkam-name{margin:6px 0 0;font-family:"Anton","Arial Narrow",Impact,sans-serif;font-size:28px;line-height:.95;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-                      .kkam-mail{margin:4px 0 0;font-size:13px;color:#4D564C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                      .kkam-head{display:block;width:100%;padding:18px 20px 14px;border:0;border-bottom:2px solid #0A0B0A;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background .2s}
+                      .kkam-head:hover{background:#fff}
+                      .kkam-head:hover .kkam-name{color:#1A7A1A}
+                      .kkam-view{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#0A0B0A}
+                      .kkam-view span{transition:transform .3s cubic-bezier(.2,1.25,.3,1)}
+                      .kkam-head:hover .kkam-view span{transform:translateX(4px)}
+                      .kkam-eyebrow{display:block;margin:0;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#1A7A1A}
+                      .kkam-name{display:block;margin:6px 0 0;font-family:"Anton","Arial Narrow",Impact,sans-serif;font-size:28px;line-height:.95;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                      .kkam-mail{display:block;margin:4px 0 0;font-size:13px;color:#4D564C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                       .kkam-main{list-style:none;margin:0;padding:0 20px}
                       .kkam-main button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 0;border:0;border-bottom:1px solid #D9DFD7;
                         background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
@@ -328,11 +333,12 @@ const Navbar = () => {
                       @media (prefers-reduced-motion:reduce){.kkam{animation:none}}
                     `}</style>
                     <div className="kkam-panel">
-                      <div className="kkam-head">
-                        <p className="kkam-eyebrow">Your account</p>
-                        <p className="kkam-name">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || userDisplayName}</p>
-                        {user?.email && <p className="kkam-mail">{user.email}</p>}
-                      </div>
+                      <button type="button" role="menuitem" className="kkam-head" onClick={() => { navigate('/account'); setIsDropdownOpen(false); }}>
+                        <span className="kkam-eyebrow">Your account</span>
+                        <span className="kkam-name">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || userDisplayName}</span>
+                        {user?.email && <span className="kkam-mail">{user.email}</span>}
+                        <span className="kkam-view">View account <span aria-hidden="true">→</span></span>
+                      </button>
                       <ul className="kkam-main">
                         {accountLinks.map((item) => (
                           <li key={item.to}>
@@ -451,7 +457,9 @@ const Navbar = () => {
           .kkm-cart strong{font-family:var(--display);font-weight:400;font-size:22px}
           .kkm-cart:hover{background:var(--ink);color:#fff}
           .kkm-eyebrow{margin:28px 0 8px;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
-          .kkm-who{margin:0 0 6px}
+          .kkm-who{display:block;margin:0 0 6px;padding:2px 0 10px;color:var(--ink);text-decoration:none}
+          .kkm-who .view{display:inline-flex;gap:6px;margin-top:8px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+          .kkm-who:hover .name,.kkm-who:hover .view{color:var(--green)}
           .kkm-who p{margin:0}
           .kkm-who .name{font-family:var(--display);font-size:26px;text-transform:uppercase;line-height:1}
           .kkm-who .mail{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -529,10 +537,11 @@ const Navbar = () => {
             {isAuthenticated && (
               <>
                 <p className="kkm-eyebrow">Your account</p>
-                <div className="kkm-who">
+                <Link to="/account" className="kkm-who" onClick={closeMobileMenu} tabIndex={isMobileMenuOpen ? 0 : -1}>
                   <p className="name">{userDisplayName}</p>
                   <p className="mail">{user?.email}</p>
-                </div>
+                  <span className="view">View account <span aria-hidden="true">→</span></span>
+                </Link>
                 <ul className="kkm-acc">
                   {[...accountLinks, ...accountExtras].map((item) => (
                     <li key={item.to}>
