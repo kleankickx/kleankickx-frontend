@@ -227,16 +227,47 @@ const AccountVouchers = () => {
         .kkav-skel{height:300px;background:linear-gradient(90deg,var(--line) 0%,#EEF2EC 50%,var(--line) 100%);background-size:200% 100%;animation:kkavShim 1.3s linear infinite}
         @keyframes kkavShim{to{background-position:-200% 0}}
 
-        @media (max-width:760px){
-          .kkav-hist li{grid-template-columns:1fr auto;row-gap:4px}
+        /* Let cards and their codes shrink instead of pushing past the screen edge */
+        .kkav-grid > *,.kkav-ticket-top,.kkav-ticket-bottom,.kkav-gift{min-width:0}
+        .kkav-code code{min-width:0}
+        .kkav-ticket h3,.kkav-gift h3{overflow-wrap:anywhere}
+        .kkav-gift-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 10px;flex-wrap:wrap}
+        .kkav-gift-head .kkav-gift-to{min-width:0;flex:1 1 180px}
+        .kkav-gift-foot{flex-wrap:wrap}
+        .kkav-hist .when a{white-space:nowrap}
+
+        @media (max-width:900px){
+          .kkav-hist li{grid-template-columns:minmax(0,1fr) auto;row-gap:4px;padding:14px 0}
           .kkav-hist code{grid-column:1}
           .kkav-hist .when{grid-column:1 / -1;text-align:left}
         }
         @media (max-width:560px){
-          .kkav-hero{padding:34px 0 20px}
-          .kkav-actions .kkav-btn{flex:1}
-          .kkav-grid{grid-template-columns:1fr}
+          .kkav-wrap{padding:0 16px 56px}
+          .kkav-hero{padding:30px 0 18px;gap:12px}
+          .kkav-hero h1{font-size:clamp(44px,14vw,56px)}
+          .kkav-hero p.sub{font-size:15px}
+          .kkav-count b{font-size:clamp(40px,12vw,52px)}
+          .kkav-count span{font-size:10px;letter-spacing:.12em}
+          .kkav-actions .kkav-btn{flex:1 1 140px}
+          .kkav-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+          .kkav-sec{margin-top:32px}
           .kkav-sec-head h2{font-size:28px}
+          .kkav-ticket-top{padding:18px 16px 16px}
+          .kkav-ticket-bottom{padding:16px 16px 18px}
+          .kkav-perf{margin:0 16px}
+          .kkav-perf::before{left:-27px}.kkav-perf::after{right:-27px}
+          .kkav-ticket h3{font-size:32px}
+          .kkav-code{padding:11px 12px}
+          .kkav-code code{font-size:15px;letter-spacing:.08em}
+          .kkav-gift{padding:18px 16px}
+          .kkav-gift-foot .kkav-btn{flex:1 1 100%}
+          .kkav-pager .kkav-btn{padding:0 12px}
+        }
+        @media (max-width:360px){
+          .kkav-ticket-row{flex-wrap:wrap}
+          .kkav-ticket-actions{grid-template-columns:1fr}
+          .kkav-meta{flex-direction:column;gap:8px}
+          .kkav-meta span[style]{text-align:left !important}
         }
         @media (prefers-reduced-motion:reduce){.kkav-skel{animation:none}}
       `}</style>
@@ -334,7 +365,7 @@ const AccountVouchers = () => {
                     const used = st.key === 'redeemed';
                     return (
                       <article key={v.id} className="kkav-gift">
-                        <div className="kkav-ticket-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                        <div className="kkav-gift-head">
                           <p className="kkav-gift-to">Sent to<b>{v.sent_to}</b></p>
                           <span className={`kkav-tag ${used ? 'live' : st.tone}`}>{used ? 'Used by them' : st.key === 'active' || st.key === 'expiring' ? 'Not used yet' : st.label}</span>
                         </div>
