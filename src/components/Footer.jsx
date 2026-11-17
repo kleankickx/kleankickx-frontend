@@ -18,6 +18,7 @@ const SWIFT = [0.77, 0, 0.18, 1];
 const COLUMNS = [
   {
     title: 'KleanKickx',
+    logo: true,
     links: [
       { label: 'Services', to: '/#services' },
       { label: 'Prices', to: '/rate-and-services' },
@@ -72,7 +73,8 @@ const Footer = () => {
         .kkf-guides{position:relative;border-left:1px dashed var(--rule);border-right:1px dashed var(--rule);padding:64px 28px 0}
         .kkf-grid{display:grid;grid-template-columns:1.1fr 1.1fr 1.6fr;gap:48px}
         .kkf h2,.kkf h3{margin:0}
-        .kkf-col h3{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
+        .kkf-col h3{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;min-height:42px;display:flex;align-items:flex-end}
+        .kkf-col h3 img{display:block;width:126px;height:auto}
         .kkf-col ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
         .kkf-link{color:var(--soft);font-size:18px;line-height:1.3;text-decoration:none;position:relative;transition:color .2s}
         .kkf-link::after{content:"";position:absolute;left:0;bottom:-2px;height:1px;width:100%;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.77,0,.18,1)}
@@ -124,7 +126,7 @@ const Footer = () => {
           <div className="kkf-grid">
             {COLUMNS.map((col, i) => (
               <motion.nav key={col.title} className="kkf-col" aria-label={col.title} {...rise(i * 0.06)}>
-                <h3>{col.title}</h3>
+                <h3>{col.logo ? <img src="/images/kleankickx-logo-white.png" alt={col.title} width="126" height="42" /> : col.title}</h3>
                 <ul>{col.links.map((l) => <li key={l.label}><FootLink link={l} /></li>)}</ul>
               </motion.nav>
             ))}

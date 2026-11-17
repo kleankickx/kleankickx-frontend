@@ -736,7 +736,7 @@ const Home = () => {
             <ol className="steps rv">
               <li><h4>Bring them in</h4><p>Drop pairs at the studio on Golf Hills St, or hand them over with your next pickup.</p></li>
               <li><h4>We sort by hand</h4><p>Wearable pairs are Kleaned and go back into use.</p></li>
-              <li><h4>Nothing to landfill</h4><p>Pairs past saving go to our partner <a href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>KicksCTRL</a> for material recovery.</p></li>
+              <li><h4>Nothing to landfill</h4><p>Pairs past saving go to our partner <a href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', textUnderlineOffset: 4, textDecorationThickness: 2, color: '#1A7A1A', fontWeight: 600 }}>KicksCTRL</a> for material recovery.</p></li>
             </ol>
             <div className="ctas">
               <a className="btn go" href={WHATSAPP_TRADE_IN} target="_blank" rel="noopener noreferrer">Arrange a trade-in <span className="ar" aria-hidden="true">→</span></a>
