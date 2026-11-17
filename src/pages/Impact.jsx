@@ -10,8 +10,9 @@ const fadeInUp = {
 };
 
 // Our recovery partner; every mention links to them.
-const KicksCtrl = ({ className = "underline underline-offset-4 decoration-2 decoration-primary hover:text-primary transition-colors" }) => (
-  <a className={className} href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer">KicksCTRL</a>
+const KicksCtrl = ({ dark = false }) => (
+  <a className={`${dark ? 'text-[#6FD46F] hover:text-white' : 'text-primary hover:text-gray-900'} font-semibold underline underline-offset-4 decoration-2 transition-colors`}
+    href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer">KicksCTRL</a>
 );
 
 const pillars = [
@@ -95,7 +96,7 @@ const Impact = () => (
 
     {/* PILOT */}
     <section className="bg-deep-gray py-16 px-4 md:px-8 lg:px-24">
-      <h2 className="text-white header text-4xl md:text-5xl">Accra pilot with <KicksCtrl />.</h2>
+      <h2 className="text-white header text-4xl md:text-5xl">Accra pilot with <KicksCtrl dark />.</h2>
       <p className="text-white/70 mt-3 mb-10">Two days. One collection point. Every pair tracked.</p>
       <div className="grid gap-8 md:grid-cols-3">
         {pilot.map(([n, text]) => (
@@ -106,7 +107,7 @@ const Impact = () => (
         ))}
       </div>
       <p className="text-white/50 text-sm mt-10">
-        From the <KicksCtrl /> "Footwear Under Control" pilot report, 2026. Recovery feedstock is stored until recycling end-markets are verified.
+        From the <KicksCtrl dark /> "Footwear Under Control" pilot report, 2026. Recovery feedstock is stored until recycling end-markets are verified.
       </p>
     </section>
 
