@@ -3,13 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 
 // Floating pill nav that slides up from the bottom once the visitor scrolls past the first screen.
 // Public pages only: it never shows on cart, checkout, orders, account, partner or auth pages.
-const SHOW_ON = ['/', '/services', '/impact', '/studio', '/rate-and-services', '/vouchers', '/legal'];
+const SHOW_ON = ['/', '/services', '/impact', '/rate-and-services', '/vouchers', '/legal'];
 
 const LINKS = [
   { label: 'Services', to: '/#services' },
   { label: 'Trade-In', to: '/#trade-in' },
   { label: 'Impact', to: '/impact' },
-  { label: 'Studio', to: '/studio', narrowHide: true },
 ];
 
 const FloatingNav = () => {

@@ -117,7 +117,6 @@ const Navbar = () => {
     { label: 'Trade-In', to: '/#trade-in', simple: true, hash: true },
     { label: 'Gift vouchers', to: '/vouchers', simple: true },
     { label: 'Impact', to: '/impact', simple: true },
-    { label: 'Studio', to: '/studio', simple: true },
   ];
 
   // Account menu: account things only (Baymard: primary paths first, minor ones

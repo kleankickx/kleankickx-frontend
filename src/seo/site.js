@@ -93,7 +93,7 @@ const priceList = () => `
 const areas = () => `<h2>Pickup and delivery across Accra</h2><ul>${AREAS.map((a) => `<li>${a}</li>`).join('')}</ul>`;
 const contact = () => `<h2>Studio</h2><address>${BUSINESS.street}, ${BUSINESS.city}, Ghana<br>
 <a href="tel:${BUSINESS.phone}">${BUSINESS.phoneDisplay}</a> · <a href="mailto:${BUSINESS.email}">${BUSINESS.email}</a></address>`;
-const nav = () => `<nav><a href="/#services">Services</a> · <a href="/#trade-in">Trade-In</a> · <a href="/impact/">Impact</a> · <a href="/studio/">Studio</a> · <a href="/services/">Book a Klean</a></nav>`;
+const nav = () => `<nav><a href="/#services">Services</a> · <a href="/#trade-in">Trade-In</a> · <a href="/impact/">Impact</a> · <a href="/services/">Book a Klean</a></nav>`;
 const tradeIn = () => `<h2>Trade-In</h2><p>Bring the pairs you no longer wear. We check every one by hand: wearable pairs are cleaned and go back into use, and pairs past saving go to our partner <a href="https://kicksctrl.com">KicksCTRL</a> for material recovery, not landfill.</p>`;
 const faq = () => `<h2>Questions</h2>${FAQ.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}`;
 
@@ -119,14 +119,6 @@ ${faq()}${contact()}`,
     title: 'Sneaker Cleaning Prices in Accra | KleanKickx',
     description: 'KleanKickx prices: Standard Klean ₵50, Priority Klean ₵70 (next day), Deep Klean ₵80. Bundles: 3 pairs ₵130, 5 pairs ₵210, 10 pairs ₵410.',
     body: () => `${nav()}<h1>Prices and services</h1>${priceList()}${faq()}${contact()}`,
-  },
-  '/studio': {
-    title: 'Studio: Sneaker Care on Golf Hills St, Accra | KleanKickx',
-    description: 'The KleanKickx studio at 29 Golf Hills St, Accra. Sneaker cleaning and restoration by hand since 2020, run by a local team.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'AboutPage', url: `${SITE_URL}/studio`, about: { '@id': `${SITE_URL}/#business` } }],
-    body: () => `${nav()}<h1>29 Golf Hills St, Accra</h1><p>Our studio in Accra. Every pair is cleaned here by hand, by a team we trained.</p>
-<h2>Started with one table</h2><p>KleanKickx began in 2020 with homemade cleaning products and a worktable built from a broken door. Today the studio is run by a local team in Accra.</p>
-<h2>How we work</h2><ul><li>By hand: every pair is checked, cleaned and finished by a trained technician.</li><li>Fair prices: from ₵50 a pair.</li><li>Nothing wasted: pairs that can't be saved go to material recovery.</li></ul>${areas()}${contact()}`,
   },
   '/impact': {
     title: 'Impact: Keeping Shoes in Use in Accra | KleanKickx',

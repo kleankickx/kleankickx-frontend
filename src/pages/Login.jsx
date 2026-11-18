@@ -626,7 +626,7 @@ useEffect(() => {
           <Link to="/auth/register" state={location.state}>Create an account <span aria-hidden="true">→</span></Link>
         </p>
         <p className="kka-legal">
-          <Link to="/legal" state={{ tab: 'privacy' }}>Privacy Policy</Link> · <Link to="/legal" state={{ tab: 'terms' }}>Terms of Service</Link> · <Link to="/studio">Studio</Link>
+          <Link to="/legal" state={{ tab: 'privacy' }}>Privacy Policy</Link> · <Link to="/legal" state={{ tab: 'terms' }}>Terms of Service</Link>
         </p>
       </AuthLayout>
     </>

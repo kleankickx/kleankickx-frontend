@@ -1,28 +1,26 @@
-// src/components/Services.jsx
+// src/pages/Services.jsx
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { CartContext } from '../context/CartContext';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import bgImage from '../assets/kleankickx_care.png';
 import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
-import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
-import { FaCheckCircle, FaExclamationTriangle, FaGift, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import { trackEvent } from '../utils/analytics';
 import { useCartNotice } from '../components/CartNotice';
+import { useCartDrawer } from '../components/CartDrawer';
 
 
 const fadeInUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.77, 0, 0.18, 1] } },
 };
 
 const stagger = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.15 } },
+  visible: { transition: { staggerChildren: 0.06 } },
 };
 
 const Services = () => {
@@ -38,6 +36,7 @@ const Services = () => {
   // Get cart from context
   const { cart, addToCart } = useContext(CartContext);
   const { showAdded } = useCartNotice();
+  const { openCart } = useCartDrawer();
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, refreshUserData } = useContext(AuthContext);
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
@@ -412,84 +411,28 @@ const handleAddToCart = async (service) => {
     navigate(location.pathname, { replace: true, state: {} });
   };
 
-  // Render Already Claimed Modal
+  // Already-claimed free service
   const renderAlreadyClaimedModal = () => {
     const freeServiceStatus = getUserFreeServiceStatus();
-    
     if (!showAlreadyClaimedModal) return null;
-    
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
-        >
-          <div className="bg-gradient-to-r from-primary to-green-500 p-4 relative">
-            <button
-              onClick={closeAlreadyClaimedModal}
-              className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors"
-            >
-              <FaTimes className="w-5 h-5" />
+      <div className="kksv-scrim" onClick={closeAlreadyClaimedModal}>
+        <motion.div className="kksv-dialog" role="dialog" aria-modal="true" aria-labelledby="kksv-claimed-h" onClick={(e) => e.stopPropagation()}
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.77, 0, 0.18, 1] }}>
+          <div className="kksv-dialog-head">
+            <div>
+              <p className="kksv-eyebrow">Welcome back</p>
+              <h2 id="kksv-claimed-h">Already claimed</h2>
+            </div>
+            <button type="button" className="kksv-x" onClick={closeAlreadyClaimedModal} aria-label="Close">
+              <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" /></svg>
             </button>
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-full">
-                <FaExclamationTriangle className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Already claimed</h3>
-                <p className="text-white/90 text-sm mt-1">Welcome back.</p>
-              </div>
-            </div>
           </div>
-          
-          <div className="p-6">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-100 to-red-100 rounded-full mb-4">
-                <FaGift className="w-8 h-8 text-green-500" />
-              </div>
-              
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                You've used your free Standard Klean
-              </h4>
-              
-              <p className="text-gray-600 mb-4">
-                This account has already claimed:
-              </p>
-              
-              <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-center gap-2">
-                  <FaCheckCircle className="text-green-500 w-5 h-5" />
-                  <span className="font-bold text-primary">
-                    {freeServiceStatus.serviceName || 'Free Service'}
-                  </span>
-                </div>
-              </div>
-              
-              <p className="text-gray-600 mb-6">
-                You can still book any of the services below, from ₵50 a pair.
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={closeAlreadyClaimedModal}
-                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-semibold py-3 rounded-lg transition-all duration-200"
-              >
-                Browse Other Services
-              </button>
-              
-              <button
-                onClick={() => {
-                  closeAlreadyClaimedModal();
-                  navigate('/cart');
-                }}
-                className="w-full bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-medium py-3 rounded-lg transition-all duration-200 border border-gray-300"
-              >
-                View My Cart
-              </button>
+          <div className="kksv-dialog-body">
+            <p>This account has already used its free <b>{freeServiceStatus.serviceName || 'Standard Klean'}</b>. Every other Klean is open to book, from ₵50 a pair.</p>
+            <div className="kksv-row">
+              <button type="button" className="kksv-btn go" onClick={closeAlreadyClaimedModal}>See services <span className="ar" aria-hidden="true">→</span></button>
+              <button type="button" className="kksv-btn" onClick={() => { closeAlreadyClaimedModal(); openCart(); }}>View cart</button>
             </div>
           </div>
         </motion.div>
@@ -497,82 +440,30 @@ const handleAddToCart = async (service) => {
     );
   };
 
-  // Render free service banner
+  // Free first-Klean note under the header
   const renderFreeServiceBanner = () => {
     const freeServiceStatus = getUserFreeServiceStatus();
-    
-    if (isAuthenticated) {
-      if (freeServiceStatus.hasUsed) {
-        return (
-          <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="bg-green-500 text-white p-2 rounded-full">
-                <FaCheckCircle className="text-xl" />
-              </div>
-              <div>
-                <p className="text-green-800 font-medium">
-                  You've already claimed your free service: <span className="font-bold">{freeServiceStatus.serviceName}</span>
-                </p>
-                <p className="text-green-600 text-sm mt-1">
-                  Thanks for coming back. Book your next Klean below.
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      } else {
-        const freeService = services.find(s => s.is_free_signup_service);
-        if (freeService) {
-          return (
-            <div className="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-2 rounded-full">
-                    <FaGift className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-yellow-800 font-bold text-lg">Your first Klean is free</h3>
-                    <p className="text-yellow-700">
-                      Add your <span className="font-bold">free {freeService.name}</span> to the cart. One per account.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={scrollToServices}
-                  className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 whitespace-nowrap shadow-md"
-                >
-                  Claim it
-                </button>
-              </div>
-            </div>
-          );
-        }
-      }
+    const freeService = services.find((s) => s.is_free_signup_service);
+    if (isAuthenticated && freeServiceStatus.hasUsed) {
+      return <p className="kksv-note">You've used your free <b>{freeServiceStatus.serviceName}</b>. Thanks for coming back.</p>;
     }
-    
-    const freeService = services.find(s => s.is_free_signup_service);
-    if (freeService) {
+    if (!freeService) return null;
+    if (isAuthenticated) {
       return (
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full">
-              <FaGift className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-blue-800 font-bold text-lg">First Klean free</h3>
-              <p className="text-blue-700">
-                Sign up and your first <span className="font-bold">{freeService.name}</span> is free.
-              </p>
-            </div>
-          </div>
+        <div className="kksv-offer">
+          <div><p className="kksv-eyebrow">For you</p><b>Your first Klean is free</b><span>Add your free {freeService.name} to the cart. One per account.</span></div>
+          <button type="button" className="kksv-btn go" onClick={() => serviceCardRefs.current[freeService.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Claim it <span className="ar" aria-hidden="true">→</span></button>
         </div>
       );
     }
-    
-    return null;
+    return (
+      <div className="kksv-offer">
+        <div><p className="kksv-eyebrow">New here?</p><b>First Klean free</b><span>Create an account and your first {freeService.name} is on us.</span></div>
+        <Link to="/auth/register" className="kksv-btn go">Sign up <span className="ar" aria-hidden="true">→</span></Link>
+      </div>
+    );
   };
 
-  // Render service card
   const renderServiceCard = (service) => {
     const status = getServiceStatus(service.name);
     const isExpanded = expandedDescriptions[service.id];
@@ -580,327 +471,209 @@ const handleAddToCart = async (service) => {
     const isFreeService = service.is_free_signup_service;
     const isHighlighted = highlightedService === service.id;
     const isAdding = addingToCart === service.id;
-    
     const canClaimFreeService = isFreeService && isAuthenticated && user && !user.free_signup_service_used;
     const showAlreadyClaimed = isFreeService && isAuthenticated && user && user.free_signup_service_used;
-    
+    const pairs = Number(service.included_quantity) || 1;
+    const long = (service.description || '').length > 110;
+
+    let cta;
+    if (isAdding) cta = <><span className="kksv-spin" aria-hidden="true" /> Adding…</>;
+    else if (isFreeService) {
+      if (canClaimFreeService) cta = <>Add free Klean <span className="ar" aria-hidden="true">→</span></>;
+      else if (showAlreadyClaimed) cta = 'Already claimed';
+      else if (!isAuthenticated) cta = <>Sign up to claim <span className="ar" aria-hidden="true">→</span></>;
+      else cta = 'Not eligible';
+    } else cta = <>Add to cart <span className="ar" aria-hidden="true">→</span></>;
+
     return (
-      <motion.div
+      <motion.article
         data-service-id={service.id}
-        ref={el => serviceCardRefs.current[service.id] = el}
+        ref={(el) => { serviceCardRefs.current[service.id] = el; }}
         key={service.id}
-        className={`bg-white rounded-xl shadow-sm overflow-hidden border hover:shadow-md transition-all duration-300 relative group flex flex-col ${
-          isHighlighted ? 'ring-4 ring-yellow-400 ring-offset-2 transform scale-105 transition-all duration-500 z-10' : ''
-        } ${
-          isFreeService
-            ? canClaimFreeService
-              ? 'border-yellow-300 hover:border-yellow-400 border-2'
-              : showAlreadyClaimed
-              ? 'border-gray-200 hover:border-gray-300'
-              : 'border-blue-200 hover:border-gray-300'
-            : isBundle
-            ? 'border-green-200 hover:border-green-300'
-            : 'border-gray-100 hover:border-gray-200'
-        }`}
+        className={`kksv-card ${isFreeService ? 'free' : ''} ${isHighlighted ? 'lit' : ''} ${showAlreadyClaimed ? 'used' : ''}`}
         variants={fadeInUp}
-        animate={isHighlighted ? {
-          scale: [1, 1.05, 1],
-          rotate: [0, 1, -1, 0],
-          transition: {
-            duration: 1,
-            times: [0, 0.25, 0.5, 1],
-            repeat: 3,
-            ease: "easeInOut"
-          }
-        } : {}}
       >
-        {isFreeService && (
-          <div className="absolute top-3 left-3 z-20">
-            <div className={`text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm ${
-              canClaimFreeService
-                ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white'
-                : showAlreadyClaimed
-                ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-700'
-                : 'bg-gradient-to-r bg-gray-800 text-white'
-            }`}>
-              {canClaimFreeService ? 'FREE FOR YOU!' : 
-               showAlreadyClaimed ? 'ALREADY CLAIMED' : 
-               'SIGNUP BONUS'}
-            </div>
-          </div>
-        )}
-
-        {isBundle && !isFreeService && service.savingsAmount && (
-          <div className="absolute top-3 left-3 z-20">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
-              Save ₵{service.savingsAmount}
-            </div>
-          </div>
-        )}
-
-        <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-10 pointer-events-none">
-          <div className={`absolute top-0 right-0 w-[140%] h-6 flex items-center justify-center text-[10px] font-semibold text-white transform translate-x-[30%] translate-y-[90%] rotate-45 
-            ${status.isPriority ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-green-500 to-emerald-500'}`}>
-            {status.bannerText}
-          </div>
+        <div className="kksv-pic">
+          <img src={service.image} alt="" loading="lazy" onError={(e) => { e.target.onerror = null; e.target.src = '/images/service-fallback.svg'; }} />
+          {isFreeService
+            ? <span className="kksv-flag">{canClaimFreeService ? 'Free for you' : showAlreadyClaimed ? 'Claimed' : 'Sign-up gift'}</span>
+            : isBundle && service.savingsAmount ? <span className="kksv-flag">Save ₵{service.savingsAmount}</span> : null}
         </div>
-
-        <div className="relative h-56 overflow-hidden bg-gray-100">
-          <img
-            src={service.image}
-            alt={service.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = '/images/service-fallback.svg';
-            }}
-          />
-        </div>
-
-        <div className="p-5 flex flex-col flex-grow">
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-800">
-              {service.name}
-            </h3>
-            {showAlreadyClaimed && (
-              <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded">
-                Already claimed
-              </span>
-            )}
-          </div>
-
-          <div className={`inline-flex items-center gap-1 w-fit px-3 py-1.5 rounded-full text-xs font-medium mb-3 
-            ${status.isPriority ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {status.badgeText}
-          </div>
-
-          <div className="relative mb-4">
-            <div className="hidden md:block">
-              <p className="text-gray-600 text-sm line-clamp-2">
-                {service.description}
-              </p>
-            </div>
-            <div className="md:hidden">
-              <p className={`text-gray-600 text-sm ${isExpanded ? '' : 'line-clamp-2'}`}>
-                {service.description}
-              </p>
-              {service.description.length > 100 && (
-                <button
-                  onClick={() => toggleDescription(service.id)}
-                  className="mt-1 text-primary text-xs font-medium hover:text-primary/80 flex items-center gap-1"
-                >
-                  {isExpanded ? (
-                    <>
-                      Read Less
-                      <FaChevronUp className="w-3 h-3" />
-                    </>
-                  ) : (
-                    <>
-                      Read More
-                      <FaChevronDown className="w-3 h-3" />
-                    </>
-                  )}
+        <div className="kksv-body">
+          <span className={`kksv-time ${status.isPriority ? 'fast' : ''}`}>{status.isPriority ? 'Back next day' : 'Back in 72 hours'}</span>
+          <h3>{service.name}</h3>
+          {service.description && (
+            <>
+              <p className={`kksv-desc ${isExpanded ? 'open' : ''}`}>{service.description}</p>
+              {long && (
+                <button type="button" className="kksv-more" onClick={() => toggleDescription(service.id)} aria-expanded={!!isExpanded}>
+                  {isExpanded ? 'Less' : 'More'}
                 </button>
               )}
-            </div>
+            </>
+          )}
+          <div className="kksv-price">
+            {isFreeService ? (
+              <><strong>Free</strong>{service.original_price && <s>₵{service.original_price}</s>}</>
+            ) : (
+              <><strong>₵{Number(service.price).toLocaleString('en-GH')}</strong><small>{isBundle ? `${pairs} pairs` : 'per pair'}</small></>
+            )}
+            {isBundle && service.perSneakerPrice && <em>₵{service.perSneakerPrice} a pair</em>}
           </div>
-
-          <div className="mt-auto border-t border-gray-100 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                {isFreeService ? (
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-green-600">FREE</p>
-                      {service.original_price && (
-                        <p className="text-sm text-gray-500 line-through">₵{service.original_price}</p>
-                      )}
-                    </div>
-                    {showAlreadyClaimed && (
-                      <p className="text-xs text-gray-500 mt-1">You've already claimed your free service</p>
-                    )}
-                    {!isAuthenticated && (
-                      <p className="text-xs text-gray-500 mt-1">Sign up to claim this free service</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-2xl font-bold text-primary">₵{service.price}</p>
-                )}
-              </div>
-              {isBundle && service.perSneakerPrice && (
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Per pair:</p>
-                  <p className="text-sm font-semibold text-green-600">
-                    ₵{service.perSneakerPrice}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => isFreeService ? handleFreeServiceClick(service) : handleAddToCart(service)}
-              disabled={isAdding || (isFreeService && !canClaimFreeService && isAuthenticated)}
-              className={`w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-                isFreeService
-                  ? canClaimFreeService
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-md hover:shadow-lg'
-                    : !isAuthenticated
-                    ? 'bg-gray-800 text-white shadow-md hover:shadow-lg hover:bg-gray-700'
-                    : 'bg-gray-200 cursor-not-allowed text-gray-500'
-                  : isBundle
-                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg'
-                  : 'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-md hover:shadow-lg'
-              }`}
-            >
-              {isAdding ? (
-                <>
-                  <FaSpinner className="animate-spin h-4 w-4" />
-                  Adding...
-                </>
-              ) : isFreeService ? (
-                canClaimFreeService ? (
-                  <>
-                    <FaGift className="w-4 h-4" />
-                    Add Free Klean to Cart
-                  </>
-                ) : showAlreadyClaimed ? (
-                  <>
-                    <FaCheckCircle className="w-4 h-4" />
-                    Already Claimed
-                  </>
-                ) : !isAuthenticated ? (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                    </svg>
-                    Sign In to Claim Free Service
-                  </>
-                ) : (
-                  'Not Eligible'
-                )
-              ) : isBundle ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  Add to Cart
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Add to Cart
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`kksv-btn wide ${isFreeService && !canClaimFreeService && isAuthenticated ? '' : 'go'}`}
+            onClick={() => (isFreeService ? handleFreeServiceClick(service) : handleAddToCart(service))}
+            disabled={isAdding || (isFreeService && !canClaimFreeService && isAuthenticated)}
+          >
+            {cta}
+          </button>
         </div>
-      </motion.div>
+      </motion.article>
     );
   };
 
   return (
-    <>
+    <div className="kksv">
+      <style>{`
+        .kksv{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--tint:#E9F4E7;--amber:#9A5B00;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);
+          background:var(--paper);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif;min-height:100vh}
+        .kksv-wrap{max-width:1200px;margin:0 auto;padding:0 20px 72px}
+        .kksv-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+        .kksv-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end;padding:48px 0 26px;border-bottom:2px solid var(--ink)}
+        .kksv-hero h1{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(56px,8.5vw,112px);line-height:.88}
+        .kksv-hero p.sub{margin:14px 0 0;max-width:50ch;color:var(--muted);font-size:18px;line-height:1.5}
+        .kksv-facts{display:flex;flex-wrap:wrap;gap:8px 22px;margin:18px 0 0;padding:0;list-style:none}
+        .kksv-facts li{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+        .kksv-facts li::before{content:"";width:8px;height:8px;background:var(--green)}
+        .kksv-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:50px;padding:0 20px;border:2px solid var(--ink);border-radius:2px;background:transparent;
+          color:var(--ink);font:inherit;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .25s var(--spring)}
+        .kksv-btn .ar{transition:transform .3s var(--spring)}
+        .kksv-btn:hover:not(:disabled){background:var(--ink);color:#fff}
+        .kksv-btn:hover:not(:disabled) .ar{transform:translateX(5px)}
+        .kksv-btn:active:not(:disabled){transform:scale(.98)}
+        .kksv-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+        .kksv-btn.go:hover:not(:disabled){background:var(--ink);border-color:var(--ink)}
+        .kksv-btn:disabled{opacity:.45;cursor:default}
+        .kksv-btn.wide{width:100%;margin-top:14px}
+        .kksv :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+        .kksv-spin{width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:kksvSpin .8s linear infinite}
+        @keyframes kksvSpin{to{transform:rotate(360deg)}}
+
+        .kksv-offer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px 20px;margin-top:22px;padding:18px 20px;background:var(--ink);color:#fff}
+        .kksv-offer .kksv-eyebrow{color:#6FD46F}
+        .kksv-offer b{display:block;margin-top:4px;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:28px;line-height:1}
+        .kksv-offer span{display:block;margin-top:4px;color:#C4CCC2;font-size:15px}
+        .kksv-offer .kksv-btn:hover{background:#fff;border-color:#fff;color:var(--ink)}
+        .kksv-note{margin:22px 0 0;padding:12px 14px;border-left:3px solid var(--green);background:var(--tint);font-size:15px}
+        .kksv-error{margin:22px 0 0;padding:12px 14px;border-left:3px solid #B42318;background:#FDECEA;color:#7A1A12;font-size:15px}
+
+        .kksv-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:36px 0 18px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+        .kksv-head h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:34px;line-height:1}
+        .kksv-head span{font-size:13px;color:var(--muted)}
+        .kksv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+        .kksv-card{position:relative;display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--line);transition:transform .4s var(--spring),border-color .2s,box-shadow .3s}
+        .kksv-card:hover{transform:translateY(-5px);border-color:var(--ink)}
+        .kksv-card.free{background:var(--tint);border-color:var(--tint)}
+        .kksv-card.used{opacity:.75}
+        .kksv-card.lit{border:2px solid var(--green);box-shadow:0 0 0 6px rgba(26,122,26,.15)}
+        .kksv-pic{position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--line)}
+        .kksv-pic img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .7s var(--swift)}
+        .kksv-card:hover .kksv-pic img{transform:scale(1.05)}
+        .kksv-flag{position:absolute;top:0;right:0;background:var(--green);color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px}
+        .kksv-body{display:flex;flex-direction:column;flex:1;padding:18px 18px 20px}
+        .kksv-time{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+        .kksv-time::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green)}
+        .kksv-time.fast::before{background:#E08A00}
+        .kksv-body h3{margin:10px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:30px;line-height:.95}
+        .kksv-desc{margin:8px 0 0;font-size:15px;line-height:1.5;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+        .kksv-desc.open{-webkit-line-clamp:unset;display:block}
+        .kksv-more{align-self:flex-start;margin-top:4px;padding:0;border:0;background:none;font:inherit;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+        .kksv-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-top:auto;padding-top:14px}
+        .kksv-price strong{font-family:var(--display);font-weight:400;font-size:42px;line-height:1;font-variant-numeric:tabular-nums}
+        .kksv-price small{font-size:13px;color:var(--muted)}
+        .kksv-price s{color:var(--muted);font-size:16px}
+        .kksv-price em{flex-basis:100%;font-style:normal;font-size:13px;font-weight:700;color:var(--green)}
+        .kksv-skel{height:430px;background:linear-gradient(90deg,var(--line) 0%,#EEF2EC 50%,var(--line) 100%);background-size:200% 100%;animation:kksvShim 1.3s linear infinite}
+        @keyframes kksvShim{to{background-position:-200% 0}}
+        .kksv-empty{padding:56px 24px;border:2px dashed var(--line);text-align:center}
+        .kksv-empty h3{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:40px}
+        .kksv-empty p{margin:10px auto 0;max-width:44ch;color:var(--muted)}
+        .kksv-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:36px;padding-top:24px;border-top:2px solid var(--ink)}
+
+        .kksv-scrim{position:fixed;inset:0;z-index:60;background:rgba(10,11,10,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+        .kksv-dialog{width:100%;max-width:440px;background:var(--paper);border:2px solid var(--ink);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif}
+        .kksv-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 20px 14px;border-bottom:2px solid var(--ink)}
+        .kksv-dialog-head h2{margin:6px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:34px;line-height:.95}
+        .kksv-dialog-body{padding:18px 20px 20px}
+        .kksv-dialog-body p{margin:0;color:var(--muted);line-height:1.55}
+        .kksv-dialog-body b{color:var(--ink)}
+        .kksv-row{display:flex;gap:10px;margin-top:18px}
+        .kksv-row .kksv-btn{flex:1}
+        .kksv-x{flex:none;width:42px;height:42px;display:grid;place-items:center;border:2px solid var(--ink);background:none;color:var(--ink);cursor:pointer;transition:background .2s,color .2s,transform .3s var(--spring)}
+        .kksv-x:hover{background:var(--ink);color:#fff;transform:rotate(90deg)}
+        @media (max-width:760px){.kksv-hero{grid-template-columns:1fr}}
+        @media (max-width:560px){
+          .kksv-wrap{padding:0 16px 56px}
+          .kksv-hero{padding:32px 0 20px}
+          .kksv-hero p.sub{font-size:16px}
+          .kksv-grid{grid-template-columns:1fr}
+          .kksv-offer .kksv-btn{width:100%}
+          .kksv-row{flex-direction:column}
+          .kksv-links .kksv-btn{flex:1 1 100%}
+        }
+        @media (prefers-reduced-motion:reduce){.kksv-skel{animation:none}}
+      `}</style>
       {renderAlreadyClaimedModal()}
-      
-      <section className="bg-cover bg-center h-[18rem] relative" style={{ backgroundImage: `url(${bgImage})` }}>
-        <div className="absolute inset-0 bg-black/50" />
-        <motion.div 
-          className="relative h-full px-4 md:px-8 lg:px-24 flex flex-col text-left justify-center"
-          variants={fadeInUp}
-          initial="hidden"
-          animate="visible"
-        >
-          <h1 className="text-white text-3xl md:text-5xl font-bold header">
-            <span className="text-primary">Book </span> a Klean
-          </h1>
-          <p className="text-white lg:text-lg mt-[2rem] max-w-2xl">
-            Every service is priced per pair. Add what you need to your cart and pay by Mobile Money or card.
-          </p>
-          
-          <motion.button
-            onClick={scrollToServices}
-            className="mt-8 w-fit bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 group"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <span>See services</span>
-            <motion.svg 
-              className="w-5 h-5 group-hover:translate-y-0.5 transition-transform"
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-              initial={{ y: 0 }}
-              animate={{ y: [0, 3, 0] }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 1.5,
-                ease: "easeInOut"
-              }}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </motion.svg>
-          </motion.button>
-        </motion.div>
-      </section>
-      
-      <div 
-        ref={servicesSectionRef}
-        className="bg-[#edf1f4] py-12 px-4" 
-        id="services"
-      >
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-1">Our Services</h2>
-            <p className="text-gray-600 mb-4">Sneaker cleaning and restoration in Accra, priced in GHS.</p>
-            
-            {renderFreeServiceBanner()}
+
+      <div className="kksv-wrap">
+        <header className="kksv-hero">
+          <div>
+            <p className="kksv-eyebrow">Services & prices</p>
+            <h1>Book a Klean</h1>
+            <p className="sub">Every Klean is priced per pair. Add what you need, choose pickup or drop-off at checkout, and pay with Mobile Money or card.</p>
+            <ul className="kksv-facts">
+              <li>Pickup & delivery in Accra</li>
+              <li>Back in 72 hours</li>
+              <li>Bundles save more</li>
+            </ul>
           </div>
+        </header>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              <p className="font-medium">Error loading services</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
+        {renderFreeServiceBanner()}
+        {error && <p className="kksv-error" role="alert">{error}</p>}
 
+        <section ref={servicesSectionRef} id="services" aria-labelledby="kksv-list-h">
+          <div className="kksv-head">
+            <h2 id="kksv-list-h">All services</h2>
+            {!loading && sortedServices.length > 0 && <span>{String(sortedServices.length).padStart(2, '0')} services</span>}
+          </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-[50vh]">
-              <FaSpinner className="animate-spin h-12 w-12 text-primary mb-4" />
-              <p className="text-gray-600">Loading services...</p>
+            <div className="kksv-grid" aria-busy="true" aria-label="Loading services">
+              {[0, 1, 2, 3].map((k) => <div key={k} className="kksv-skel" />)}
             </div>
           ) : sortedServices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[50vh] text-center bg-white rounded-xl border border-gray-200 p-8">
-              <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No services available</h3>
-              <p className="text-gray-600 max-w-md">
-                We're currently updating our services. Please check back soon or contact us for more information.
-              </p>
+            <div className="kksv-empty">
+              <h3>Back soon</h3>
+              <p>We're updating our services. Message us on WhatsApp and we'll book you in directly.</p>
             </div>
           ) : (
-            <div>
-              <motion.div 
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-                variants={stagger}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-              >
-                {sortedServices.map(renderServiceCard)}
-              </motion.div>
-            </div>
+            <motion.div className="kksv-grid" variants={stagger} initial="hidden" animate="visible">
+              {sortedServices.map(renderServiceCard)}
+            </motion.div>
           )}
+        </section>
+
+        <div className="kksv-links">
+          <Link to="/rate-and-services" className="kksv-btn">Full price list <span className="ar" aria-hidden="true">→</span></Link>
+          <Link to="/vouchers" className="kksv-btn">Gift a Klean</Link>
+          <a className="kksv-btn" href="https://wa.me/233536278834" target="_blank" rel="noreferrer">Ask on WhatsApp</a>
         </div>
       </div>
-      
+
       <Footer />
-    </>
+    </div>
   );
 };
 
