@@ -26,7 +26,6 @@ const COLUMNS = [
       { label: 'Gift vouchers', to: '/vouchers' },
       { label: 'Promotions', to: '/promotions' },
       { label: 'Impact', to: '/impact' },
-      { label: 'Studio', to: '/studio' },
     ],
   },
   {

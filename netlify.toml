@@ -1,7 +1,19 @@
-# Old About page moved to /studio (permanent, so search engines carry its ranking over)
+# Retired pages go to the homepage (permanent, so search engines carry their ranking over)
 [[redirects]]
   from = "/about-us"
-  to = "/studio"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/studio"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/studio/"
+  to = "/"
   status = 301
   force = true
 
