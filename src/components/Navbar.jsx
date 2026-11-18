@@ -33,7 +33,7 @@ const NAV_CSS = `
   .kkn-icon.boxed{border-color:var(--ink)}
   .kkn-icon.boxed:hover{background:var(--ink);color:#fff}
   .kkn-icon svg{display:block;transition:transform .3s var(--spring)}
-  .kkn-cart:hover svg{transform:translateY(-1px) rotate(-4deg)}
+  .kkn-cart:hover svg{transform:translateX(2px)}
   .kkn-badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 4px;display:grid;place-items:center;background:var(--green);
     color:#fff;border:2px solid #fff;font-size:11px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;animation:kknPop .4s var(--spring)}
   .kkn-badge.busy{background:var(--ink)}
@@ -47,16 +47,27 @@ const NAV_CSS = `
     text-transform:uppercase;line-height:1;padding-top:2px}
   .kkn-me .chev{transition:transform .3s var(--swift)}
   .kkn-me[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  /* The whole button takes the click, never the text or icon inside it */
+  .kkn-cta *,.kkn-icon *,.kkn-me *,.kkn-link *{pointer-events:none}
+  .kkn-cta,.kkn-icon,.kkn-me,.kkn-link{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none}
   .kkn :focus-visible{outline:2px solid var(--green);outline-offset:2px}
   @media (prefers-reduced-motion:reduce){.kkn-badge{animation:none}.kkn-link::after{transition:none}}
 `;
 
 const CartIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
-    <path d="M4 8h16l-1.4 12.5H5.4L4 8z" />
-    <path d="M8.5 10.5V7a3.5 3.5 0 0 1 7 0v3.5" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
+    <path d="M1.5 3h3l2.6 12h11.4l2.2-8.5H5.6" />
+    <circle cx="9" cy="19.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="17" cy="19.5" r="1.6" fill="currentColor" stroke="none" />
   </svg>
 );
+
+// Clicking "Book a Klean" while already on the homepage: scroll there every time.
+const goToServices = () => {
+  if (window.location.pathname === '/') {
+    document.getElementById('services')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
 
 const CartButton = ({ count, loading, onClick }) => (
   <button
@@ -283,7 +294,7 @@ const Navbar = () => {
 
           {/* Right Side Actions */}
           <div className="hidden lg:flex items-center gap-2 xl:gap-3">
-            <Link to="/#services" className="kkn-cta">
+            <Link to="/#services" className="kkn-cta" onClick={goToServices}>
               Book a Klean <span className="ar" aria-hidden="true">→</span>
             </Link>
 
@@ -527,7 +538,7 @@ const Navbar = () => {
               ))}
             </ul>
 
-            <Link to="/#services" onClick={closeMobileMenu} className="kkm-btn" tabIndex={isMobileMenuOpen ? 0 : -1}>
+            <Link to="/#services" onClick={() => { closeMobileMenu(); goToServices(); }} className="kkm-btn" tabIndex={isMobileMenuOpen ? 0 : -1}>
               Book a Klean <span className="ar" aria-hidden="true">→</span>
             </Link>
 

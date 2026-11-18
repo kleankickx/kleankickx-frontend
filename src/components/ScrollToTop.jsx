@@ -5,7 +5,9 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 export default function ScrollToTop() {
-  const { pathname, hash } = useLocation();
+  // `key` changes on every navigation, so clicking "/#services" again (after
+  // scrolling away) scrolls back to it even though the address is the same.
+  const { pathname, hash, key } = useLocation();
 
   useEffect(() => {
     if (!hash) {
@@ -22,7 +24,7 @@ export default function ScrollToTop() {
       }
     }, 50);
     return () => clearInterval(timer);
-  }, [pathname, hash]);
+  }, [pathname, hash, key]);
 
   return null;
 }
