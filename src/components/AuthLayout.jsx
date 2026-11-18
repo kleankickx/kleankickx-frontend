@@ -104,28 +104,28 @@ export const AuthStyles = () => (
     /* Care is respect: the photo fills the top of the panel and fades to black; the
        logo, headline and caption are real text, so it fits any screen without cropping words. */
     .kka-brand.kka-poster{position:sticky;top:0;height:100vh;align-self:start;display:block;padding:0;background:#000}
-    .kka-poster .kka-brand-img{position:absolute;left:0;top:0;width:100%;height:74%;object-fit:cover;object-position:52% 40%;opacity:1;
-      filter:brightness(1.18) contrast(1.06)}
+    .kka-poster .kka-brand-img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:84% 100%;opacity:1;
+      filter:brightness(1.22) contrast(1.05)}
     /* Light shade behind the logo, and a short fade where the photo meets the black strip */
     .kka-poster::after{content:"";position:absolute;inset:0;pointer-events:none;
-      background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 13%,rgba(0,0,0,0) 62%,#000 74.5%)}
+      background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 13%,rgba(0,0,0,0) 80%,rgba(0,0,0,.55) 100%)}
     .kka-brand.kka-poster > .kka-poster-logo{position:absolute;top:32px;left:40px;z-index:2;line-height:0}
     .kka-poster-logo img{width:140px;height:auto;display:block}
     .kka-brand.kka-poster > .kka-poster-copy{position:absolute;left:40px;right:40px;bottom:clamp(20px,3.4vh,32px);z-index:2}
     .kka-brand .kka-poster-h{margin:0;max-width:none;font-family:"Bodoni Moda","Bodoni 72",Didot,"Times New Roman",serif;font-weight:400;text-transform:uppercase;color:#fff;
-      font-size:clamp(26px,min(3vw,5vh),48px);line-height:1.08;letter-spacing:.06em}
+      font-size:clamp(30px,min(3.7vw,6vh),58px);line-height:1.06;letter-spacing:.06em}
     .kka-poster-h span{display:block}
     .kka-poster-cap{margin-top:clamp(10px,1.8vh,18px);padding-top:10px;border-top:1px solid rgba(255,255,255,.2);max-width:46ch}
     .kka-poster-cap p{margin:3px 0 0;font-size:12.5px;line-height:1.45;color:#A9B3A7}
     .kka-poster-cap p.n{margin:0;font-family:"Bodoni Moda","Bodoni 72",Didot,"Times New Roman",serif;font-size:15px;letter-spacing:.02em;color:#fff}
     @media (max-width:900px){
       .kka-brand.kka-poster{position:relative;height:300px;min-height:0}
-      .kka-poster .kka-brand-img{height:100%;object-position:60% 28%}
+      .kka-poster .kka-brand-img{height:100%;object-position:80% 52%}
       .kka-poster::after{background:linear-gradient(180deg,rgba(0,0,0,.3) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 62%,rgba(0,0,0,.7) 100%)}
       .kka-brand.kka-poster > .kka-poster-logo{top:18px;left:20px}
       .kka-poster-logo img{width:118px}
       .kka-brand.kka-poster > .kka-poster-copy{left:20px;right:20px;bottom:18px}
-      .kka-brand .kka-poster-h{font-size:clamp(20px,6vw,28px);letter-spacing:.05em}
+      .kka-brand .kka-poster-h{font-size:clamp(22px,6.8vw,32px);letter-spacing:.05em}
       .kka-poster-h span{display:inline}
       .kka-poster-cap{display:none}
     }
@@ -218,8 +218,8 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
       <AuthStyles />
       <aside className="kka-brand kka-poster">
         {/* Photo cut from the Care is respect poster (logo removed); the words are set as text. */}
-        <img className="kka-brand-img" src="/images/care-is-respect-photo.jpg" width="951" height="628"
-          alt="Jerry Akaminko, Ghanaian football icon, training in the gym." />
+        <img className="kka-brand-img" src="/images/care-is-respect-photo-tall.jpg" width="951" height="890"
+          alt="Jerry Akaminko, Ghanaian football icon, training in the gym with boxing gloves." />
         <Link to="/" className="kka-poster-logo" aria-label="KleanKickx home">
           <img src="/images/kleankickx-logo-white.png" alt="KleanKickx" width="140" height="47" />
         </Link>
