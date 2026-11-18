@@ -171,7 +171,7 @@ export default function ReferralDashboard() {
           <div>
             <p className="kkac-eyebrow">Your account</p>
             <h1>Refer a friend</h1>
-            <p className="sub">Share your link. When a friend completes their first order, you get {POINTS_PER_REFERRAL} points. Turn {MIN_REDEEM} points into a discount.</p>
+            <p className="sub">Share your link. When a friend completes their first order, you get {POINTS_PER_REFERRAL} points. Every {MIN_REDEEM} points becomes a discount.</p>
           </div>
           <p className="kkrf-pts" aria-label={`${points} points`}>
             <b>{loading ? '—' : points}</b>
@@ -221,7 +221,7 @@ export default function ReferralDashboard() {
               <ol className="kkrf-steps">
                 <li><span className="n">01</span><b>Share</b><p>Send your link to friends who wear sneakers.</p></li>
                 <li><span className="n">02</span><b>They book</b><p>They sign up with it and complete their first order.</p></li>
-                <li><span className="n">03</span><b>You save</b><p>You get {POINTS_PER_REFERRAL} points each. From {MIN_REDEEM}, swap them for a discount.</p></li>
+                <li><span className="n">03</span><b>You save</b><p>You get {POINTS_PER_REFERRAL} points each. Every {MIN_REDEEM} points becomes a discount on your next order.</p></li>
               </ol>
             </section>
 
@@ -258,10 +258,10 @@ export default function ReferralDashboard() {
               <p className="kkac-help">
                 {needed > 0
                   ? `${needed} more points to redeem: ${Math.ceil(needed / POINTS_PER_REFERRAL)} more friend${Math.ceil(needed / POINTS_PER_REFERRAL) === 1 ? '' : 's'} ordering.`
-                  : 'Ready to redeem. All your points turn into a discount on your next order.'}
+                  : `Ready to redeem. Every ${MIN_REDEEM} points becomes a discount on your next order${points % MIN_REDEEM ? `; the other ${points % MIN_REDEEM} stay in your account` : ''}.`}
               </p>
               <button type="button" className="kkac-btn go" style={{ width: '100%', marginTop: 16 }} onClick={redeemPoints} disabled={redeeming || points < MIN_REDEEM}>
-                {redeeming ? <><span className="kkac-spin" aria-hidden="true" /> Redeeming…</> : points >= MIN_REDEEM ? <>Redeem {points} points <span className="ar" aria-hidden="true">→</span></> : `Redeem from ${MIN_REDEEM} points`}
+                {redeeming ? <><span className="kkac-spin" aria-hidden="true" /> Redeeming…</> : points >= MIN_REDEEM ? <>Redeem {Math.floor(points / MIN_REDEEM) * MIN_REDEEM} points <span className="ar" aria-hidden="true">→</span></> : `Redeem from ${MIN_REDEEM} points`}
               </button>
               {activeDiscount && (
                 <div className="kkrf-disc">
