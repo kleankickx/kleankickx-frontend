@@ -173,13 +173,29 @@ export const CHECKOUT_CSS = `
   .kkco-sum-bare .kkco-total s{color:var(--muted)}
   .kkco-sum-bare .kkco-total strong{font-size:38px}
 
-  /* Promotion */
-  .kkco-promo{display:flex;align-items:center;gap:14px;padding:16px;border:2px solid var(--green);background:var(--tint)}
-  .kkco-promo .pct{flex:none;width:56px;height:56px;display:grid;place-items:center;background:var(--green);color:#fff;font-family:var(--display);font-size:22px}
-  .kkco-promo img{flex:none;width:56px;height:56px;object-fit:cover}
-  .kkco-promo b{display:block;font-size:16px}
-  .kkco-promo p{margin:2px 0 0;font-size:14px;color:var(--muted);line-height:1.45}
-  .kkco-promo small{display:block;margin-top:4px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green)}
+  /* Promotion ticket (auto promotion and typed-in code share it) */
+  .kkco-tix{--stub:92px;position:relative;display:grid;grid-template-columns:var(--stub) 1fr;background:var(--tint);color:var(--ink);
+    -webkit-mask:radial-gradient(circle 9px at var(--stub) 0,#0000 97%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at var(--stub) 100%,#0000 97%,#000) bottom/100% 51% no-repeat;
+    mask:radial-gradient(circle 9px at var(--stub) 0,#0000 97%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at var(--stub) 100%,#0000 97%,#000) bottom/100% 51% no-repeat;
+    animation:kkco-tix-in .5s cubic-bezier(.2,1.25,.3,1) both}
+  .kkco-tix-stub{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:16px 6px;background:var(--green);color:#fff;text-align:center}
+  .kkco-tix-stub .amt{font-family:var(--display);font-size:38px;line-height:.9;letter-spacing:-.01em}
+  .kkco-tix-stub .amt i{font-style:normal;font-size:.55em;vertical-align:.55em;margin-left:1px}
+  .kkco-tix-stub .off{font-size:11px;font-weight:800;letter-spacing:.28em;margin-right:-.28em}
+  .kkco-tix-body{position:relative;min-width:0;padding:14px 16px 14px 18px;border-left:2px dashed rgba(26,122,26,.45)}
+  .kkco-tix-body small{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+  .kkco-tix-body b{display:block;margin-top:3px;font-family:var(--display);font-weight:400;font-size:22px;line-height:1.05;letter-spacing:.01em;text-transform:uppercase;overflow-wrap:anywhere}
+  .kkco-tix-body p{margin:4px 0 0;font-size:14px;color:var(--muted);line-height:1.45}
+  .kkco-tix-body em{display:block;margin-top:6px;font-style:normal;font-size:13px;color:var(--muted);line-height:1.4}
+  .kkco-tix-meta{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:700;color:var(--green)}
+  .kkco-tix-meta svg{flex:none}
+  .kkco-tix-x{position:absolute;top:10px;right:10px;padding:4px 2px;border:0;background:none;font:inherit;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .kkco-tix-x:hover{color:var(--red)}
+  .kkco-tix-x:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .kkco-tix.has-x .kkco-tix-body{padding-right:78px}
+  @keyframes kkco-tix-in{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+  @media (max-width:420px){.kkco-tix{--stub:80px}.kkco-tix-stub .amt{font-size:32px}.kkco-tix-body b{font-size:19px}}
+  @media (prefers-reduced-motion:reduce){.kkco-tix{animation:none}}
 
   /* Promo code */
   .kkco-promo-box{background:#fff;border:1px solid var(--line)}
@@ -196,13 +212,6 @@ export const CHECKOUT_CSS = `
   .kkco-promo-row button{flex:none;min-width:84px;border:0;background:var(--ink);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center;transition:background .2s}
   .kkco-promo-row button:hover:not(:disabled){background:var(--green)}
   .kkco-promo-row button .kkco-spin{border-color:rgba(255,255,255,.35);border-top-color:#fff}
-  .kkco-promo-on{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 16px;border:2px solid var(--green);background:var(--tint)}
-  .kkco-promo-on small{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
-  .kkco-promo-on b{display:block;margin-top:2px;font-family:var(--mono);font-size:18px;letter-spacing:.1em}
-  .kkco-promo-on span{display:block;font-size:14px}
-  .kkco-promo-on em{display:block;margin-top:6px;font-style:normal;font-size:13px;color:var(--muted);line-height:1.45}
-  .kkco-promo-on button{flex:none;border:0;background:none;padding:2px 0;font:inherit;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-  .kkco-promo-on button:hover{color:var(--red)}
 
   /* Mobile summary toggle and step bar */
   .kkco-fold{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;border:0;background:none;font:inherit;color:var(--ink);cursor:pointer}

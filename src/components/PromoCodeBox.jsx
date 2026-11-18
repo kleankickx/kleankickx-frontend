@@ -3,6 +3,7 @@
 // enforced again when the order is placed) and reports why a code can't be used.
 import { useState } from 'react';
 import api from '../api';
+import PromoTicket from './PromoTicket';
 import { savePromoCode, clearSavedPromoCode } from '../utils/promoCode';
 
 export default function PromoCodeBox({ appliedCode, note, onApply, onRemove }) {
@@ -33,16 +34,18 @@ export default function PromoCodeBox({ appliedCode, note, onApply, onRemove }) {
   };
 
   if (appliedCode) {
+    const pct = Number(appliedCode.discount_percentage);
     return (
-      <div className="kkco-promo-on" role="status">
-        <div>
-          <small>Promo code</small>
-          <b>{appliedCode.code}</b>
-          <span>{Number(appliedCode.discount_percentage)}% off your Kleans</span>
-          {note && <em>{note}</em>}
-        </div>
-        <button type="button" onClick={() => { clearSavedPromoCode(); onRemove(); }}>Remove</button>
-      </div>
+      <PromoTicket
+        role="status"
+        aria-label={`Promo code ${appliedCode.code}, ${pct}% off`}
+        label="Promo code"
+        pct={pct}
+        title={appliedCode.code}
+        note={note}
+        meta={`${pct}% off your Kleans`}
+        onRemove={() => { clearSavedPromoCode(); onRemove(); }}
+      />
     );
   }
 
