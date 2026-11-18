@@ -2,19 +2,77 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faShoppingCart,
-  faUser,
-  faBars,
-  faTimes,
-  faChevronDown,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { useCartDrawer } from './CartDrawer';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import Logo from '../assets/logo2.png';
+
+// Top bar buttons in the editorial style: square, ink and the brand green.
+const NAV_CSS = `
+  .kkn{--ink:#0A0B0A;--line:#D9DFD7;--green:#1A7A1A;--tint:#E9F4E7;--display:"Anton","Arial Narrow",Impact,sans-serif;
+    --spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);font-family:"League Spartan",system-ui,sans-serif}
+  .kkn-link{position:relative;display:inline-flex;align-items:center;height:44px;padding:0 12px;font-size:15px;font-weight:600;color:var(--ink);
+    white-space:nowrap;text-decoration:none;transition:color .2s}
+  .kkn-link::after{content:"";position:absolute;left:12px;right:12px;bottom:6px;height:2px;background:var(--green);transform:scaleX(0);
+    transform-origin:left;transition:transform .35s var(--swift)}
+  .kkn-link:hover,.kkn-link.on{color:var(--green)}
+  .kkn-link:hover::after,.kkn-link.on::after{transform:scaleX(1)}
+  .kkn-cta{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 20px;border:2px solid var(--green);background:var(--green);color:#fff !important;
+    font-size:15px;font-weight:700;white-space:nowrap;text-decoration:none;transition:background .2s,border-color .2s}
+  .kkn-cta .ar{transition:transform .3s var(--spring)}
+  .kkn-cta:hover{background:var(--ink);border-color:var(--ink)}
+  .kkn-cta:hover .ar{transform:translateX(4px)}
+  .kkn-ghost{display:inline-flex;align-items:center;height:44px;padding:0 18px;border:2px solid var(--ink);background:transparent;color:var(--ink);
+    font-size:15px;font-weight:700;white-space:nowrap;text-decoration:none;transition:background .2s,color .2s}
+  .kkn-ghost:hover{background:var(--ink);color:#fff}
+  .kkn-icon{position:relative;flex:none;display:grid;place-items:center;width:44px;height:44px;padding:0;border:2px solid transparent;background:none;
+    color:var(--ink);cursor:pointer;transition:border-color .2s,background .2s,color .2s}
+  .kkn-icon:hover{border-color:var(--ink)}
+  .kkn-icon.boxed{border-color:var(--ink)}
+  .kkn-icon.boxed:hover{background:var(--ink);color:#fff}
+  .kkn-icon svg{display:block;transition:transform .3s var(--spring)}
+  .kkn-cart:hover svg{transform:translateY(-1px) rotate(-4deg)}
+  .kkn-badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 4px;display:grid;place-items:center;background:var(--green);
+    color:#fff;border:2px solid #fff;font-size:11px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;animation:kknPop .4s var(--spring)}
+  .kkn-badge.busy{background:var(--ink)}
+  .kkn-badge.busy i{width:8px;height:8px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:kknSpin .7s linear infinite}
+  @keyframes kknPop{from{transform:scale(.4)}to{transform:none}}
+  @keyframes kknSpin{to{transform:rotate(360deg)}}
+  .kkn-me{display:flex;align-items:center;gap:10px;height:44px;padding:0 10px 0 0;border:2px solid transparent;background:none;color:var(--ink);
+    font:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:border-color .2s}
+  .kkn-me:hover,.kkn-me[aria-expanded="true"]{border-color:var(--ink)}
+  .kkn-av{flex:none;width:40px;height:40px;display:grid;place-items:center;background:var(--ink);color:#fff;font-size:17px;font-weight:800;
+    text-transform:uppercase;line-height:1;padding-top:2px}
+  .kkn-me .chev{transition:transform .3s var(--swift)}
+  .kkn-me[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  .kkn :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){.kkn-badge{animation:none}.kkn-link::after{transition:none}}
+`;
+
+const CartIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
+    <path d="M4 8h16l-1.4 12.5H5.4L4 8z" />
+    <path d="M8.5 10.5V7a3.5 3.5 0 0 1 7 0v3.5" />
+  </svg>
+);
+
+const CartButton = ({ count, loading, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="kkn-icon kkn-cart"
+    aria-label={loading ? 'Cart, loading' : `Cart${count ? `, ${count} ${count === 1 ? 'item' : 'items'}` : ', empty'}`}
+  >
+    <CartIcon />
+    {loading ? (
+      <span className="kkn-badge busy" aria-hidden="true"><i /></span>
+    ) : count > 0 && (
+      <span key={count} className="kkn-badge" aria-hidden="true">{count > 99 ? '99+' : count}</span>
+    )}
+  </button>
+);
 
 const Navbar = () => {
   // Get cart data from context
@@ -144,7 +202,8 @@ const Navbar = () => {
 
   return (
     <div className="sticky inset-x-0 top-0 z-40">
-      <nav className="bg-white text-gray-900 py-3 shadow-sm border-b border-gray-200">
+      <nav className="kkn bg-white text-gray-900 py-3 shadow-sm border-b border-gray-200">
+        <style>{NAV_CSS}</style>
         <div className="flex justify-between items-center px-4 lg:px-8 xl:px-12 gap-6">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
@@ -161,15 +220,9 @@ const Navbar = () => {
                   <div key={group.label} className="relative">
                     <NavLink
                       to={group.to}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2 px-3 xl:px-4 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap ${
-                          isActive && !group.hash
-                            ? 'bg-green-50 text-green-700'
-                            : 'hover:bg-gray-100 hover:text-green-700'
-                        }`
-                      }
+                      className={({ isActive }) => `kkn-link${isActive && !group.hash ? ' on' : ''}`}
                     >
-                      <span className="font-medium">{group.label}</span>
+                      {group.label}
                     </NavLink>
                   </div>
                 );
@@ -230,47 +283,18 @@ const Navbar = () => {
 
           {/* Right Side Actions */}
           <div className="hidden lg:flex items-center gap-2 xl:gap-3">
-            <Link
-              to="/#services"
-              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
-            >
-              Book a Klean
+            <Link to="/#services" className="kkn-cta">
+              Book a Klean <span className="ar" aria-hidden="true">→</span>
             </Link>
 
             {/* Orders: one click from anywhere once signed in (like Amazon's "Returns & Orders") */}
             {isAuthenticated && (
-              <NavLink
-                to="/orders"
-                className={({ isActive }) =>
-                  `px-3 py-2.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                    isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100 hover:text-green-700'
-                  }`
-                }
-              >
+              <NavLink to="/orders" className={({ isActive }) => `kkn-link${isActive ? ' on' : ''}`}>
                 Orders
               </NavLink>
             )}
 
-            {/* Cart */}
-            <button
-              onClick={openCart}
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-              aria-label="Shopping cart"
-            >
-              <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-              {cartLoading ? (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                  <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </span>
-              ) : cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold shadow-lg">
-                  {cartItemCount > 99 ? '99+' : cartItemCount}
-                </span>
-              )}
-            </button>
+            <CartButton count={cartItemCount} loading={cartLoading} onClick={openCart} />
 
             {/* Account menu: account things only. Opens on hover or click. */}
             {isAuthenticated ? (
@@ -287,13 +311,15 @@ const Navbar = () => {
                   aria-haspopup="menu"
                   aria-label="Account menu"
                   aria-expanded={isDropdownOpen}
-                  className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                  className="kkn-me"
                 >
-                  <span className="w-8 h-8 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-bold uppercase" aria-hidden="true">
+                  <span className="kkn-av" aria-hidden="true">
                     {(user?.first_name?.trim() || user?.email || '?').charAt(0)}
                   </span>
-                  <span className="hidden xl:block truncate max-w-[120px] font-medium">Hi, {userDisplayName}</span>
-                  <FontAwesomeIcon icon={faChevronDown} className={`w-3 h-3 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  <span className="hidden xl:block truncate max-w-[120px]">Hi, {userDisplayName}</span>
+                  <svg className="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
+                    <path d="M2.5 4.5L6 8l3.5-3.5" />
+                  </svg>
                 </button>
 
                 {isDropdownOpen && (
@@ -361,11 +387,11 @@ const Navbar = () => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <NavLink to="/auth/login" className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  Login
+              <div className="flex items-center gap-1">
+                <NavLink to="/auth/login" className="kkn-link">
+                  Log in
                 </NavLink>
-                <NavLink to="/auth/register" className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors font-medium">
+                <NavLink to="/auth/register" className="kkn-ghost">
                   Sign up
                 </NavLink>
               </div>
@@ -373,50 +399,29 @@ const Navbar = () => {
           </div>
 
           {/* Mobile menu toggle - moved to left side */}
-          <div className="lg:hidden flex gap-2 sm:gap-4 items-center">
+          <div className="lg:hidden flex gap-1 sm:gap-2 items-center">
             {/* Orders for mobile, when signed in */}
             {isAuthenticated && (
               <NavLink
                 to="/orders"
                 onClick={closeMobileMenu}
-                className={({ isActive }) => `px-2.5 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-green-50 text-green-700' : 'hover:bg-gray-100'}`}
+                className={({ isActive }) => `kkn-link${isActive ? ' on' : ''}`}
               >
                 Orders
               </NavLink>
             )}
-            {/* Cart for mobile */}
-            <button
-              onClick={openCart}
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-              aria-label="Shopping cart"
-            >
-              <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
-
-              {cartLoading ? (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                  <svg
-                    className="animate-spin h-3 w-3 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </span>
-              ) : cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold shadow-lg">
-                  {cartItemCount > 99 ? '99+' : cartItemCount}
-                </span>
-              )}
-            </button>
+            <CartButton count={cartItemCount} loading={cartLoading} onClick={openCart} />
 
             <button
-              className="text-2xl p-2 hover:bg-gray-100 rounded-lg cursor-pointer mobile-menu-trigger"
+              type="button"
+              className="kkn-icon boxed mobile-menu-trigger"
               onClick={() => setIsMobileMenuOpen((p) => !p)}
               aria-label="Menu"
+              aria-expanded={isMobileMenuOpen}
             >
-              <FontAwesomeIcon icon={faBars} />
+              <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M0 2h18M0 7h18M6 12h12" />
+              </svg>
             </button>
           </div>
         </div>
