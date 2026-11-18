@@ -181,6 +181,29 @@ export const CHECKOUT_CSS = `
   .kkco-promo p{margin:2px 0 0;font-size:14px;color:var(--muted);line-height:1.45}
   .kkco-promo small{display:block;margin-top:4px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green)}
 
+  /* Promo code */
+  .kkco-promo-box{background:#fff;border:1px solid var(--line)}
+  .kkco-promo-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 16px;border:0;background:none;font:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+  .kkco-promo-toggle span{font-size:20px;line-height:1;transition:transform .3s var(--spring)}
+  .kkco-promo-toggle:hover span{transform:rotate(90deg);color:var(--green)}
+  .kkco-promo-box form{padding:14px 16px 16px}
+  .kkco-promo-row{display:flex;height:50px;border:1.5px solid var(--line);transition:border-color .2s,box-shadow .2s}
+  .kkco-promo-row:focus-within{border-color:var(--ink);box-shadow:0 3px 0 0 var(--green)}
+  .kkco-promo-row.err{border-color:var(--red)}
+  .kkco-promo-row.err:focus-within{box-shadow:0 3px 0 0 var(--red)}
+  .kkco-promo-row input{flex:1;min-width:0;padding:0 14px;border:0;outline:0;background:transparent;font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+  .kkco-promo-row input::placeholder{font-family:"League Spartan",system-ui,sans-serif;font-weight:500;letter-spacing:0;text-transform:none;color:#9AA399}
+  .kkco-promo-row button{flex:none;min-width:84px;border:0;background:var(--ink);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center;transition:background .2s}
+  .kkco-promo-row button:hover:not(:disabled){background:var(--green)}
+  .kkco-promo-row button .kkco-spin{border-color:rgba(255,255,255,.35);border-top-color:#fff}
+  .kkco-promo-on{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 16px;border:2px solid var(--green);background:var(--tint)}
+  .kkco-promo-on small{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+  .kkco-promo-on b{display:block;margin-top:2px;font-family:var(--mono);font-size:18px;letter-spacing:.1em}
+  .kkco-promo-on span{display:block;font-size:14px}
+  .kkco-promo-on em{display:block;margin-top:6px;font-style:normal;font-size:13px;color:var(--muted);line-height:1.45}
+  .kkco-promo-on button{flex:none;border:0;background:none;padding:2px 0;font:inherit;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .kkco-promo-on button:hover{color:var(--red)}
+
   /* Mobile summary toggle and step bar */
   .kkco-fold{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;border:0;background:none;font:inherit;color:var(--ink);cursor:pointer}
   .kkco-fold span:first-child{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}

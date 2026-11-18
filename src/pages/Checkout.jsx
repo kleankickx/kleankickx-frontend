@@ -16,6 +16,8 @@ import MapHandler from "../components/MapHandler";
 import REGION_CONFIG from '../utils/regionConfig'
 import PersonalInformationCard from "../components/PersonalInformationCard";
 import PromotionCard from "../components/PromotionCard";
+import PromoCodeBox from "../components/PromoCodeBox";
+import { getSavedPromoCode, clearSavedPromoCode } from "../utils/promoCode";
 import OrderSummaryCard from "../components/OrderSummaryCard";
 import { calculateOrderSummary } from '../utils/calculateOrderSummary'
 import { usePlaceOrder } from '../hooks/usePlaceOrder';
@@ -104,6 +106,7 @@ const Checkout = () => {
         await fetchUserReferralDiscountStatus();
         await fetchRedeemedPointsDiscount();
         await fetchAvailablePromotions();
+        await applySavedPromoCode();
       } catch (error) {
         console.error("Error during checkout init:", error);
       } finally {
@@ -167,9 +170,10 @@ const Checkout = () => {
         );
         
         if (validPromotion) {
-          setAppliedPromotion(validPromotion);
-          if (cart.length > 0){
-            toast.success(`🎉 ${validPromotion.discount_percentage}% promotion applied automatically!`);
+          // A code the customer typed or came in with wins over the automatic promotion.
+          setAppliedPromotion((prev) => (prev && prev.is_public === false ? prev : validPromotion));
+          if (cart.length > 0 && !getSavedPromoCode()) {
+            toast.success(`${validPromotion.discount_percentage}% promotion applied automatically.`);
           }
         }
       }
@@ -177,6 +181,21 @@ const Checkout = () => {
       console.log("Error fetching promotions:", error);
     }
   }
+
+  // A code saved from a shared link (?code=KOFI15): check it and apply it.
+  const applySavedPromoCode = async () => {
+    const saved = getSavedPromoCode();
+    if (!saved) return;
+    try {
+      const { data } = await api.post('/api/promotions/validate/', { code: saved });
+      setAppliedPromotion(data);
+      toast.success(`Code ${data.code} applied: ${Number(data.discount_percentage)}% off your Kleans.`, { toastId: 'promo-code' });
+    } catch (err) {
+      clearSavedPromoCode();
+      const reason = err.response?.data?.error;
+      if (reason) toast.info(`Code ${saved}: ${reason}`, { toastId: 'promo-code' });
+    }
+  };
 
   // Call the calculation function, memoizing the result
   const summary = useMemo(() => {
@@ -206,6 +225,19 @@ const Checkout = () => {
     redeemedPointsDiscount,
     isSelfHandled
   ]);
+
+  // The day's public promotion, if any (applied automatically when no code is in use).
+  const publicPromotion = availablePromotions.find((p) => new Date(p.end_date) > new Date() && p.is_active === true) || null;
+  const typedCode = appliedPromotion && appliedPromotion.is_public === false ? appliedPromotion : null;
+  const promoBox = (
+    <PromoCodeBox
+      appliedCode={typedCode}
+      note={summary?.codeNote}
+      onApply={(data) => setAppliedPromotion(data)}
+      onRemove={() => setAppliedPromotion(publicPromotion)}
+    />
+  );
+
 
   // Initialize the hook with all necessary dependencies
   const { placing, handlePayment } = usePlaceOrder({
@@ -544,11 +576,12 @@ const Checkout = () => {
                       )}
                     </AnimatePresence>
                   </div>
-                  {availablePromotions.length > 0 && (
+                  {availablePromotions.length > 0 && !typedCode && (
                     <div className="lg:hidden">
                       <PromotionCard appliedPromotion={appliedPromotion} />
                     </div>
                   )}
+                  <div className="lg:hidden">{promoBox}</div>
 
                   {/* Steps stay mounted (hidden when inactive) so addresses and inputs keep their state */}
                   <div hidden={step !== 0} className={step === 0 ? stepAnimation : ''}>
@@ -672,7 +705,8 @@ const Checkout = () => {
 
                 {/* Side column on large screens: promotion and order summary on every step */}
                 <aside className="hidden lg:block space-y-4 lg:sticky lg:top-24">
-                  {availablePromotions.length > 0 && <PromotionCard appliedPromotion={appliedPromotion} />}
+                  {availablePromotions.length > 0 && !typedCode && <PromotionCard appliedPromotion={appliedPromotion} />}
+                  {promoBox}
                   <OrderSummaryCard
                     cart={cart}
                     appliedPromotion={appliedPromotion}
