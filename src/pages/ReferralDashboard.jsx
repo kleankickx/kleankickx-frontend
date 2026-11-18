@@ -36,8 +36,15 @@ const CSS = ACCOUNT_CSS + `
   .kkrf-link input{flex:1;min-width:0;padding:0 14px;height:52px;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:15px}
   .kkrf-link button{flex:none;padding:0 18px;border:0;border-left:1.5px solid rgba(255,255,255,.35);background:#fff;color:var(--ink);font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .2s,color .2s}
   .kkrf-link button:hover{background:#6FD46F}
-  .kkrf-code{display:inline-flex;align-items:center;gap:10px;margin-top:12px;font-size:13px;color:#A9B3A7}
-  .kkrf-code code{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.12em;color:#fff}
+  .kkrf-label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:20px 0 8px !important;font-size:11px !important;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#A9B3A7 !important}
+  .kkrf-label span{font-weight:500;letter-spacing:.02em;text-transform:none;font-size:12.5px}
+  .kkrf-codebox{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 12px 12px 18px;border:1.5px dashed rgba(255,255,255,.45)}
+  .kkrf-codebox code{font-family:var(--mono);font-size:28px;font-weight:700;letter-spacing:.18em;color:#fff;overflow-wrap:anywhere}
+  .kkrf-codebox div{display:flex;gap:8px;flex:none}
+  .kkrf-codebox button{height:42px;padding:0 14px;border:2px solid #fff;border-radius:2px;background:transparent;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s,color .2s}
+  .kkrf-codebox button:first-child{background:#fff;color:var(--ink)}
+  .kkrf-codebox button:hover{background:#6FD46F;border-color:#6FD46F;color:var(--ink)}
+  @media (max-width:560px){.kkrf-label{flex-direction:column;gap:2px}.kkrf-codebox{flex-direction:column;align-items:stretch;padding:14px}.kkrf-codebox code{font-size:24px;text-align:center}.kkrf-codebox div button{flex:1}}
   .kkrf-share-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
   .kkrf-share-row a,.kkrf-share-row button{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;border:2px solid #fff;border-radius:2px;background:transparent;color:#fff;
     font:inherit;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
@@ -133,18 +140,25 @@ export default function ReferralDashboard() {
     }
   };
 
-  const copyLink = async () => {
+  // copied: '' | 'link' | 'code'
+  const copy = async (what) => {
     try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      await navigator.clipboard.writeText(what === 'code' ? code : link);
+      setCopied(what);
+      setTimeout(() => setCopied(''), 1800);
     } catch {
-      toast.error('Could not copy the link');
+      toast.error(`Could not copy the ${what}`);
     }
   };
+  const copyLink = () => copy('link');
 
   const shareText = `Get your sneakers cleaned by KleanKickx. Sign up with my link and get a discount on your first order: ${link}`;
+  const codeText = `Get your sneakers cleaned by KleanKickx. Sign up at kleankickx.com and enter my referral code ${code} for a discount on your first order.`;
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  const shareCode = () => {
+    if (canShare) navigator.share({ title: 'KleanKickx referral code', text: codeText }).catch(() => {});
+    else window.open(`https://wa.me/?text=${encodeURIComponent(codeText)}`, '_blank', 'noopener');
+  };
   const done = referrals.filter((r) => r.first_order_completed).length;
   const progress = Math.min(1, points / MIN_REDEEM);
   const needed = Math.max(0, MIN_REDEEM - points);
@@ -169,22 +183,35 @@ export default function ReferralDashboard() {
           <div className="kkac-col">
             <motion.section className="kkrf-share" aria-labelledby="kkrf-share-h"
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease }}>
-              <p className="kkac-eyebrow">Your link</p>
+              <p className="kkac-eyebrow">Share & earn</p>
               <h2 id="kkrf-share-h">Give a Klean, get rewarded</h2>
-              <p>Friends who sign up with your link get a discount on their first order.</p>
+              <p>Friends who sign up with your link or code get a discount on their first order.</p>
               {loading && !link ? <div className="kkac-skel" style={{ height: 52, marginTop: 18, opacity: 0.25 }} /> : (
                 <>
+                  <p className="kkrf-label">Link</p>
                   <div className="kkrf-link">
                     <input value={link} readOnly aria-label="Your referral link" onFocus={(e) => e.target.select()} />
-                    <button type="button" onClick={copyLink} aria-live="polite">{copied ? 'Copied' : 'Copy'}</button>
+                    <button type="button" onClick={copyLink} aria-live="polite">{copied === 'link' ? 'Copied' : 'Copy'}</button>
                   </div>
-                  {code && <p className="kkrf-code">Code <code>{code}</code></p>}
                   <div className="kkrf-share-row">
-                    <a className="wa" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">Share on WhatsApp</a>
+                    <a className="wa" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">Share link on WhatsApp</a>
                     {canShare
                       ? <button type="button" onClick={() => navigator.share({ title: 'KleanKickx', text: shareText, url: link }).catch(() => {})}>More options</button>
-                      : <button type="button" onClick={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>}
+                      : <button type="button" onClick={copyLink}>{copied === 'link' ? 'Copied' : 'Copy link'}</button>}
                   </div>
+
+                  {code && (
+                    <>
+                      <p className="kkrf-label">Or share your code<span>Friends enter it when they sign up</span></p>
+                      <div className="kkrf-codebox">
+                        <code aria-label={`Referral code ${code}`}>{code}</code>
+                        <div>
+                          <button type="button" onClick={() => copy('code')} aria-live="polite">{copied === 'code' ? 'Copied' : 'Copy code'}</button>
+                          <button type="button" onClick={shareCode}>Share code</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </motion.section>
