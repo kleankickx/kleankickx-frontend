@@ -54,6 +54,8 @@ import MaintenanceGate from './components/MaintenanceGate';
 
 
 import AppLoader from './components/AppLoader';
+import { toast } from 'react-toastify';
+import { capturePromoCodeFromUrl } from './utils/promoCode';
 
 // Component to conditionally render the appropriate navbar
 const ConditionalNavbar = () => {
@@ -98,6 +100,13 @@ const ConditionalNavbar = () => {
 const AppContent = () => {
   const { authLoading } = useContext(AuthContext);
   const location = useLocation();
+
+  // Promo links (e.g. an influencer's kleankickx.com/?code=KOFI15): remember the code
+  // for checkout, where it's checked and applied.
+  useEffect(() => {
+    const code = capturePromoCodeFromUrl();
+    if (code) toast.success(`Code ${code} saved. It'll be applied at checkout.`, { toastId: 'promo-saved' });
+  }, [location.key]);
   const isAuthPage = location.pathname === '/auth/login' || 
                      location.pathname === '/auth/register' ||
                      location.pathname === '/partner/register' ||

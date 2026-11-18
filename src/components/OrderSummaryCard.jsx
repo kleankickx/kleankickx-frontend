@@ -36,7 +36,7 @@ const OrderSummaryCard = ({
   isSelfHandled = false,
   bare = false,
 }) => {
-  const hasDiscount = canUseSignup || canUseReferral || canUseRedeemedPoints || appliedPromotion;
+  const hasDiscount = canUseSignup || canUseReferral || canUseRedeemedPoints || promoDiscountAmount > 0;
   const itemCount = cart.reduce((n, item) => n + (item.quantity || 0), 0);
   const pickupValue = useSame ? deliveryFee : pickupFee;
   const fee = (value) => (value ? money(value) : 'Add address');
@@ -68,8 +68,10 @@ const OrderSummaryCard = ({
           <Row tone="a" label="Points discount" value={`−${money(redeemedPointsDiscountAmount)}`}
             note={`${redeemedPointsDiscount.percentage}% off · ${redeemedPointsDiscount.points_redeemed} points`} />
         )}
-        {appliedPromotion && (
-          <Row tone="g" label="Promotion" value={`−${money(promoDiscountAmount)}`} note={`${appliedPromotion.discount_percentage}% off today`} />
+        {appliedPromotion && promoDiscountAmount > 0 && (
+          appliedPromotion.is_public === false
+            ? <Row tone="g" label={`Code ${appliedPromotion.code}`} value={`−${money(promoDiscountAmount)}`} note={`${Number(appliedPromotion.discount_percentage)}% off your Kleans`} />
+            : <Row tone="g" label="Promotion" value={`−${money(promoDiscountAmount)}`} note={`${appliedPromotion.discount_percentage}% off today`} />
         )}
 
         {isSelfHandled ? (
