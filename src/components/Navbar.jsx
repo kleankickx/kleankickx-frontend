@@ -13,18 +13,17 @@ import Logo from '../assets/logo2.png';
 const NAV_CSS = `
   .kkn{--ink:#0A0B0A;--line:#D9DFD7;--green:#1A7A1A;--tint:#E9F4E7;--display:"Anton","Arial Narrow",Impact,sans-serif;
     --spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);font-family:"League Spartan",system-ui,sans-serif}
-  .kkn-link{position:relative;display:inline-flex;align-items:center;height:44px;padding:0 12px;font-size:15px;font-weight:600;color:var(--ink);
-    white-space:nowrap;text-decoration:none;transition:color .2s}
-  .kkn-link::after{content:"";position:absolute;left:12px;right:12px;bottom:6px;height:2px;background:var(--green);transform:scaleX(0);
-    transform-origin:left;transition:transform .35s var(--swift)}
-  .kkn-link:hover,.kkn-link.on{color:var(--green)}
-  .kkn-link:hover::after,.kkn-link.on::after{transform:scaleX(1)}
-  .kkn-cta{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 20px;border:2px solid var(--green);background:var(--green);color:#fff !important;
-    font-size:15px;font-weight:700;white-space:nowrap;text-decoration:none;transition:background .2s,border-color .2s}
-  .kkn-cta .ar{transition:transform .3s var(--spring)}
+  /* Each control is one plain box with only its text inside: no inner wrappers,
+     no positioned layers, so every pixel of it is the link or button itself. */
+  .kkn-link{display:block;height:44px;line-height:44px;padding:0 12px;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;text-decoration:none;
+    background:linear-gradient(var(--green),var(--green)) no-repeat 12px calc(100% - 6px)/0 2px;transition:color .2s,background-size .35s var(--swift)}
+  .kkn-link:hover,.kkn-link.on{color:var(--green);background-size:calc(100% - 24px) 2px}
+  .kkn-cta{display:block;height:44px;margin:0;padding:0 20px;border:2px solid var(--green);background:var(--green);color:#fff;
+    font:inherit;font-size:15px;font-weight:700;line-height:40px;white-space:nowrap;cursor:pointer;transition:background .2s,border-color .2s}
+  .kkn-cta::after{content:"→";display:inline-block;margin-left:10px;transition:transform .3s var(--spring)}
   .kkn-cta:hover{background:var(--ink);border-color:var(--ink)}
-  .kkn-cta:hover .ar{transform:translateX(4px)}
-  .kkn-ghost{display:inline-flex;align-items:center;height:44px;padding:0 18px;border:2px solid var(--ink);background:transparent;color:var(--ink);
+  .kkn-cta:hover::after{transform:translateX(4px)}
+  .kkn-ghost{display:block;height:44px;line-height:40px;padding:0 18px;border:2px solid var(--ink);background:transparent;color:var(--ink);
     font-size:15px;font-weight:700;white-space:nowrap;text-decoration:none;transition:background .2s,color .2s}
   .kkn-ghost:hover{background:var(--ink);color:#fff}
   .kkn-icon{position:relative;flex:none;display:grid;place-items:center;width:44px;height:44px;padding:0;border:2px solid transparent;background:none;
@@ -47,11 +46,10 @@ const NAV_CSS = `
     text-transform:uppercase;line-height:1;padding-top:2px}
   .kkn-me .chev{transition:transform .3s var(--swift)}
   .kkn-me[aria-expanded="true"] .chev{transform:rotate(180deg)}
-  /* The whole button takes the click, never the text or icon inside it */
-  .kkn-cta *,.kkn-icon *,.kkn-me *,.kkn-link *{pointer-events:none}
-  .kkn-cta,.kkn-icon,.kkn-me,.kkn-link{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none}
+  /* Icons and badges inside a button never take the pointer: the button does */
+  .kkn-icon *,.kkn-me *{pointer-events:none}
   .kkn :focus-visible{outline:2px solid var(--green);outline-offset:2px}
-  @media (prefers-reduced-motion:reduce){.kkn-badge{animation:none}.kkn-link::after{transition:none}}
+  @media (prefers-reduced-motion:reduce){.kkn-badge{animation:none}.kkn-link,.kkn-cta::after{transition:none}}
 `;
 
 const CartIcon = () => (
@@ -294,9 +292,9 @@ const Navbar = () => {
 
           {/* Right Side Actions */}
           <div className="hidden lg:flex items-center gap-2 xl:gap-3">
-            <Link to="/#services" className="kkn-cta" onClick={goToServices}>
-              Book a Klean <span className="ar" aria-hidden="true">→</span>
-            </Link>
+            <button type="button" className="kkn-cta" onClick={() => { navigate('/#services'); goToServices(); }}>
+              Book a Klean
+            </button>
 
             {/* Orders: one click from anywhere once signed in (like Amazon's "Returns & Orders") */}
             {isAuthenticated && (
