@@ -108,7 +108,7 @@ export const AuthStyles = () => (
       filter:brightness(1.22) contrast(1.05)}
     /* Light shade behind the logo, and a short fade where the photo meets the black strip */
     .kka-poster::after{content:"";position:absolute;inset:0;pointer-events:none;
-      background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 13%,rgba(0,0,0,0) 80%,rgba(0,0,0,.55) 100%)}
+      background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 13%),linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.28) 24%,rgba(0,0,0,0) 46%)}
     .kka-brand.kka-poster > .kka-poster-logo{position:absolute;top:32px;left:40px;z-index:2;line-height:0}
     .kka-poster-logo img{width:140px;height:auto;display:block}
     .kka-brand.kka-poster > .kka-poster-copy{position:absolute;left:40px;right:40px;bottom:clamp(20px,3.4vh,32px);z-index:2}
@@ -218,7 +218,7 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
       <AuthStyles />
       <aside className="kka-brand kka-poster">
         {/* Photo cut from the Care is respect poster (logo removed); the words are set as text. */}
-        <img className="kka-brand-img" src="/images/care-is-respect-photo-tall.jpg" width="951" height="890"
+        <img className="kka-brand-img" src="/images/care-is-respect-photo-full.jpg" width="951" height="890"
           alt="Jerry Akaminko, Ghanaian football icon, training in the gym with boxing gloves." />
         <Link to="/" className="kka-poster-logo" aria-label="KleanKickx home">
           <img src="/images/kleankickx-logo-white.png" alt="KleanKickx" width="140" height="47" />
