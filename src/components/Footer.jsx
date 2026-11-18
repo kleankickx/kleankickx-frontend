@@ -176,16 +176,20 @@ const Footer = () => {
             <span>Every Klean keeps a pair in use.</span>
           </div>
 
+          {/* The wrapper stays put and is what's watched for "in view"; only the SVG inside
+              rises. (Moving the watched element itself pushed the short phone-size wordmark
+              fully below the footer's clipped edge, so it never counted as visible.) */}
           <motion.div
             className="kkf-mark"
             aria-hidden="true"
-            initial={reduce ? false : { opacity: 0, y: 60 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.1, ease: SWIFT }}
+            initial={reduce ? false : 'hidden'}
+            whileInView="shown"
+            viewport={{ once: true, amount: 0.1 }}
           >
             {/* SVG text stretched to the footer's width: always fits, whatever the font or screen */}
-            <svg viewBox="0 0 1000 176" preserveAspectRatio="xMidYMin meet" role="presentation">
+            <motion.svg viewBox="0 0 1000 176" preserveAspectRatio="xMidYMin meet" role="presentation"
+              variants={{ hidden: { opacity: 0, y: '35%' }, shown: { opacity: 1, y: 0 } }}
+              transition={{ duration: 1.1, ease: SWIFT }}>
               <defs>
                 <linearGradient id="kkf-w" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="182">
                   <stop offset="0" stopColor="#F2F5F0" stopOpacity=".2" />
@@ -202,7 +206,7 @@ const Footer = () => {
                 fontFamily='Anton, "Arial Narrow", Impact, sans-serif' fontSize="236">
                 <tspan fill="url(#kkf-w)">KLEANKICK</tspan><tspan fill="url(#kkf-x)">X</tspan>
               </text>
-            </svg>
+            </motion.svg>
           </motion.div>
         </div>
       </div>
