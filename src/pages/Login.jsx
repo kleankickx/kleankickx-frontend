@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import logo from "../assets/logo2.png";
 import api from '../api';
 import AuthLayout, { Field, SubmitButton, GoogleButton } from '../components/AuthLayout';
+import { getReturnTo, continueSearch } from '../utils/returnTo';
 
 // Forgot Password Modal Component
 const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
@@ -372,8 +373,8 @@ const Login = () => {
   const location = useLocation();
 
   const searchParams = new URLSearchParams(location.search);
-  const continueUrl = searchParams.get('continue');
-  const from = location.state?.from || '/';
+  // Where they were going (e.g. checkout): ?continue=, or state.from / state.redirectTo. Same-site paths only.
+  const continueUrl = getReturnTo(location);
   const message = location.state?.message;
   const highlightServiceId = location.state?.highlightServiceId;
   const pendingRecovery = location.state?.pendingRecovery;
@@ -501,7 +502,7 @@ useEffect(() => {
         replace: true,
       });
     } else {
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     }
   };
 
@@ -623,7 +624,7 @@ useEffect(() => {
 
         <p className="kka-switch">
           <span>New to KleanKickx?</span>
-          <Link to="/auth/register" state={location.state}>Create an account <span aria-hidden="true">→</span></Link>
+          <Link to={`/auth/register${continueSearch(location)}`} state={location.state}>Create an account <span aria-hidden="true">→</span></Link>
         </p>
         <p className="kka-legal">
           <Link to="/legal" state={{ tab: 'privacy' }}>Privacy Policy</Link> · <Link to="/legal" state={{ tab: 'terms' }}>Terms of Service</Link>
