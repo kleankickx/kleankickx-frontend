@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { trackEvent } from '../utils/analytics';
 import AuthLayout, { Field, SubmitButton, apiError, GoogleButton } from '../components/AuthLayout';
+import { getReturnTo, continueSearch } from '../utils/returnTo';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
 const validEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -16,7 +17,7 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const message = location.state?.message;            // e.g. "Sign up to claim your free Standard Klean."
-  const from = location.state?.from;
+  const from = getReturnTo(location); // e.g. /checkout: back there after signing up
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -62,7 +63,7 @@ const Register = () => {
       }, { withCredentials: true });
       trackSignUp('email');
       toast.success('Account created. Check your email to verify it.');
-      navigate('/auth/confirm-email/?email=' + encodeURIComponent(email.trim()));
+      navigate('/auth/confirm-email/?email=' + encodeURIComponent(email.trim()) + (from ? '&next=' + encodeURIComponent(from) : ''));
     } catch (err) {
       const msg = apiError(err, "We couldn't create your account. Please try again.");
       setEmailTaken(/already (exists|in use)/i.test(msg));
@@ -98,7 +99,7 @@ const Register = () => {
         <p className="kka-note err" role="alert">
           <span>
             {error}
-            {emailTaken && <> <Link to="/auth/login" state={location.state}>Log in instead</Link> or reset your password from the login page.</>}
+            {emailTaken && <> <Link to={`/auth/login${continueSearch(location)}`} state={location.state}>Log in instead</Link> or reset your password from the login page.</>}
           </span>
         </p>
       )}
@@ -146,7 +147,7 @@ const Register = () => {
 
       <p className="kka-switch">
         <span>Already have an account?</span>
-        <Link to="/auth/login" state={location.state}>Log in <span aria-hidden="true">→</span></Link>
+        <Link to={`/auth/login${continueSearch(location)}`} state={location.state}>Log in <span aria-hidden="true">→</span></Link>
       </p>
     </AuthLayout>
   );

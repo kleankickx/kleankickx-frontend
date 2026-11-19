@@ -6,6 +6,7 @@ import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import api, { onAuthExpiration } from '../api';
+import { currentPath } from '../utils/returnTo';
 
 export const AuthContext = createContext();
 
@@ -41,7 +42,9 @@ const AuthProvider = ({ children }) => {
         toast.info('Your session has expired. Please log in again.', {
           autoClose: 5000,
         });
-        navigate('/auth/login', { replace: true });
+        // Come back to this page (e.g. checkout) after logging in again.
+        const back = currentPath();
+        navigate(back && back !== '/' ? `/auth/login?continue=${encodeURIComponent(back)}` : '/auth/login', { replace: true });
       }
     });
 
