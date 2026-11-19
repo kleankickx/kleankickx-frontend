@@ -1,396 +1,201 @@
+// src/pages/RateAndServices.jsx
+// Prices: every service on one list, how a booking works, and what we clean.
 import { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaSpinner, FaChevronDown, FaChevronUp } from 'react-icons/fa6';
+import { motion } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
-
-
-// assets
-import bgImage from '../assets/hero_sec_rate_service.png';
-import shoe1 from '../assets/shoes1.png';
-import schedule from '../assets/schedule.svg';
-import courierCall from '../assets/call.svg';
-import diamond from '../assets/diamond.svg';
-import delivery from '../assets/delivery.svg';
-import priority from '../assets/priority.svg';
-import shoe2 from '../assets/shoe2.png';
+import useQuickAdd from '../hooks/useQuickAdd';
+import api from '../api';
 import Footer from '../components/Footer';
 
-/* -----------------------------
- | Motion variants (re‑usable) |
- ----------------------------- */
-const fadeInUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
+const ease = [0.77, 0, 0.18, 1];
+const isPriority = (name = '') => /priority|express|rush/i.test(name);
+const isBundle = (s) => s?.service_type?.startsWith('PACKAGE_');
 
-const zoomIn = {
-  hidden: { opacity: 0, scale: 0.85 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.2 } },
-};
+const STEPS = [
+  ['Book', 'Add your Klean to the cart and pick pickup or drop-off at checkout. Pay by Mobile Money or card.'],
+  ['Pickup', 'Our courier calls on the day and collects your pair from your door.'],
+  ['Klean', 'Cleaned by hand: the right brush, product and drying for each material.'],
+  ['Back to you', 'Delivered clean, usually within 72 hours. Priority comes back the next day.'],
+];
+const MATERIALS = ['Canvas', 'Leather', 'Suede & nubuck', 'Mesh & knit', 'High-tops', 'Limited editions'];
 
 const RateAndServices = () => {
   const [services, setServices] = useState([]);
-  const [featuredServices, setFeaturedServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hoveredDescriptionId, setHoveredDescriptionId] = useState(null);
-  const [expandedDescriptions, setExpandedDescriptions] = useState({});
-  const { discounts, user, isAuthenticated } = useContext(AuthContext);
-  
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
-  const signupDiscount = discounts?.find(d => d.type === 'Signup Discount');
+  const { user, isAuthenticated } = useContext(AuthContext);
+  const { quickAdd, addingId } = useQuickAdd();
 
-  // Define the services we want to display
-  const featuredServiceNames = ['Standard Klean', 'Deep Klean', 'Triple Threat'];
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`${backendUrl}/api/services/public/`);
-        const allServices = response.data;
-        setServices(allServices);
-        
-        // Check if user has claimed free service
-        const hasClaimedFreeService = isAuthenticated && user?.free_signup_service_used;
-        
-        // Filter and sort to get only the featured services in the correct order
-        const featured = featuredServiceNames
-          .map(name => allServices.find(service => 
-            service.name.toLowerCase().includes(name.toLowerCase())
-          ))
-          .filter(service => service !== undefined); // Remove any not found
-        
-        setFeaturedServices(featured);
-        
-      } catch (err) {
-        setError('Failed to load services.');
-        console.error('Error fetching services:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchServices();
-  }, [isAuthenticated, user]); // Add dependencies to re-run when auth state changes
-
-  // Function to get service status for banner
-  const getServiceStatus = (serviceName) => {
-    const name = serviceName.toLowerCase();
-    const isPriority = name.includes('priority') || name.includes('express') || name.includes('rush');
-    
-    return {
-      isPriority,
-      bannerText: isPriority ? 'NEXT DAY' : '72 HOURS',
-      badgeText: isPriority ? 'delivered next day' : 'delivered in 72h'
-    };
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await api.get('/api/services/public/');
+      const list = (Array.isArray(data) ? data : []).slice().sort((a, b) => {
+        if (a.is_free_signup_service !== b.is_free_signup_service) return a.is_free_signup_service ? -1 : 1;
+        if (isBundle(a) !== isBundle(b)) return isBundle(a) ? 1 : -1;
+        return Number(a.price) - Number(b.price);
+      });
+      setServices(list);
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      setError("We couldn't load prices.");
+    } finally {
+      setLoading(false);
+    }
   };
+  useEffect(() => { load(); }, []);
 
-  const toggleDescription = (serviceId) => {
-    setExpandedDescriptions(prev => ({
-      ...prev,
-      [serviceId]: !prev[serviceId]
-    }));
+  const freeClaimed = isAuthenticated && user?.free_signup_service_used;
+  const singles = services.filter((s) => !isBundle(s));
+  const bundles = services.filter(isBundle);
+
+  const Row = ({ s }) => {
+    const free = s.is_free_signup_service && !freeClaimed;
+    const pairs = Number(s.included_quantity) || 1;
+    return (
+      <li className="kkpr-row">
+        <div className="kkpr-name">
+          <b>{s.name}</b>
+          {s.description && <span>{s.description}</span>}
+        </div>
+        <span className={`kkpr-time ${isPriority(s.name) ? 'fast' : ''}`}>{isPriority(s.name) ? 'Next day' : '72 hours'}</span>
+        <div className="kkpr-price">
+          {free ? <><strong>Free</strong><small>first Klean</small></>
+            : <><strong>₵{Number(s.price).toLocaleString('en-GH')}</strong><small>{isBundle(s) ? `${pairs} pairs · ₵${(Number(s.price) / pairs).toFixed(0)} each` : 'per pair'}</small></>}
+        </div>
+        <button type="button" className="kkpr-add" onClick={() => quickAdd(s)} disabled={addingId === s.id} aria-label={`Add ${s.name} to cart`}>
+          {addingId === s.id ? 'Adding…' : <>Add <span className="ar" aria-hidden="true">+</span></>}
+        </button>
+      </li>
+    );
   };
 
   return (
-    <div className="bg-white">
+    <div className="kkpr">
+      <style>{`
+        .kkpr{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--tint:#E9F4E7;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
+          background:var(--paper);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif;min-height:100vh}
+        .kkpr-wrap{max-width:1200px;margin:0 auto;padding:0 20px 72px}
+        .kkpr-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+        .kkpr-hero{padding:48px 0 26px;border-bottom:2px solid var(--ink)}
+        .kkpr-hero h1{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(56px,9vw,120px);line-height:.88}
+        .kkpr-hero p.sub{margin:14px 0 0;max-width:50ch;color:var(--muted);font-size:18px;line-height:1.5}
+        .kkpr-sec{margin-top:40px}
+        .kkpr-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+        .kkpr-head h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(30px,4vw,44px);line-height:1}
+        .kkpr-head span{font-size:13px;color:var(--muted)}
+        .kkpr-list{list-style:none;margin:0;padding:0}
+        .kkpr-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 190px 96px;align-items:center;gap:18px;padding:18px 0;border-bottom:1px solid var(--line)}
+        .kkpr-name b{display:block;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:26px;line-height:1}
+        .kkpr-name span{display:block;margin-top:6px;color:var(--muted);font-size:14.5px;line-height:1.45;max-width:60ch;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .kkpr-time{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+        .kkpr-time::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green)}
+        .kkpr-time.fast::before{background:#E08A00}
+        .kkpr-price{text-align:right}
+        .kkpr-price strong{display:block;font-family:var(--display);font-weight:400;font-size:38px;line-height:1;font-variant-numeric:tabular-nums}
+        .kkpr-price small{display:block;margin-top:4px;font-size:12.5px;color:var(--muted)}
+        .kkpr-add{height:44px;border:2px solid var(--ink);border-radius:2px;background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:700;cursor:pointer;
+          transition:background .2s,color .2s,border-color .2s}
+        .kkpr-add .ar{display:inline-block;margin-left:4px;transition:transform .3s var(--spring)}
+        .kkpr-add:hover:not(:disabled){background:var(--green);border-color:var(--green);color:#fff}
+        .kkpr-add:hover:not(:disabled) .ar{transform:rotate(90deg)}
+        .kkpr-add:disabled{opacity:.5;cursor:default}
+        .kkpr :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+        .kkpr-skel{height:86px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,transparent 0%,rgba(217,223,215,.6) 50%,transparent 100%);background-size:200% 100%;animation:kkprShim 1.3s linear infinite}
+        @keyframes kkprShim{to{background-position:-200% 0}}
+        .kkpr-err{margin-top:20px;padding:12px 14px;border-left:3px solid #B42318;background:#FDECEA;color:#7A1A12}
+        .kkpr-err button{margin-left:8px;border:0;background:none;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;color:inherit}
+        .kkpr-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr)}
+        .kkpr-steps li{padding:20px 20px 0 0}
+        .kkpr-steps li + li{padding-left:20px;border-left:1px solid var(--line)}
+        .kkpr-steps .n{font-family:var(--display);font-size:48px;line-height:1;color:var(--green)}
+        .kkpr-steps h3{margin:8px 0 6px;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:26px}
+        .kkpr-steps p{margin:0;color:var(--muted);line-height:1.5;font-size:15px}
+        .kkpr-mat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:center;margin-top:20px;padding:28px;background:var(--ink);color:#fff}
+        .kkpr-mat h2{margin:6px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(34px,4.6vw,56px);line-height:.92}
+        .kkpr-mat p{margin:12px 0 0;color:#C4CCC2;line-height:1.55}
+        .kkpr-mat .kkpr-eyebrow{color:#6FD46F}
+        .kkpr-mat ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .kkpr-mat li{padding:14px;border:1px solid rgba(255,255,255,.18);font-weight:700;font-size:15px}
+        .kkpr-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+        .kkpr-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 22px;border:2px solid var(--ink);border-radius:2px;background:transparent;color:var(--ink);
+          font:inherit;font-size:15px;font-weight:700;text-decoration:none;transition:background .2s,color .2s,border-color .2s}
+        .kkpr-btn .ar{transition:transform .3s var(--spring)}
+        .kkpr-btn:hover{background:var(--ink);color:#fff}
+        .kkpr-btn:hover .ar{transform:translateX(5px)}
+        .kkpr-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+        .kkpr-btn.go:hover{background:var(--ink);border-color:var(--ink)}
+        @media (max-width:900px){
+          .kkpr-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n p" "t a";row-gap:10px}
+          .kkpr-name{grid-area:n}.kkpr-price{grid-area:p}.kkpr-time{grid-area:t}.kkpr-add{grid-area:a;padding:0 18px}
+          .kkpr-steps{grid-template-columns:1fr 1fr;row-gap:24px}
+          .kkpr-steps li:nth-child(3){padding-left:0;border-left:0}
+          .kkpr-mat{grid-template-columns:1fr}
+        }
+        @media (max-width:560px){
+          .kkpr-wrap{padding:0 16px 56px}
+          .kkpr-hero{padding:32px 0 20px}
+          .kkpr-hero p.sub{font-size:16px}
+          .kkpr-name b{font-size:22px}
+          .kkpr-price strong{font-size:30px}
+          .kkpr-steps{grid-template-columns:1fr}
+          .kkpr-steps li,.kkpr-steps li + li{padding:16px 0 0;border-left:0;border-top:1px solid var(--line)}
+          .kkpr-mat{padding:20px}
+          .kkpr-cta .kkpr-btn{flex:1 1 100%}
+        }
+        @media (prefers-reduced-motion:reduce){.kkpr-skel{animation:none}}
+      `}</style>
 
-      {/* CLEAN ALL TYPES */}
-      <section className="bg-[#1E1E1E]">
-        <div className="grid grid-cols-1 md:grid-cols-2 items-center py-6">
-          {/* Text comes first on mobile, second on desktop */}
-          <motion.div
-            className="order-1 lg:order-2 pb-[2rem] lg:pr-24 px-4 lg:px-0 mt-[2rem] lg:mt-0"
-            variants={fadeInUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
-            <h2 className="text-[#007F03] text-3xl lg:text-6xl font-bold header mb-4 lg:leading-[4.5rem]">
-              <span className="text-white">We </span>
-              Clean All
-              <br className='hidden lg:block' />
-              <span className="text-white"> Types of </span>
-              Sneakers
-            </h2>
-            <p className="text-white text-lg">
-              No matter the style or material, we have the expertise and experience to clean your sneakers to perfection. Our services
-              cover: High-tops and low-tops, Canvas, leather, suede, and more. Every type of sneaker, from everyday wear to limited editions.
-            </p>
-          </motion.div>
+      <div className="kkpr-wrap">
+        <header className="kkpr-hero">
+          <p className="kkpr-eyebrow">Prices</p>
+          <h1>Price list</h1>
+          <p className="sub">Every Klean is priced per pair, in cedis. Pickup and delivery are quoted at checkout from your address, or free if you drop off at the studio.</p>
+        </header>
 
-          {/* Image comes second on mobile, first on desktop */}
-          <motion.img
-            src={shoe1}
-            alt="All Sneakers"
-            className="order-2 lg:order-1 w-full h-full object-cover"
-            variants={zoomIn}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          />
+        {error && <p className="kkpr-err" role="alert">{error}<button type="button" onClick={load}>Try again</button></p>}
+
+        <section className="kkpr-sec" aria-labelledby="kkpr-single">
+          <div className="kkpr-head"><h2 id="kkpr-single">Single Kleans</h2><span>Per pair</span></div>
+          <ul className="kkpr-list">
+            {loading ? [0, 1, 2, 3].map((k) => <li key={k} className="kkpr-skel" aria-hidden="true" />) : singles.map((s) => <Row key={s.id} s={s} />)}
+          </ul>
+        </section>
+
+        {!loading && bundles.length > 0 && (
+          <section className="kkpr-sec" aria-labelledby="kkpr-bundles">
+            <div className="kkpr-head"><h2 id="kkpr-bundles">Bundles</h2><span>More pairs, lower price each</span></div>
+            <ul className="kkpr-list">{bundles.map((s) => <Row key={s.id} s={s} />)}</ul>
+          </section>
+        )}
+
+        <section className="kkpr-sec" aria-labelledby="kkpr-how">
+          <div className="kkpr-head"><h2 id="kkpr-how">How a booking works</h2></div>
+          <motion.ol className="kkpr-steps" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.5, ease }}>
+            {STEPS.map(([t, d], i) => (
+              <li key={t}><span className="n">{String(i + 1).padStart(2, '0')}</span><h3>{t}</h3><p>{d}</p></li>
+            ))}
+          </motion.ol>
+        </section>
+
+        <section className="kkpr-mat" aria-labelledby="kkpr-mat-h">
+          <div>
+            <p className="kkpr-eyebrow">What we clean</p>
+            <h2 id="kkpr-mat-h">Every type of sneaker</h2>
+            <p>Everyday pairs and limited editions alike. Every pair is cleaned by hand and checked before it goes back to you.</p>
+          </div>
+          <ul>{MATERIALS.map((m) => <li key={m}>{m}</li>)}</ul>
+        </section>
+
+        <div className="kkpr-cta">
+          <Link to="/services" className="kkpr-btn go">Book a Klean <span className="ar" aria-hidden="true">→</span></Link>
+          <Link to="/vouchers" className="kkpr-btn">Gift a Klean</Link>
+          <a className="kkpr-btn" href="https://wa.me/233536278834" target="_blank" rel="noreferrer">Ask on WhatsApp</a>
         </div>
-      </section>
-
-      {/* SERVICE PRICING */}
-      <section className="bg-white py-16 px-4 md:px-8 lg:px-24" id="pricing">
-        <h2 className="text-primary header text-4xl md:text-6xl font-bold text-center">Service Pricing</h2>
-        <p className="text-gray-600 text-center mb-16 mt-1">Transparent Rates for Quality Care</p>
-        
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <FaSpinner className="animate-spin h-10 w-10 text-primary mb-4" />
-            <p className="text-gray-600">Loading services...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center text-red-600 bg-red-50 p-6 rounded-lg max-w-md mx-auto">
-            <p className="mb-2">Failed to load services</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="text-sm text-primary underline"
-            >
-              Try again
-            </button>
-          </div>
-        ) : (
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-            variants={stagger}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-          >
-            {featuredServices.map((service, i) => {
-              const status = getServiceStatus(service.name);
-              const isExpanded = expandedDescriptions[service.id];
-              const hasClaimedFreeService = isAuthenticated && user?.free_signup_service_used;
-              
-              return (
-                <motion.div key={service.id} className="border shadow-lg border-gray-300 rounded-lg hover:border-primary hover:shadow-xl transition overflow-hidden relative group" variants={fadeInUp}>
-                  {/* Slanted Delivery Ribbon */}
-                  <div className="absolute top-0 right-0 w-28 h-28 overflow-hidden z-20 pointer-events-none">
-                    <div className={`absolute top-0 right-0 w-[140%] h-7 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white shadow-sm transform translate-x-[30%] translate-y-[80%] rotate-45 
-                      ${status.isPriority ? 'bg-gradient-to-r from-orange-500 to-yellow-500' : 'bg-gradient-to-r from-emerald-600 to-green-500'}`}>
-                      {status.bannerText}
-                    </div>
-                  </div>
-
-                  {/* Free Service Badge - only show if this service is the free one AND user hasn't claimed it */}
-                  {service.is_free_signup_service && !hasClaimedFreeService && (
-                    <div className="absolute top-4 left-0 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-r-full shadow-lg z-10 flex items-center gap-1">
-                      FREE
-                    </div>
-                  )}
-
-                  {/* Discount Badge - only show if not a free service or if free service is claimed */}
-                  {signupDiscount && !service.is_free_signup_service && (
-                    <div className="absolute top-4 left-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-r-full shadow-lg z-10">
-                      {parseInt(signupDiscount.percentage)}% OFF
-                    </div>
-                  )}
-
-                  <div className="flex flex-col h-full">
-                    <Link to="/services" className="flex-grow">
-                      <div className="relative h-80 w-full overflow-hidden bg-gray-100">
-                        <img 
-                          src={service.image} 
-                          alt={service.name} 
-                          className="h-full w-full object-cover group-hover:scale-105 transition duration-500" 
-                        />
-                      </div>
-                   
-                    
-                      <div className="p-6 space-y-4 flex flex-col flex-grow">
-                        <h3 className="text-xl text-primary mb-2 font-semibold">{service.name}</h3>
-                        
-                        {/* Delivery Badge */}
-                        <div className={`inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-[10px] font-semibold border 
-                          ${status.isPriority ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          {status.badgeText}
-                        </div>
-
-                        {/* Description with Tooltip (Desktop) and Read More (Mobile) */}
-                        <div className="relative flex-grow">
-                          {/* Desktop: Tooltip on hover */}
-                          <div 
-                            className="hidden md:block"
-                            onMouseEnter={() => setHoveredDescriptionId(service.id)}
-                            onMouseLeave={() => setHoveredDescriptionId(null)}
-                          >
-                            <p className="text-gray-600 text-sm line-clamp-2 cursor-help leading-relaxed">
-                              {service.description}
-                            </p>
-                            
-                            <AnimatePresence>
-                              {hoveredDescriptionId === service.id && (
-                                <motion.div 
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: 10 }}
-                                  className="absolute bottom-full left-0 mb-2 w-full z-50 bg-gray-900 text-white text-xs p-3 rounded-lg shadow-xl"
-                                >
-                                  {service.description}
-                                  {/* Tooltip Arrow */}
-                                  <div className="absolute top-full left-5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-
-                          {/* Mobile: Read More Button */}
-                          <div className="md:hidden">
-                            <div className="relative">
-                              <p className={`text-gray-600 text-sm leading-relaxed transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
-                                {service.description}
-                              </p>
-                              
-                              {/* Fade effect for non-expanded text */}
-                              {!isExpanded && service.description.length > 100 && (
-                                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-                              )}
-                            </div>
-                            
-                            {service.description.length > 100 && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  toggleDescription(service.id);
-                                }}
-                                className="mt-2 flex items-center gap-1 text-primary text-xs font-medium hover:text-primary/80 transition-colors"
-                              >
-                                {isExpanded ? (
-                                  <>
-                                    <FaChevronUp className="w-3 h-3" />
-                                    Read Less
-                                  </>
-                                ) : (
-                                  <>
-                                    <FaChevronDown className="w-3 h-3" />
-                                    Read More
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-4 bg-primary text-white inline-flex items-center px-4 py-2 tracking-widest w-fit">
-                          <span className="font-medium">PRICE </span>
-                          <span className="mx-2">|</span>
-                          <span className={service.is_free_signup_service && !hasClaimedFreeService ? 'text-yellow-300' : ''}>
-                            {service.is_free_signup_service && !hasClaimedFreeService ? 'FREE' : `GH₵${service.price}`}
-                          </span>
-                        </div>
-                        
-                        
-                      </div>
-                    </Link>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
-
-        {services.length > 3 && (
-          <div className="text-center mt-10">
-            <Link 
-              to="/services" 
-              className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-lg hover:bg-primary/90 transition font-medium"
-            >
-              View All Services
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {/* CUSTOMER EXPERIENCE */}
-      <section className="px-4 md:px-8 lg:px-24 py-16 bg-white">
-        <h2 className="text-4xl md:text-6xl font-bold text-primary header text-center mb-4">Customer Experience</h2>
-        <p className="text-gray-600 text-center mb-10">Seamless Sneaker Care</p>
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-5 gap-6"
-          variants={stagger}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-        >
-          {[{
-            icon: schedule,
-            title: 'Schedule a Pickup',
-            desc: 'Pick a convenient time online, and our courier will collect your kicks.',
-            link: '/services',
-            linkText: 'Schedule Now',
-          }, {
-            icon: courierCall,
-            title: 'Courier Contact',
-            desc: 'Our courier confirms details on the scheduled day.',
-          }, {
-            icon: diamond,
-            title: 'Premium Care',
-            desc: 'We treat each pair with precision and premium products.',
-          }, {
-            icon: delivery,
-            title: 'Swift Delivery',
-            desc: 'Get your rejuvenated sneakers back in ~72 hrs.',
-          }, {
-            icon: priority,
-            title: 'Priority Service',
-            desc: 'Need them faster? Choose our priority add‑on.',
-          }].map((card, idx) => (
-            <motion.div key={idx} className="p-6 border border-gray-300 rounded-lg hover:shadow-xl hover:scale-[1.02] transition" variants={fadeInUp}>
-              <img src={card.icon} alt={card.title} className="w-14 h-14 mb-4" />
-              <h3 className="text-xl font-semibold text-primary mb-2">{card.title}</h3>
-              <p className="text-gray-600 mb-4 text-sm leading-relaxed">{card.desc}</p>
-              {card.link && (
-                <Link to={card.link} className="bg-primary text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm inline-block">
-                  {card.linkText}
-                </Link>
-              )}
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* TAILORED SERVICES */}
-      <section className="bg-white relative overflow-hidden py-16">
-        {/* desktop bg image */}
-        <img src={shoe2} alt="bg" className="hidden lg:block absolute right-0 -top-20 h-[40rem] w-auto object-contain pointer-events-none" />
-
-        <motion.div className="relative z-10 px-4 md:px-8 lg:px-24" variants={fadeInUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-          <div className="max-w-xl space-y-6">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary header">Tailored Services For Your Needs</h2>
-            <p className="text-gray-600 text-base md:text-lg">
-              At KleanKickx, we understand that sneakers aren't just shoes;
-              they're a statement, a passion, and a cherished part of your style.
-              Our mission is to ensure that every step you take is a confident
-              and klean one. Whether you're an athlete, a collector, or
-              someone who simply loves to strut in stylish kicks, we're here for you.
-            </p>
-          </div>
-        </motion.div>
-
-        {/* mobile bg image */}
-        <img src={shoe2} alt="bg mobile" className="block lg:hidden w-full object-contain mt-8" />
-      </section>
-
-      {/* OPTIONAL CAROUSEL / TESTIMONIALS*/}
-      {/* <ShoeCarousel /> */}
-
-      {/* FOOTER */}
+      </div>
       <Footer />
     </div>
   );

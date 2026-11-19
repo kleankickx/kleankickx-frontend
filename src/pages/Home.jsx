@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
+import Footer from '../components/Footer';
+import { AuthContext } from '../context/AuthContext';
+import useQuickAdd from '../hooks/useQuickAdd';
 
 // Photo at the top of a homepage service card. `images` is null while loading.
 const ServicePhoto = ({ images, kind, alt }) => {
@@ -21,24 +24,120 @@ const ServicePhoto = ({ images, kind, alt }) => {
   );
 };
 
+// Hero slideshow: no labels, arrows or dots. It crossfades on its own, follows a drag or swipe,
+// leans with the pointer and drifts on scroll. Pauses on hover, while dragging and when the tab is hidden.
+const HERO_SLIDES = [
+  { src: 'images/before-after.jpg', alt: 'White sneakers caked in dirt beside the same pair after a KleanKickx clean', pos: '50% 20%' },
+  { src: 'images/market.jpg', alt: 'A trader opening a sack of secondhand sneakers beside piles of shoes at an Accra market' },
+];
+const HERO_MS = 6500;
+
+const HeroShow = ({ children }) => {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [tick, setTick] = useState(0); // restarts the progress line
+  const ref = useRef(null);
+  const showRef = useRef(null);
+  const txtRef = useRef(null);
+  const startX = useRef(null);
+  const n = HERO_SLIDES.length;
+  const go = useCallback((d) => { setI((p) => (p + d + n) % n); setTick((t) => t + 1); }, [n]);
+
+  useEffect(() => {
+    if (paused || dragging) return undefined;
+    const id = setTimeout(() => go(1), HERO_MS);
+    return () => clearTimeout(id);
+  }, [i, paused, dragging, tick, go]);
+
+  useEffect(() => {
+    const vis = () => setPaused(document.hidden);
+    document.addEventListener('visibilitychange', vis);
+    return () => document.removeEventListener('visibilitychange', vis);
+  }, []);
+
+  // Scroll drift: the photo moves slower than the page and the text lifts away
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = ref.current?.offsetHeight || 1;
+        const y = Math.min(window.scrollY, h);
+        if (showRef.current) showRef.current.style.transform = `translate3d(0,${y * 0.35}px,0)`;
+        if (txtRef.current) { txtRef.current.style.transform = `translate3d(0,${y * -0.12}px,0)`; txtRef.current.style.opacity = String(1 - (y / h) * 1.1); }
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
+  }, []);
+
+  const onDown = (e) => {
+    if (e.target.closest('a,button')) return;
+    startX.current = e.clientX; setDragging(true);
+  };
+  const onUp = (e) => {
+    if (startX.current === null) return;
+    const dx = e.clientX - startX.current;
+    startX.current = null; setDragging(false);
+    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  };
+  const onMove = (e) => {
+    if (e.pointerType !== 'mouse' || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    ref.current.style.setProperty('--px', `${((e.clientX - r.left) / r.width - 0.5) * -14}px`);
+    ref.current.style.setProperty('--py', `${((e.clientY - r.top) / r.height - 0.5) * -10}px`);
+  };
+  const onKey = (e) => { if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); };
+
+  return (
+    <section
+      ref={ref}
+      className={`hero ${dragging ? 'drag' : ''}`}
+      aria-labelledby="heroT"
+      aria-roledescription="carousel"
+      tabIndex={-1}
+      onPointerDown={onDown}
+      onPointerUp={onUp}
+      onPointerCancel={() => { startX.current = null; setDragging(false); }}
+      onPointerMove={onMove}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => { setPaused(false); setTick((t) => t + 1); }}
+      onKeyDown={onKey}
+    >
+      <div className="show" ref={showRef}>
+        {HERO_SLIDES.map((sl, k) => (
+          <div key={sl.src} className={`sl ${k === i ? 'on' : ''}`} aria-hidden={k !== i}>
+            <img src={sl.src} alt={sl.alt} draggable="false" style={sl.pos ? { objectPosition: sl.pos } : undefined}
+              fetchPriority={k === 0 ? 'high' : 'auto'} loading={k === 0 ? 'eager' : 'lazy'} />
+          </div>
+        ))}
+      </div>
+      <div className="shade"></div>
+      <div className="wrap txt" ref={txtRef}>{children}</div>
+      <span key={tick + '-' + i} className={`prog ${paused || dragging ? '' : 'run'}`} style={{ '--dur': `${HERO_MS}ms` }} aria-hidden="true"></span>
+    </section>
+  );
+};
+
+const WHATSAPP_TRADE_IN = 'https://wa.me/233536278834?text=' + encodeURIComponent('Hi KleanKickx, I have pairs I no longer wear and want to trade them in.');
+
 const Home = () => {
-  // --- State & Refs ---
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [userPaused, setUserPaused] = useState(false);
   const [bundleSelection, setBundleSelection] = useState(5);
   const [activeTab, setActiveTab] = useState('leather');
+  const { isAuthenticated, user } = useContext(AuthContext);
+  const { quickAdd, addingId } = useQuickAdd();
 
-  const slideshowRef = useRef(null);
   const revealObserverRef = useRef(null);
   const countObserverRef = useRef(null);
 
   const bundles = {
-    1: { name: 'Standard Klean', total: 50, label: 'Book a Standard Klean' },
-    3: { name: 'Triple Threat', total: 130, label: 'Add 3-pair bundle' },
-    5: { name: 'Clean Krew', total: 210, label: 'Add 5-pair bundle' },
-    10: { name: 'Sneakers Squad', total: 410, label: 'Add 10-pair bundle' },
-    20: { name: 'VIP Klean', total: 800, label: 'Add 20-pair bundle' },
+    1: { name: 'Standard Klean', total: 50 },
+    3: { name: 'Triple Threat', total: 130 },
+    5: { name: 'Clean Krew', total: 210 },
+    10: { name: 'Sneakers Squad', total: 410 },
+    20: { name: 'VIP Klean', total: 800 },
   };
 
   const careTabs = [
@@ -48,7 +147,6 @@ const Home = () => {
     { id: 'soles', label: 'Soles' },
     { id: 'store', label: 'Storage' },
   ];
-
   const careContent = {
     leather: {
       subtitle: 'Tough, but it cracks if it dries out.',
@@ -77,115 +175,60 @@ const Home = () => {
     },
   };
 
-  const slides = [
-    {
-      label: 'Why we exist',
-      title: '300 million pairs binned.',
-      highlight: 'Yearly.',
-      sub: "That's how many shoes Africa discards annually. In Ghana, many end up in landfills, polluting soil and water. Most of them still had years left.",
-      image: 'images/market.jpg',
-      alt: 'A trader opening a sack of secondhand sneakers beside piles of shoes at an Accra market',
-      imageClass: '',
-    },
-    {
-      label: 'Before you bin them',
-      title: "Most aren't done. They're",
-      highlight: 'dirty.',
-      sub: 'Stains, grime and yellowed soles are fixable. Cleaning, sole whitening, deodorizing and minor restoration, by hand, every day.',
-      image: 'images/before-after.jpg',
-      alt: 'White sneakers before cleaning, caked in dirt, beside the same pair after a KleanKickx clean, bright white',
-      imageClass: 'top',
-    },
-    {
-      label: 'The KleanKickx studio · 29 Golf Hills St, Accra',
-      title: 'Clean. Restore.',
-      highlight: 'Protect.',
-      sub: 'We pick up your dirty kicks, Klean them by hand with a controlled care system, and deliver them fresh. Typically within 72 hours.',
-      image: 'images/store.jpg',
-      alt: 'A KleanKickx technician cleaning sneakers at the studio machine, with shelves of restored pairs',
-      imageClass: '',
-      isStore: true,
-    },
-  ];
-
-  // --- Service photos, from the same list the Services page uses ---
-  const [serviceImages, setServiceImages] = useState(null); // null while loading
+  // --- Live services: same list the Services page uses, so each card adds the real item ---
+  const [services, setServices] = useState(null); // null while loading
   useEffect(() => {
     let alive = true;
+    const endpoint = isAuthenticated ? '/api/services/authenticated/' : '/api/services/public/';
     api
-      .get('/api/services/public/')
-      .then(({ data }) => {
-        if (!alive || !Array.isArray(data)) return;
-        // Shortest matching name wins, so "Standard Klean" beats a bundle that mentions it
-        const pick = (test) =>
-          data
-            .filter((svc) => svc.image && test(svc))
-            .sort((a, b) => a.name.length - b.name.length)[0]?.image || '';
-        const named = (word) => (svc) => !svc.is_free_signup_service && svc.name?.toLowerCase().includes(word);
-        setServiceImages({
-          free: pick((svc) => svc.is_free_signup_service),
-          standard: pick(named('standard')),
-          priority: pick(named('priority')),
-          deep: pick(named('deep')),
-        });
-      })
-      .catch(() => alive && setServiceImages({}));
+      .get(endpoint)
+      .catch(() => api.get('/api/services/public/'))
+      .then(({ data }) => { if (alive) setServices(Array.isArray(data) ? data : []); })
+      .catch(() => alive && setServices([]));
     return () => { alive = false; };
-  }, []);
+  }, [isAuthenticated]);
 
-  // --- Slideshow Logic ---
-  const goToSlide = useCallback((index) => {
-    setCurrentSlide((prev) => (index === prev ? prev : index));
-  }, []);
+  const catalog = useMemo(() => {
+    if (!services) return null;
+    const isPackage = (s) => s.service_type?.startsWith('PACKAGE_');
+    // Shortest matching name wins, so "Standard Klean" beats anything longer that mentions it
+    const single = (word) => services
+      .filter((s) => !s.is_free_signup_service && !isPackage(s) && s.name?.toLowerCase().includes(word))
+      .sort((a, b) => a.name.length - b.name.length)[0];
+    const bundle = (pairs, name) => services.find((s) => isPackage(s) && Number(s.included_quantity) === pairs)
+      || services.find((s) => s.name?.toLowerCase() === name.toLowerCase());
+    return {
+      free: services.find((s) => s.is_free_signup_service),
+      standard: single('standard'),
+      priority: single('priority'),
+      deep: single('deep'),
+      bundle,
+    };
+  }, [services]);
 
-  const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  }, [slides.length]);
+  const serviceImages = catalog === null ? null : {
+    free: catalog.free?.image || '',
+    standard: catalog.standard?.image || '',
+    priority: catalog.priority?.image || '',
+    deep: catalog.deep?.image || '',
+  };
 
-  const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  }, [slides.length]);
-
-  const shouldRun = !isPaused && !userPaused;
-
-  // Auto-advance — single source of truth, timer drives the slideshow
-  useEffect(() => {
-    if (!shouldRun) return;
-    const id = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6500);
-    return () => clearInterval(id);
-  }, [shouldRun, slides.length]);
-
-  // Pause on hover/focus
-  const handleMouseEnter = () => { if (!userPaused) setIsPaused(true); };
-  const handleMouseLeave = () => { if (!userPaused) setIsPaused(false); };
-  const handleFocusIn = () => { if (!userPaused) setIsPaused(true); };
-  const handleFocusOut = () => { if (!userPaused) setIsPaused(false); };
-
-  // Visibility change
-  useEffect(() => {
-    const handleVisibility = () => { if (!userPaused) setIsPaused(document.hidden); };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [userPaused]);
-
-  // Swipe
-  const touchStartX = useRef(null);
-  const handlePointerDown = (e) => { touchStartX.current = e.clientX; };
-  const handlePointerUp = (e) => {
-    if (touchStartX.current === null) return;
-    const dx = e.clientX - touchStartX.current;
-    touchStartX.current = null;
-    if (Math.abs(dx) > 50) {
-      if (dx < 0) nextSlide(); else prevSlide();
+  // Add straight to the cart. If the live list hasn't loaded or the item is missing,
+  // fall back to the Services page so the customer is never stuck.
+  const AddButton = ({ service, className = 'btn sm', children = 'Add to cart' }) => {
+    if (!service) {
+      return <Link className={className} to="/services">{children}</Link>;
     }
+    const busy = addingId === service.id;
+    return (
+      <button type="button" className={className} onClick={() => quickAdd(service)} disabled={busy} aria-busy={busy}>
+        {busy ? 'Adding…' : children}
+      </button>
+    );
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'ArrowRight') nextSlide();
-    if (e.key === 'ArrowLeft') prevSlide();
-  };
+  const freeUsed = isAuthenticated && !!user?.free_signup_service_used;
+  const freeLabel = !isAuthenticated ? 'Sign up free' : freeUsed ? 'Already claimed' : 'Add to cart';
 
   // --- Scroll Reveal & Count-Up ---
   useEffect(() => {
@@ -241,6 +284,9 @@ const Home = () => {
   }, []);
 
   const selectedBundle = bundles[bundleSelection];
+  const selectedService = catalog
+    ? (bundleSelection === 1 ? catalog.standard : catalog.bundle(bundleSelection, selectedBundle.name))
+    : undefined;
 
   const handleTabClick = (tabId) => setActiveTab(tabId);
 
@@ -266,8 +312,8 @@ const Home = () => {
           --green:#1A7A1A;--green-ink:#FFFFFF;--tint:#E6F0E4;
           --band:#0A0B0A;--band-fg:#F2F5F0;--band-muted:#A3AEA1;--band-line:#2A302A;--band-green:#4CB84C;
           --display:"Anton","Arial Narrow",Impact,sans-serif;
-          --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-          --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+          --body:"League Spartan",system-ui,-apple-system,"Segoe UI",sans-serif;
+          --mono:"League Spartan",system-ui,sans-serif;
           --spring:cubic-bezier(.2,1.25,.3,1);
           --swift:cubic-bezier(.77,0,.18,1);
         }
@@ -285,8 +331,6 @@ const Home = () => {
         h3{font-size:30px;line-height:1}
         p{margin:0;max-width:62ch}
         .x{color:var(--green)}
-        .eyebrow{color:var(--green);margin-bottom:20px;display:flex;gap:10px;align-items:center}
-        .eyebrow::before{content:"";width:28px;height:2px;background:var(--green)}
         .btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--body);font-weight:700;font-size:15px;text-decoration:none;padding:13px 20px;border-radius:2px;border:2px solid var(--ink);color:var(--ink);background:transparent;cursor:pointer;transition:transform .25s var(--spring),background .2s}
         .btn:hover{transform:translateY(-3px)}
         .btn .ar{transition:transform .3s var(--spring)}
@@ -297,91 +341,60 @@ const Home = () => {
         .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
 
 
-        /* ===== hero slideshow ===== */
-        .show{position:relative;height:clamp(560px,80vh,820px);overflow:hidden;background:#000;color:#fff;touch-action:pan-y}
-        .slide{position:absolute;inset:0;clip-path:inset(0 0 0 100%);z-index:0}
-        .slide.on{clip-path:inset(0 0 0 0);z-index:2}
-        .slide.leaving{clip-path:inset(0 0 0 0);z-index:1}
-        .show.moving .slide.on{transition:clip-path 1.15s var(--swift)}
-        .show.rev .slide:not(.on):not(.leaving){clip-path:inset(0 100% 0 0)}
-        .slide .ph{position:absolute;inset:0;overflow:hidden}
-        .slide img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.06)}
-        .slide.on img{animation:kb 9s cubic-bezier(.25,.1,.25,1) both}
-        .slide:nth-child(2n).on img{animation-name:kb2}
-        @keyframes kb{from{transform:scale(1.2) translate3d(2.5%,1%,0)}to{transform:scale(1.04) translate3d(0,0,0)}}
-        @keyframes kb2{from{transform:scale(1.04) translate3d(-1%,0,0)}to{transform:scale(1.2) translate3d(2%,-1.5%,0)}}
-        .slide img.top{object-position:50% 0;transform-origin:50% 0}
-        .slide .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.45) 50%,rgba(0,0,0,.08) 100%),linear-gradient(0deg,rgba(0,0,0,.55),transparent 40%)}
-        .slide .txt{position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;padding-block:40px 56px}
-        .slide .lab{color:#6FD46F;display:flex;gap:12px;align-items:center;margin-bottom:22px}
-        .slide .lab::before{content:"";height:2px;width:36px;background:#6FD46F;transform-origin:left}
-        .slide h1{font-size:clamp(54px,8.6vw,124px);max-width:11.5ch;color:#fff}
-        .slide h1 .w{display:inline-block;overflow:hidden;vertical-align:top;padding-right:.18em;margin-right:-.18em}
-        .slide h1 .w>span{display:inline-block}
-        .slide h1 .g{color:#6FD46F}
-        .slide .sub{font-size:clamp(17px,1.6vw,20px);color:rgba(255,255,255,.82);margin-top:22px;max-width:46ch}
-        .slide.play .lab::before{animation:grow .7s var(--swift) .35s both}
-        .slide.play .lab span{animation:fadeup .6s ease .45s both}
-        .slide.play h1 .w>span{animation:rise .95s var(--spring) both;animation-delay:calc(.5s + var(--i)*75ms)}
-        .slide.play .sub{animation:fadeup .8s ease 1s both}
-        .slide.play .ctas{animation:fadeup .8s ease 1.15s both}
-        @keyframes rise{from{transform:translateY(112%) rotate(4deg)}to{transform:none}}
-        @keyframes grow{from{transform:scaleX(0)}to{transform:none}}
-        @keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-        .wipe{position:absolute;inset:0 -20%;z-index:5;background:var(--green);transform:translateX(-120%) skewX(-14deg);pointer-events:none}
-        .wipe.go{animation:wipe 1.15s var(--swift) both}
-        .show.rev .wipe.go{animation-name:wipeR}
-        @keyframes wipe{0%{transform:translateX(120%) skewX(-14deg)}100%{transform:translateX(-120%) skewX(-14deg)}}
-        @keyframes wipeR{0%{transform:translateX(-120%) skewX(-14deg)}100%{transform:translateX(120%) skewX(-14deg)}}
-        .slide .fallback{position:absolute;inset:0;background:radial-gradient(120% 90% at 85% 50%,#1F8E1F 0%,#0F4F0F 55%,#071F07 100%);display:none}
-        .slide .fallback svg{position:absolute;right:6%;top:50%;width:min(42vw,520px);transform:translateY(-50%);opacity:.9}
-        .slide.noimg .fallback{display:block}.slide.noimg .ph{display:none}
-        .rail{position:absolute;z-index:6;top:50%;right:max(24px,env(safe-area-inset-right,0px));transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:6px}
-        .rail-n{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:#fff;font-variant-numeric:tabular-nums;padding:4px 0}
-        .rail-n.dim{color:rgba(255,255,255,.5)}
-        .rail button{position:relative;width:32px;height:64px;background:none;border:0;padding:0;cursor:pointer;display:flex;justify-content:center;border-radius:16px;transition:background .2s}
-        .rail button:hover{background:rgba(255,255,255,.08)}
-        .rail i{display:block;width:3px;height:100%;border-radius:3px;background:rgba(255,255,255,.28);position:relative;overflow:hidden;transition:width .3s var(--spring)}
-        .rail button:hover i,.rail button.on i{width:4px}
-        .rail i::after{content:"";position:absolute;inset:0;background:#fff;transform:scaleY(0);transform-origin:top}
-        .rail .done i::after{transform:none}
-        .rail .on i::after{background:#6FD46F;animation:fillY 6.5s linear both}
-        .show.paused .rail .on i::after{animation-play-state:paused}
-        @keyframes fillY{to{transform:none}}
-        .rail-play{position:absolute;top:50%;left:50%;width:14px;height:14px;transform:translate(-50%,-50%);color:#fff;background:rgba(0,0,0,.55);border-radius:50%;padding:3px;box-sizing:content-box}
-        .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-        /* hero buttons */
-        .hero-ctas{margin-top:32px;gap:14px}
-        .hero-go{padding:16px 26px;font-size:16px;box-shadow:0 10px 30px -8px rgba(31,142,31,.65)}
-        .hero-go:hover{box-shadow:0 16px 36px -8px rgba(31,142,31,.75)}
-        .hero-ghost{padding:16px 24px;font-size:16px;background:rgba(255,255,255,.06);backdrop-filter:blur(4px)}
-        .hero-ghost:hover{background:rgba(255,255,255,.16)}
+        /* ===== hero: one static frame ===== */
+        .hero{position:relative;min-height:clamp(560px,86vh,820px);display:flex;align-items:flex-end;background:#000;color:#fff;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none}
+        .hero.drag{cursor:grabbing}
+        .hero .show{position:absolute;inset:0;will-change:transform}
+        .hero .sl{position:absolute;inset:0;opacity:0;transition:opacity 1.4s cubic-bezier(.4,0,.2,1)}
+        .hero .sl.on{opacity:1}
+        .hero .sl img{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;object-position:50% 40%;transform:translate3d(var(--px,0),var(--py,0),0) scale(1.02);transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+        .hero .sl.on img{animation:kkb 9s cubic-bezier(.25,.1,.25,1) both}
+        @keyframes kkb{from{scale:1.08}to{scale:1}}
+        .hero .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.84) 0%,rgba(0,0,0,.5) 55%,rgba(0,0,0,.15) 100%),linear-gradient(0deg,rgba(0,0,0,.6),transparent 45%);pointer-events:none}
+        .hero .txt{position:relative;width:100%;padding-block:120px 72px;will-change:transform,opacity}
+        .hero h1{font-size:clamp(56px,9vw,128px);max-width:10ch;color:#fff}
+        .hero h1 span{color:#6FD46F}
+        .hero .sub{font-size:clamp(17px,1.6vw,21px);color:rgba(255,255,255,.85);margin-top:22px;max-width:44ch}
+        .hero .prog{position:absolute;left:0;bottom:0;height:3px;background:#6FD46F;width:100%;transform-origin:left;transform:scaleX(0)}
+        .hero .prog.run{animation:kkprog var(--dur) linear both}
+        .hero:hover .prog.run,.hero.drag .prog.run{animation-play-state:paused}
+        @keyframes kkprog{to{transform:scaleX(1)}}
+        .hero-go{padding:16px 26px;font-size:16px}
+        .hero-ghost{padding:16px 24px;font-size:16px}
+        /* image wipe-in on scroll: photos open from a thin strip */
+        .kk-js .svcs:not(.in) .pic img{clip-path:inset(0 46% 0 46%)}
+        .svcs .pic img{transition:clip-path 1.2s cubic-bezier(.7,0,.2,1),transform .6s var(--spring)}
+        .svcs .svc:nth-child(2) .pic img{transition-delay:.08s}.svcs .svc:nth-child(3) .pic img{transition-delay:.16s}.svcs .svc:nth-child(4) .pic img{transition-delay:.24s}
+        /* package photo */
+        .pk-pic{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--tint);margin-bottom:18px}
+        .pk-pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kkfade .6s ease both}
+        @keyframes kkfade{from{opacity:0}to{opacity:1}}
+        @media (max-width:640px){.hero .txt{padding-block:96px 44px}.hero .ctas .btn{flex:1 1 100%;justify-content:center}}
 
-        /* hero on smaller screens: keep text clear of the rail, buttons easy to tap */
-        @media (max-width:860px){
-          .slide .txt{padding-right:72px}
-        }
-        @media (max-width:640px){
-          .show{height:max(600px,min(88svh,760px))}
-          .slide .txt{justify-content:flex-end;padding:96px 60px 44px max(20px,env(safe-area-inset-left,0px))}
-          .slide h1{font-size:clamp(40px,12.5vw,60px)}
-          .slide .lab{margin-bottom:16px}
-          .slide .sub{font-size:16px;margin-top:16px}
-          .slide .shade{background:linear-gradient(0deg,rgba(0,0,0,.88) 0%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.2) 100%)}
-          .rail{right:max(10px,env(safe-area-inset-right,0px));gap:4px}
-          .rail button{height:48px;width:28px}
-          .hero-ctas{margin-top:24px;gap:10px}
-          .hero-ctas .btn{flex:1 1 100%;justify-content:center;padding:15px 18px}
-        }
+        /* sections reached from the navbar stop below the sticky bar */
+        .kk-home section[id]{scroll-margin-top:88px}
 
-        /* ticker */
-        .ticker{background:var(--green);color:var(--green-ink);overflow:hidden;white-space:nowrap;border-block:1px solid var(--green)}
-        .ticker .track{display:inline-flex;gap:48px;padding-block:14px;animation:tick 32s linear infinite;will-change:transform}
-        .ticker span{font-family:var(--display);font-size:26px;letter-spacing:.03em;display:inline-flex;align-items:center;gap:48px}
-        .ticker span::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--green-ink)}
-        @keyframes tick{to{transform:translateX(-50%)}}
+        /* added-to-cart state on buttons */
+        .btn[disabled]{opacity:.55;cursor:not-allowed;transform:none}
 
+        /* 22 billion band */
+        .stat{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:end;border-top:2px solid var(--ink);padding-top:28px}
+        .stat>*{min-width:0}
+        .stat b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(84px,13vw,190px);line-height:.88;letter-spacing:-.01em}
+        .stat b em{font-style:normal;color:var(--green)}
+        .stat h2{font-size:clamp(30px,3.6vw,46px);margin-top:14px}
+        .stat p{color:var(--muted);font-size:18px}
+        @media (max-width:860px){.stat{grid-template-columns:1fr;gap:20px}}
+        .nums3{grid-template-columns:repeat(3,1fr);margin-top:64px}
+        @media (max-width:860px){.nums3{grid-template-columns:1fr 1fr}}
+
+        /* trade-in on the dark band */
+        .band .steps{border-top-color:var(--band-fg)}
+        .band .steps li+li{border-left-color:var(--band-line)}
+        .band .steps h4{color:var(--band-fg)}
+        .band .steps p{color:var(--band-muted)}
+        @media (max-width:820px){.band .steps li,.band .steps li+li{border-bottom-color:var(--band-line)}}
         /* sections */
         section.std .wrap{padding-block:100px}
         .sep{border-top:1px solid var(--line)}
@@ -390,7 +403,7 @@ const Home = () => {
         .head p{color:var(--muted)}
         @media (max-width:860px){.head{grid-template-columns:1fr;gap:18px}}
         .rv{transition:transform 1s cubic-bezier(.2,.8,.2,1)}
-        .js .rv:not(.in){transform:translateY(36px)}
+        .kk-js .rv:not(.in){transform:translateY(36px)}
 
         /* numbers */
         .nums{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink)}
@@ -404,7 +417,6 @@ const Home = () => {
         /* mission band */
         .band{background:var(--band);color:var(--band-fg)}
         .band .wrap{padding-block:100px}
-        .band .eyebrow{color:var(--band-green)}.band .eyebrow::before{background:var(--band-green)}
         .band p{color:var(--band-muted)}
         .manifesto{font-family:var(--display);text-transform:uppercase;font-size:clamp(42px,6.4vw,92px);line-height:.98;max-width:15ch;text-wrap:balance;color:var(--band-fg)}
         .manifesto span{color:var(--band-green)}
@@ -475,7 +487,6 @@ const Home = () => {
         .gift{margin-top:28px;display:grid;grid-template-columns:.9fr 1.1fr;background:var(--band);color:var(--band-fg)}
         .gift>*{min-width:0}
         .gift-l{padding:34px 32px;display:flex;flex-direction:column;gap:14px;border-right:1px solid var(--band-line)}
-        .gift-l .eyebrow{color:var(--band-green);margin-bottom:0}.gift-l .eyebrow::before{background:var(--band-green)}
         .gift-l h3{font-size:42px;color:var(--band-fg)}
         .gift-l p{color:var(--band-muted);font-size:15.5px}
         .gift-l .btn{align-self:flex-start;margin-top:6px}
@@ -495,7 +506,7 @@ const Home = () => {
         .ba figure:hover img{transform:scale(1.04)}
         .ba figcaption{position:absolute;left:16px;top:16px;background:#000;color:#fff;font-family:var(--mono);font-size:12px;letter-spacing:.12em;padding:6px 10px}
         .ba .after figcaption{background:var(--green)}
-        .js .ba .after:not(.in) img{clip-path:inset(0 0 0 100%)}
+        .kk-js .ba .after:not(.in) img{clip-path:inset(0 0 0 100%)}
         .ba .after img{transition:clip-path 1.3s var(--swift),transform 1.4s cubic-bezier(.2,.8,.2,1)}
         @media (max-width:560px){.ba{grid-template-columns:1fr}}
 
@@ -552,222 +563,82 @@ const Home = () => {
         .sdgs span{border:1px solid var(--band-line);padding:8px 12px;font-size:14px;color:var(--band-muted)}
         .sdgs b{font-family:var(--display);font-weight:400;color:var(--band-green);font-size:18px;margin-right:8px}
         @media (max-width:860px){.contact{grid-template-columns:1fr}}
-        footer .wrap{padding-block:30px;display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between;color:var(--muted);font-size:14px}
-        footer nav{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-        footer nav a{text-decoration:none;color:var(--muted)}
 
         @media (prefers-reduced-motion:reduce){
           html{scroll-behavior:auto}
           *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}
           .ticker .track{animation:none}
-          .js .rv:not(.in){transform:none}
-          .js .ba .after:not(.in) img{clip-path:none}
+          .kk-js .rv:not(.in){transform:none}
+          .kk-js .ba .after:not(.in) img{clip-path:none}
+          .kk-js .svcs:not(.in) .pic img{clip-path:none}
+          .hero .sl.on img{animation:none}.hero .sl{transition-duration:.01s}
         }
       `}</style>
 
-      <main id="top">
-        {/* HERO SLIDESHOW */}
-        <section
-          className={`show ${!shouldRun ? 'paused' : ''}`}
-          id="show"
-          aria-roledescription="carousel"
-          aria-label="KleanKickx stories"
-          ref={slideshowRef}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onFocus={handleFocusIn}
-          onBlur={handleFocusOut}
-          onKeyDown={handleKeyDown}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          tabIndex={0}
-        >
-          {slides.map((slide, index) => {
-            const isActive = index === currentSlide;
-            return (
-              <article
-                key={`slide-${index}-${isActive ? 'on' : 'off'}`}
-                className={`slide ${isActive ? 'on play' : ''}`}
-                aria-roledescription="slide"
-                aria-label={`${index + 1} of ${slides.length}`}
-                aria-hidden={!isActive}
-              >
-                {slide.isStore ? (
-                  <>
-                    <div className="ph">
-                      <img
-                        src={slide.image}
-                        alt={slide.alt}
-                        className={slide.imageClass}
-                        onError={(e) => e.currentTarget.closest('.slide')?.classList.add('noimg')}
-                      />
-                    </div>
-                    <div className="fallback">
-                      <svg viewBox="0 0 1080 1080" aria-hidden="true">
-                        <circle cx="298" cy="256" r="122" fill="#6FD46F" />
-                        <polygon points="113,1013 345,1013 500,763 655,1013 975,1013 588,617 975,136 475,136" fill="#0A0B0A" />
-                      </svg>
-                    </div>
-                  </>
-                ) : (
-                  <div className="ph">
-                    <img src={slide.image} alt={slide.alt} className={slide.imageClass} />
-                  </div>
-                )}
-                <div className="shade"></div>
-                <div className="wrap txt">
-                  <div className="lab mono"><span>{slide.label}</span></div>
-                  <h1>
-                    {slide.title.split(' ').map((word, wi) => (
-                      <React.Fragment key={wi}>
-                        <span className="w">
-                          <span style={{ '--i': wi }}>{word}</span>
-                        </span>{' '}
-                      </React.Fragment>
-                    ))}
-                    <span className="g">
-                      <span className="w">
-                        <span style={{ '--i': slide.title.split(' ').length }}>{slide.highlight}</span>
-                      </span>
-                    </span>
-                  </h1>
-                  <p className="sub">{slide.sub}</p>
-                  <div className="ctas hero-ctas">
-                    <Link className="btn go hero-go" to="/services" tabIndex={isActive ? 0 : -1}>
-                      Schedule a Klean <span className="ar" aria-hidden="true">→</span>
-                    </Link>
-                    <a className="btn light hero-ghost" href="#bundles" tabIndex={isActive ? 0 : -1}>See bundles</a>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-
-          {/* keyed on currentSlide → remounts → wipe animation replays */}
-          <div key={`wipe-${currentSlide}`} className="wipe go" aria-hidden="true"></div>
-
-          {/* Slide rail: one line per slide, filling while it plays. Tap a line to jump to it;
-              tap the current one to pause or resume. */}
-          <div className="rail" role="group" aria-label="Choose slide">
-            <span className="rail-n" aria-hidden="true">{String(currentSlide + 1).padStart(2, '0')}</span>
-            {slides.map((slide, i) => {
-              const isCurrent = i === currentSlide;
-              return (
-                <button
-                  key={`rail-${i}-${isCurrent ? 'on' : i < currentSlide ? 'done' : 'idle'}`}
-                  type="button"
-                  className={`${i < currentSlide ? 'done' : ''} ${isCurrent ? 'on' : ''}`}
-                  aria-current={isCurrent ? 'true' : undefined}
-                  aria-label={
-                    isCurrent
-                      ? `${userPaused ? 'Play' : 'Pause'} slideshow (slide ${i + 1} of ${slides.length})`
-                      : `Go to slide ${i + 1}: ${slide.label}`
-                  }
-                  onClick={() => {
-                    if (isCurrent) {
-                      const next = !userPaused;
-                      setUserPaused(next);
-                      setIsPaused(next);
-                    } else {
-                      goToSlide(i);
-                    }
-                  }}
-                >
-                  <i></i>
-                  {isCurrent && userPaused && (
-                    <svg className="rail-play" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 3l8 5-8 5z" /></svg>
-                  )}
-                </button>
-              );
-            })}
-            <span className="rail-n dim" aria-hidden="true">{String(slides.length).padStart(2, '0')}</span>
+      <div id="top">
+        {/* HERO */}
+        <HeroShow>
+          <h1 id="heroT">Sneaker care in <span>Accra.</span></h1>
+          <p className="sub">Cleaned and restored by hand at our studio on Golf Hills St. We pick up, Klean and deliver back across Accra.</p>
+          <div className="ctas">
+            <a className="btn go hero-go" href="#services">Book a Klean <span className="ar" aria-hidden="true">→</span></a>
+            <a className="btn light hero-ghost" href="#bundles">See bundles</a>
           </div>
-          <p className="sr-only" aria-live="polite">Slide {currentSlide + 1} of {slides.length}</p>
-        </section>
+        </HeroShow>
 
-        <div className="ticker" aria-hidden="true">
-          <div className="track">
-            <span>Clean</span><span>Restore</span><span>Protect</span><span>Pickup &amp; delivery in Accra</span><span>Klean in 72 hours</span>
-            <span>Clean</span><span>Restore</span><span>Protect</span><span>Pickup &amp; delivery in Accra</span><span>Klean in 72 hours</span>
-          </div>
-        </div>
-
-        {/* NUMBERS */}
-        <section className="std" aria-label="KleanKickx in numbers">
-          <div className="wrap">
-            <div className="nums rv">
-              <div className="num"><b data-count="450">450<em>+</em></b><span>Happy clients</span></div>
-              <div className="num"><b data-count="1200">1,200<em>+</em></b><span>Sneakers Kleaned</span></div>
-              <div className="num"><b data-count="21000">21,000<em>+</em></b><span>Kg CO₂ emissions reduced</span></div>
-              <div className="num"><b>4.8<em>★</em></b><span>Google rating, Golf Hills</span></div>
-            </div>
-          </div>
-        </section>
-
-        {/* MISSION */}
-        <section className="band" id="mission" aria-labelledby="mT">
-          <div className="wrap">
-            <div className="eyebrow mono" id="mT">Our mission</div>
-            <p className="manifesto rv">Every pair we Klean is a pair that <span>doesn't get replaced.</span></p>
-            <p style={{ marginTop: '30px', fontSize: '19px', maxWidth: '58ch' }}>
-              Africa discards over 300 million pairs of shoes a year. Accra runs on sneaker culture, and pairs get thrown out the moment they look tired. We give them their years back through care and restoration, and partner with recyclers and local artisans to repurpose the pairs that can't be saved. One restored sneaker at a time.
-            </p>
-            <div className="film">
-              <video
-                src="video/kleankickx-film.mp4"
-                poster="video/poster.jpg"
-                autoPlay
-                muted
-                loop
-                playsInline
-                controls
-                preload="metadata"
-                aria-label="KleanKickx film: from the pile to fresh"
-              ></video>
-              <div>
-                <div className="eyebrow mono">Watch</div>
-                <h3>From the pile to fresh.</h3>
-                <p>Ten seconds on why we do this.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* APPROACH */}
-        <section className="std" aria-labelledby="aT">
+        {/* SERVICES & PACKAGES: second on the page so prices are one scroll away */}
+        <section className="std" id="services" aria-labelledby="sT">
           <div className="wrap">
             <div className="head">
-              <div><div className="eyebrow mono">Our approach</div><h2 id="aT">Clean. Restore. Protect.</h2></div>
-              <p>Three things we do for every pair that comes through the studio, using KleanKickx's controlled care system.</p>
-            </div>
-            <div className="pillars rv">
-              <article className="pillar"><div className="verb">Clean<span className="x">.</span></div><p>Material-specific cleaning by hand and machine. The right brush, the right solution and the right drying for leather, suede, mesh and knit.</p></article>
-              <article className="pillar"><div className="verb">Restore<span className="x">.</span></div><p>Stubborn stains, embedded dirt and tired midsoles brought back. We fix what usually gets a pair thrown out.</p></article>
-              <article className="pillar"><div className="verb">Protect<span className="x">.</span></div><p>Every pair is quality-checked, carefully packed and returned with Klean tips, so it stays fresh between visits.</p></article>
-            </div>
-          </div>
-        </section>
-
-        {/* SERVICES */}
-        <section className="std sep" id="services" aria-labelledby="sT">
-          <div className="wrap">
-            <div className="head">
-              <div><div className="eyebrow mono">Our premium services</div><h2 id="sT">Pick your Klean.</h2></div>
-              <p>Priced per pair, in GHS, taxes included. Drop off at the studio or request pickup and delivery (fees apply). New here? Your first Standard Klean is on us.</p>
+              <h2 id="sT">Pick your Klean.</h2>
+              <p>Priced per pair, in GHS, taxes included. Drop off at the studio or add pickup and delivery at checkout (fees apply). Your first Standard Klean is free when you sign up.</p>
             </div>
             <div className="svcs rv">
-              <article className="svc free"><span className="flag">New users</span><ServicePhoto images={serviceImages} kind="free" alt="Sneakers after a Standard Klean" /><span className="time mono">Delivered in 72h</span><h3>Free Signup Klean</h3><p>A complimentary Standard Klean for new users. One per account.</p><div className="price">FREE</div><Link className="btn go sm" to="/services">Sign up to claim</Link></article>
-              <article className="svc"><ServicePhoto images={serviceImages} kind="standard" alt="Standard Klean" /><span className="time mono">Delivered in 72h</span><h3>Standard Klean</h3><p>Thorough cleaning of the entire shoe, removing dirt, dust and everyday grime. Ideal for regular care.</p><div className="price">₵50<small>/ pair</small></div><Link className="btn sm" to="/services">Book Standard</Link></article>
-              <article className="svc"><span className="flag">Next day</span><ServicePhoto images={serviceImages} kind="priority" alt="Priority Klean" /><span className="time mono">Delivered next day</span><h3>Priority Klean</h3><p>For sneakerheads who want professional care without the wait. Your pair jumps the queue.</p><div className="price">₵70<small>/ pair</small></div><Link className="btn sm" to="/services">Book Priority</Link></article>
-              <article className="svc"><ServicePhoto images={serviceImages} kind="deep" alt="Deep Klean" /><span className="time mono">Delivered in 72h</span><h3>Deep Klean</h3><p>An intensive process for stubborn stains and deeply embedded dirt. For pairs that need a real restoration.</p><div className="price">₵80<small>/ pair</small></div><Link className="btn sm" to="/services">Book Deep</Link></article>
+              <article className="svc free">
+                <span className="flag">New users</span>
+                <ServicePhoto images={serviceImages} kind="free" alt="Sneakers after a Standard Klean" />
+                <span className="time mono">Back in 72h</span>
+                <h3>First Klean free</h3>
+                <p>A free Standard Klean when you sign up. One per account.</p>
+                <div className="price">₵0</div>
+                {!isAuthenticated
+                  ? <Link className="btn go sm" to="/auth/register">{freeLabel}</Link>
+                  : freeUsed
+                    ? <button type="button" className="btn sm" disabled>{freeLabel}</button>
+                    : <AddButton service={catalog?.free} className="btn go sm">{freeLabel}</AddButton>}
+              </article>
+              <article className="svc">
+                <ServicePhoto images={serviceImages} kind="standard" alt="Standard Klean" />
+                <span className="time mono">Back in 72h</span>
+                <h3>Standard Klean</h3>
+                <p>The whole shoe cleaned: uppers, midsoles, soles, insoles and laces. For regular care.</p>
+                <div className="price">₵50<small>/ pair</small></div>
+                <AddButton service={catalog?.standard} />
+              </article>
+              <article className="svc">
+                <span className="flag">Next day</span>
+                <ServicePhoto images={serviceImages} kind="priority" alt="Priority Klean" />
+                <span className="time mono">Back next day</span>
+                <h3>Priority Klean</h3>
+                <p>The Standard Klean, back to you the next day.</p>
+                <div className="price">₵70<small>/ pair</small></div>
+                <AddButton service={catalog?.priority} />
+              </article>
+              <article className="svc">
+                <ServicePhoto images={serviceImages} kind="deep" alt="Deep Klean" />
+                <span className="time mono">Back in 72h</span>
+                <h3>Deep Klean</h3>
+                <p>For stubborn stains, embedded dirt and tired midsoles. For pairs that need real restoration.</p>
+                <div className="price">₵80<small>/ pair</small></div>
+                <AddButton service={catalog?.deep} />
+              </article>
             </div>
 
             {/* BUNDLE PICKER */}
             <div className="picker rv" id="bundles">
               <div className="pk-l">
-                <div className="eyebrow mono">Bundles · Standard Klean</div>
-                <h3>Bring the whole rotation.</h3>
-                <p>The more pairs, the less each one costs. Pick how many pairs you're sending.</p>
+                <h3>Bundles. Bring the whole rotation.</h3>
+                <p>Standard Klean for every pair. The more pairs, the less each one costs.</p>
                 <div className="seg" role="radiogroup" aria-label="Number of pairs">
                   <span className="pill" aria-hidden="true" style={{ transform: `translateX(${bundleIndex * 100}%)` }}></span>
                   {bundleKeys.map((n) => {
@@ -775,6 +646,7 @@ const Home = () => {
                     return (
                       <button
                         key={n}
+                        type="button"
                         role="radio"
                         aria-checked={bundleSelection === num}
                         data-n={n}
@@ -794,31 +666,35 @@ const Home = () => {
                 </div>
               </div>
               <div className="pk-r" aria-live="polite">
-                <span className="mono" style={{ color: 'var(--muted)' }}>Your bundle</span>
+                {selectedService?.image && (
+                  <div className="pk-pic">
+                    <img key={selectedService.image} src={selectedService.image} alt={`${selectedBundle.name}: ${bundleSelection} ${bundleSelection === 1 ? 'pair' : 'pairs'} of sneakers`}
+                      loading="lazy" onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} />
+                  </div>
+                )}
                 <div className="bname">{selectedBundle.name}</div>
                 <div className="total">₵{selectedBundle.total}</div>
                 <div className="meta">
                   <span>₵{(selectedBundle.total / bundleSelection).toFixed(2)} per pair</span>
-                  <span>Delivered in 72h</span>
+                  <span>Back in 72h</span>
                 </div>
                 <span className="save">
                   {bundleSelection * 50 - selectedBundle.total > 0
                     ? `Save ₵${bundleSelection * 50 - selectedBundle.total} vs single pairs`
                     : 'Standard price'}
                 </span>
-                <Link className="btn go" to="/services">
-                  {selectedBundle.label} <span className="ar" aria-hidden="true">→</span>
-                </Link>
+                <AddButton service={selectedService} className="btn go">
+                  Add {selectedBundle.name} to cart <span className="ar" aria-hidden="true">→</span>
+                </AddButton>
               </div>
             </div>
-            <p className="note">We count in pairs: one pair is a left and a right shoe. Pay by Mobile Money, card, bank transfer, Paystack or cash.</p>
+            <p className="note">One pair is a left and a right shoe. Pay at checkout by Mobile Money or card.</p>
 
             {/* GIFT VOUCHERS */}
             <div className="gift rv" id="vouchers">
               <div className="gift-l">
-                <div className="eyebrow mono">Gift vouchers</div>
-                <h3>Give the gift of fresh kicks.</h3>
-                <p>Pick a voucher, pay securely, and it lands in their inbox instantly. Valid for 6 months.</p>
+                <h3>Gift a Klean.</h3>
+                <p>Pick a voucher, pay, and it arrives in their inbox. Valid for 6 months.</p>
                 <Link className="btn go" to="/vouchers">Buy a voucher <span className="ar" aria-hidden="true">→</span></Link>
               </div>
               <ul className="vouchers">
@@ -832,16 +708,80 @@ const Home = () => {
           </div>
         </section>
 
+        {/* 22 BILLION */}
+        <section className="std sep" aria-labelledby="gT">
+          <div className="wrap">
+            <div className="stat rv">
+              <div>
+                <b>22<em>B</em></b>
+                <h2 id="gT">Pairs discarded globally.</h2>
+              </div>
+              <p>Every year, about 22 billion pairs of shoes are sent to landfill or burned, out of roughly 24 billion made. Most of them still had wear left. A Klean keeps a pair in use.</p>
+            </div>
+            <div className="nums nums3 rv">
+              <div className="num"><b data-count="450">450<em>+</em></b><span>Happy clients</span></div>
+              <div className="num"><b data-count="1200">1,200<em>+</em></b><span>Sneakers Kleaned</span></div>
+              <div className="num"><b>4.8<em>★</em></b><span>Google rating</span></div>
+            </div>
+          </div>
+        </section>
+
+        {/* TRADE-IN */}
+        <section className="band" id="trade-in" aria-labelledby="tiT">
+          <div className="wrap">
+            <div className="head">
+              <h2 id="tiT" style={{ color: 'var(--band-fg)' }}>Trade-In.</h2>
+              <p>Bring the pairs you no longer wear. We check every one by hand and nothing goes to landfill.</p>
+            </div>
+            <ol className="steps rv">
+              <li><h4>Bring them in</h4><p>Drop pairs at the studio on Golf Hills St, or hand them over with your next pickup.</p></li>
+              <li><h4>We sort by hand</h4><p>Wearable pairs are Kleaned and go back into use.</p></li>
+              <li><h4>Nothing to landfill</h4><p>Pairs past saving go to our partner <a href="https://kicksctrl.com" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', textUnderlineOffset: 4, textDecorationThickness: 2, color: '#1A7A1A', fontWeight: 600 }}>KicksCTRL</a> for material recovery.</p></li>
+            </ol>
+            <div className="ctas">
+              <a className="btn go" href={WHATSAPP_TRADE_IN} target="_blank" rel="noopener noreferrer">Arrange a trade-in <span className="ar" aria-hidden="true">→</span></a>
+              <Link className="btn light" to="/impact">Our impact</Link>
+            </div>
+          </div>
+        </section>
+
+        {/* MISSION */}
+        <section className="std" id="mission" aria-labelledby="mT">
+          <div className="wrap">
+            <h2 id="mT" className="rv" style={{ maxWidth: '15ch' }}>Every pair we Klean is a pair that <span className="x">doesn't get replaced.</span></h2>
+            <p style={{ marginTop: '30px', fontSize: '19px', maxWidth: '58ch', color: 'var(--muted)' }}>
+              Accra runs on sneaker culture, and pairs get thrown out the moment they look tired. We give them their years back through care and restoration, and the pairs that can't be saved go to recovery instead of landfill.
+            </p>
+            {/* Brand film (public/video/kleankickx-film.mp4) is off the page until it is re-cut:
+                its opening frame shows the unsourced "300 million pairs" figure. */}
+          </div>
+        </section>
+
+        {/* APPROACH */}
+        <section className="std sep" aria-labelledby="aT">
+          <div className="wrap">
+            <div className="head">
+              <h2 id="aT">Clean. Restore. Protect.</h2>
+              <p>What happens to every pair that comes through the studio.</p>
+            </div>
+            <div className="pillars rv">
+              <article className="pillar"><div className="verb">Clean<span className="x">.</span></div><p>Material-specific cleaning by hand and machine. The right brush, the right solution and the right drying for leather, suede, mesh and knit.</p></article>
+              <article className="pillar"><div className="verb">Restore<span className="x">.</span></div><p>Stubborn stains, embedded dirt and tired midsoles brought back. We fix what usually gets a pair thrown out.</p></article>
+              <article className="pillar"><div className="verb">Protect<span className="x">.</span></div><p>Every pair is quality-checked, packed and returned with Klean tips, so it stays fresh between visits.</p></article>
+            </div>
+          </div>
+        </section>
+
         {/* BEFORE / AFTER */}
         <section className="std sep" aria-labelledby="baT">
           <div className="wrap">
             <div className="head">
-              <div><div className="eyebrow mono">Before &amp; after</div><h2 id="baT">Same pair. Days apart.</h2></div>
+              <h2 id="baT">Same pair. Days apart.</h2>
               <p>A real Deep Klean from the studio. Midsoles brightened, grime lifted from the mesh, laces refreshed.</p>
             </div>
             <div className="ba">
-              <figure className="before"><img src="images/before.jpg" alt="Black and white sneakers before cleaning, with grey, grimy midsoles" loading="lazy" /><figcaption>BEFORE</figcaption></figure>
-              <figure className="after rv"><img src="images/after.jpg" alt="The same sneakers after a KleanKickx Deep Klean, with bright white midsoles" loading="lazy" /><figcaption>AFTER</figcaption></figure>
+              <figure className="before"><img src="images/before-after.jpg" style={{ objectPosition: '0% 50%' }} alt="White sneakers before cleaning, caked in dirt" loading="lazy" /><figcaption>BEFORE</figcaption></figure>
+              <figure className="after rv"><img src="images/before-after.jpg" style={{ objectPosition: '100% 50%' }} alt="The same sneakers after a KleanKickx clean, bright white" loading="lazy" /><figcaption>AFTER</figcaption></figure>
             </div>
           </div>
         </section>
@@ -850,13 +790,13 @@ const Home = () => {
         <section className="std sep" id="how" aria-labelledby="hT">
           <div className="wrap">
             <div className="head">
-              <div><div className="eyebrow mono">How it works</div><h2 id="hT">Three easy steps.</h2></div>
-              <p>Getting your footwear cleaned has never been so easy. We handle the rest.</p>
+              <h2 id="hT">Three steps.</h2>
+              <p>Add your Klean to the cart, pay by Mobile Money or card, and we take it from there.</p>
             </div>
             <ol className="steps rv">
-              <li><h4>Book a Klean</h4><p>Schedule through our website. Choose your service and your preferred pickup or drop-off option.</p></li>
-              <li><h4>We Klean &amp; restore</h4><p>Trained sneaker technicians clean and refresh your pair with our controlled care system, built to protect materials and extend lifespan.</p></li>
-              <li><h4>Delivered back fresh</h4><p>Quality-checked, carefully packed and returned to you clean and ready to wear, typically within 72 hours.</p></li>
+              <li><h4>Book a Klean</h4><p>Add a service to your cart and choose pickup or drop-off at checkout.</p></li>
+              <li><h4>We Klean &amp; restore</h4><p>Trained technicians clean and restore your pair by hand at the studio.</p></li>
+              <li><h4>Back to you fresh</h4><p>Quality-checked, packed and returned, usually within 72 hours. Priority comes back next day.</p></li>
             </ol>
           </div>
         </section>
@@ -865,8 +805,8 @@ const Home = () => {
         <section className="std sep" id="care" aria-labelledby="cgT">
           <div className="wrap">
             <div className="head">
-              <div><div className="eyebrow mono">Klean tips</div><h2 id="cgT">Keep the soles sparkling.</h2></div>
-              <p>The only thing better than a new pair of sneakers is a clean pair. Pick your material for the habits that add the most life.</p>
+              <h2 id="cgT">Klean tips.</h2>
+              <p>Pick your material for the habits that add the most life.</p>
             </div>
             <div className="guide">
               <div className="tabs" role="tablist" aria-label="Sneaker materials">
@@ -908,21 +848,19 @@ const Home = () => {
         <section className="std sep" id="business" aria-labelledby="buT">
           <div className="wrap">
             <div className="head">
-              <div><div className="eyebrow mono">Who we serve</div><h2 id="buT">For you. For your team.</h2></div>
+              <h2 id="buT">For you. For your team.</h2>
               <p>One pair or twenty, we'll keep them fresh.</p>
             </div>
             <div className="split2 rv">
               <article className="aud">
-                <span className="mono x">Individuals</span>
                 <h3>Sneakerheads &amp; everyday wearers</h3>
-                <p>From your grails to your daily beaters, premium care that keeps them looking right.</p>
-                <ul><li>Free first Standard Klean</li><li>Next-day Priority Klean when you can't wait</li><li>Pickup and delivery in Accra</li></ul>
-                <Link className="btn go" to="/services">Schedule a Klean <span className="ar" aria-hidden="true">→</span></Link>
+                <p>From your grails to your daily pair.</p>
+                <ul><li>First Standard Klean free</li><li>Next-day Priority Klean when you can't wait</li><li>Pickup and delivery across Accra</li></ul>
+                <a className="btn go" href="#services">Book a Klean <span className="ar" aria-hidden="true">→</span></a>
               </article>
               <article className="aud biz">
-                <span className="mono x">Teams &amp; businesses</span>
                 <h3>Gyms, schools, teams &amp; retailers</h3>
-                <p>Our Sneakers Squad (10 pairs) and VIP Klean (20 pairs) bundles bring the price down to ₵40 a pair.</p>
+                <p>Sneakers Squad (10 pairs, ₵41 a pair) and VIP Klean (20 pairs, ₵40 a pair) bring the price down.</p>
                 <ul><li>Bulk cleaning for teams and squads</li><li>Care offers for sneaker retailers</li><li>Pop-up cleaning for events</li></ul>
                 <a className="btn" href="#contact">Talk to us</a>
               </article>
@@ -935,39 +873,23 @@ const Home = () => {
           <div className="wrap">
             <div className="contact">
               <div>
-                <div className="eyebrow mono">Get in touch</div>
                 <h2 id="ctT" style={{ color: 'var(--band-fg)' }}>Leave your sneakers <span>in our care.</span></h2>
                 <div className="ctas">
-                  <Link className="btn go" to="/services">Schedule a Klean <span className="ar" aria-hidden="true">→</span></Link>
+                  <a className="btn go" href="#services">Book a Klean <span className="ar" aria-hidden="true">→</span></a>
                 </div>
               </div>
               <div className="cards">
                 <div><span className="mono">Phone</span><a href="tel:+233536278834">+233 53 627 8834</a></div>
+                <div><span className="mono">WhatsApp</span><a href="https://wa.me/233536278834" target="_blank" rel="noopener noreferrer">+233 53 627 8834</a></div>
                 <div><span className="mono">Email</span><a href="mailto:info@kleankickx.com">info@kleankickx.com</a></div>
-                <div><span className="mono">Studio</span><span>29 Golf Hills Street, Accra, Ghana</span></div>
+                <div><span className="mono">Studio</span><span>29 Golf Hills St, Accra</span></div>
               </div>
-            </div>
-            <div className="sdgs" aria-label="Our sustainable commitment">
-              <span><b>11</b>Sustainable cities &amp; communities</span>
-              <span><b>12</b>Responsible consumption &amp; production</span>
-              <span><b>13</b>Climate action</span>
             </div>
           </div>
         </section>
-      </main>
+      </div>
 
-      <footer>
-        <div className="wrap">
-          <div>© 2026 KleanKickx Sneaker Care Limited · 29 Golf Hills Street, Accra</div>
-          <nav aria-label="Footer">
-            <a href="#services">Services</a>
-            <a href="#bundles">Bundles</a>
-            <a href="#how">How it works</a>
-            <a href="#care">Klean tips</a>
-            <a href="#contact">Contact</a>
-          </nav>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

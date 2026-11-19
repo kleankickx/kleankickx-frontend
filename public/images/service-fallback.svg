@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="KleanKickx sneaker care">
+  <rect width="400" height="300" fill="#F0F2EF"/>
+  <path d="M96 196c0-10 7-17 17-18l58-5c9-1 17-6 22-13l15-22c4-6 11-9 18-8l12 2c6 1 10 6 10 12v10c0 5 4 9 9 10l45 9c18 4 31 19 31 37v6c0 6-5 11-11 11H107c-6 0-11-5-11-11z" fill="#0A0B0A" opacity=".85"/>
+  <path d="M96 206h289" stroke="#1A7A1A" stroke-width="8" stroke-linecap="round"/>
+  <text x="200" y="262" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#0A0B0A" opacity=".6">KleanKickx</text>
+</svg>

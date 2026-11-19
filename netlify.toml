@@ -1,3 +1,22 @@
+# Retired pages go to the homepage (permanent, so search engines carry their ranking over)
+[[redirects]]
+  from = "/about-us"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/studio"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/studio/"
+  to = "/"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

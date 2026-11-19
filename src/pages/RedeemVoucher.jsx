@@ -1,18 +1,13 @@
 // src/pages/RedeemVoucher.jsx
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
-import {
-  FaGift, FaCheckCircle, FaArrowRight,
-  FaSpinner, FaCopy, FaTimes,
-  FaShoppingBag, FaExclamationTriangle,
-  FaUserFriends, FaSearch,
-  FaKey, FaClock
-} from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
+import Footer from '../components/Footer';
+import { useCartDrawer } from '../components/CartDrawer';
 
 const RedeemVoucher = () => {
   const [code, setCode] = useState('');
@@ -25,6 +20,7 @@ const RedeemVoucher = () => {
   const location = useLocation();
   const { isAuthenticated } = useContext(AuthContext);
   const { addToCart, cart } = useContext(CartContext);
+  const { openCart } = useCartDrawer();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -72,13 +68,7 @@ const RedeemVoucher = () => {
         }
 
         setError(errorDetails ? `${errorMsg}. ${errorDetails}` : errorMsg);
-        toast.error(
-          <div className="flex items-center">
-            <FaTimes className="mr-2 text-red-500" />
-            <span>{errorMsg}</span>
-          </div>,
-          { autoClose: 5000 }
-        );
+        toast.error(errorMsg, { autoClose: 5000 });
         return;
       }
 
@@ -90,13 +80,7 @@ const RedeemVoucher = () => {
         is_own_voucher: response.data.is_own_voucher || false,
       });
 
-      toast.success(
-        <div className="flex items-center">
-          <FaCheckCircle className="mr-2 text-green-500" />
-          <span>Voucher verified successfully!</span>
-        </div>,
-        { autoClose: 3000 }
-      );
+      toast.success('Voucher checked. It is ready to use.', { autoClose: 3000 });
     } catch (err) {
       console.error('Voucher verification error:', err);
       let errorMsg = 'Unable to verify voucher';
@@ -104,13 +88,7 @@ const RedeemVoucher = () => {
       else if (err.response?.data?.error) errorMsg = err.response.data.error;
 
       setError(errorMsg);
-      toast.error(
-        <div className="flex items-center">
-          <FaExclamationTriangle className="mr-2 text-red-500" />
-          <span>{errorMsg}</span>
-        </div>,
-        { autoClose: 5000 }
-      );
+      toast.error(errorMsg, { autoClose: 5000 });
     } finally {
       setVerifying(false);
     }
@@ -136,7 +114,7 @@ const RedeemVoucher = () => {
       );
       if (alreadyInCart) {
         toast.info('This voucher is already in your cart');
-        navigate('/cart');
+        openCart();
         return;
       }
 
@@ -166,14 +144,7 @@ const RedeemVoucher = () => {
       // Correct 3-arg call: (serviceId, quantity, serviceData)
       await addToCart(voucherDetails.service_id, 1, serviceData);
 
-      toast.success(
-        <div className="flex items-center">
-          <FaCheckCircle className="mr-2 text-green-500" />
-          <p className="font-medium">{serviceData.name} added to your cart!</p>
-        </div>
-      );
-
-      setTimeout(() => navigate('/cart'), 1200);
+      openCart();
     } catch (err) {
       console.error('Redeem error:', err);
       const msg =
@@ -189,12 +160,11 @@ const RedeemVoucher = () => {
 
   const handlePaste = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      const text = (await navigator.clipboard.readText()).trim().toUpperCase();
       setCode(text);
-      toast.success('Code pasted!');
-      setTimeout(() => handleVerifyVoucher(text), 300);
+      setTimeout(() => handleVerifyVoucher(text), 200);
     } catch {
-      toast.error('Unable to paste from clipboard');
+      toast.error("Couldn't read the clipboard. Type the code instead.");
     }
   };
 
@@ -205,6 +175,7 @@ const RedeemVoucher = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '—';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric', month: 'short', day: 'numeric',
@@ -217,307 +188,196 @@ const RedeemVoucher = () => {
     setVoucherDetails(null);
   };
 
+  const busy = verifying || loading;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl mb-4 border border-green-200">
-            <FaGift className="text-3xl text-green-600" />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Redeem Your <span className="text-green-600">Gift Voucher</span>
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Enter your voucher code to claim your sneaker cleaning service
-          </p>
-        </div>
+    <div className="kkr">
+      <style>{`
+        .kkr{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--red:#B42318;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);
+          background:var(--paper);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif;min-height:100vh}
+        .kkr-wrap{max-width:1200px;margin:0 auto;padding:0 20px 72px}
+        .kkr-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+        .kkr-hero{padding:48px 0 28px;border-bottom:2px solid var(--ink)}
+        .kkr-hero h1{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(52px,8vw,104px);line-height:.88;max-width:12ch}
+        .kkr-hero p.sub{margin:14px 0 0;max-width:46ch;color:var(--muted);font-size:18px;line-height:1.5}
+        .kkr-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:28px;margin-top:28px;align-items:start}
+        .kkr-card{background:#fff;border:1px solid var(--line);padding:24px}
+        .kkr-label{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+        .kkr-label button{border:0;background:none;padding:0;font:inherit;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+        .kkr-label button:hover{color:var(--ink)}
+        .kkr-row{display:flex;gap:8px}
+        .kkr-input{flex:1;min-width:0;height:64px;padding:0 16px;border:2px solid var(--ink);border-radius:2px;background:var(--paper);
+          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:22px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);outline:none;
+          transition:box-shadow .2s,background .2s}
+        .kkr-input::placeholder{color:#A9B3A7;letter-spacing:.14em}
+        .kkr-input:focus{background:#fff;box-shadow:0 4px 0 0 var(--green)}
+        .kkr-input.err{border-color:var(--red)}
+        .kkr-input.ok{border-color:var(--green)}
+        .kkr-paste{flex:none;height:64px;padding:0 18px;border:2px solid var(--ink);border-radius:2px;background:transparent;font:inherit;font-size:14px;font-weight:700;cursor:pointer;
+          transition:background .2s,color .2s}
+        .kkr-paste:hover:not(:disabled){background:var(--ink);color:#fff}
+        .kkr-error{margin:12px 0 0;padding:10px 12px;border-left:3px solid var(--red);background:#FDECEA;color:#7A1A12;font-size:14px;line-height:1.45}
+        .kkr-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:56px;padding:0 22px;border:2px solid var(--ink);border-radius:2px;background:transparent;
+          color:var(--ink);font:inherit;font-size:16px;font-weight:700;text-decoration:none;cursor:pointer;transition:background .2s,color .2s,border-color .2s,transform .25s var(--spring)}
+        .kkr-btn .ar{transition:transform .3s var(--spring)}
+        .kkr-btn:hover:not(:disabled){background:var(--ink);color:#fff}
+        .kkr-btn:hover:not(:disabled) .ar{transform:translateX(5px)}
+        .kkr-btn:active:not(:disabled){transform:scale(.98)}
+        .kkr-btn:disabled{opacity:.45;cursor:default}
+        .kkr-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+        .kkr-btn.go:hover:not(:disabled){background:var(--ink);border-color:var(--ink)}
+        .kkr-btn.wide{width:100%;margin-top:16px}
+        .kkr :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+        .kkr-spin{width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:kkrSpin .8s linear infinite}
+        @keyframes kkrSpin{to{transform:rotate(360deg)}}
+        .kkr-tips{list-style:none;margin:20px 0 0;padding:16px 0 0;border-top:1px solid var(--line);display:grid;gap:8px;font-size:14px;color:var(--muted)}
+        .kkr-tips li{display:flex;gap:10px}
+        .kkr-tips li::before{content:"";flex:none;width:6px;height:6px;margin-top:7px;background:var(--green)}
+        .kkr-links{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+        .kkr-link{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px;border:1.5px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700;transition:border-color .2s}
+        .kkr-link small{display:block;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+        .kkr-link .ar{transition:transform .3s var(--spring)}
+        .kkr-link:hover{border-color:var(--ink)}
+        .kkr-link:hover .ar{transform:translateX(5px);color:var(--green)}
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200"
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Enter Voucher Code</h2>
-                  <p className="text-gray-600">Gift code or token</p>
-                </div>
-                {code && (
-                  <button
-                    onClick={clearForm}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <FaTimes />
-                  </button>
+        .kkr-steps{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+        .kkr-steps li{display:grid;grid-template-columns:64px 1fr;gap:14px;padding:18px 0;border-bottom:1px solid var(--line)}
+        .kkr-steps .n{font-family:var(--display);font-size:44px;line-height:1;color:var(--green)}
+        .kkr-steps h3{margin:2px 0 4px;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:24px;line-height:1}
+        .kkr-steps p{margin:0;color:var(--muted);line-height:1.5}
+
+        .kkr-ticket{position:relative;background:var(--ink);color:#fff;padding:26px 24px 22px}
+        .kkr-ticket::before,.kkr-ticket::after{content:"";position:absolute;top:118px;width:22px;height:22px;border-radius:50%;background:var(--paper)}
+        .kkr-ticket::before{left:-11px}.kkr-ticket::after{right:-11px}
+        .kkr-ticket .kkr-eyebrow{color:#6FD46F}
+        .kkr-ticket h2{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(36px,4.4vw,52px);line-height:.92}
+        .kkr-perf{margin:22px -24px 18px;border-top:2px dashed rgba(255,255,255,.28)}
+        .kkr-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+        .kkr-facts dt{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#A9B3A7}
+        .kkr-facts dd{margin:4px 0 0;font-size:16px;font-weight:700;overflow-wrap:anywhere}
+        .kkr-facts dd.big{font-family:var(--display);font-weight:400;font-size:30px;line-height:1}
+        .kkr-ticket-note{margin:18px 0 0;font-size:14px;color:#C4CCC2;line-height:1.5}
+
+        .kkr-help{margin-top:16px;font-size:14px;color:var(--muted);line-height:1.6}
+        .kkr-help a{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+        @media (max-width:900px){.kkr-grid{grid-template-columns:1fr}}
+        @media (max-width:560px){
+          .kkr-hero{padding:34px 0 22px}.kkr-hero p.sub{font-size:16px}
+          .kkr-card{padding:18px 16px}
+          .kkr-input{font-size:18px;height:58px;padding:0 12px;letter-spacing:.1em}
+          .kkr-paste{height:58px;padding:0 14px}
+          .kkr-links{grid-template-columns:1fr}
+          .kkr-facts{grid-template-columns:1fr 1fr}
+        }
+      `}</style>
+
+      <div className="kkr-wrap">
+        <header className="kkr-hero">
+          <p className="kkr-eyebrow">Gift vouchers</p>
+          <h1>Redeem a voucher</h1>
+          <p className="sub">Got a code from a friend, or bought one for yourself? Enter it here and we'll add the Klean to your cart, already paid for.</p>
+        </header>
+
+        <div className="kkr-grid">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.77, 0, 0.18, 1] }}>
+            <form className="kkr-card" onSubmit={handleSubmit} noValidate>
+              <p className="kkr-label">
+                <label htmlFor="kkr-code">Voucher code</label>
+                {code && <button type="button" onClick={clearForm} disabled={busy}>Clear</button>}
+              </p>
+              <div className="kkr-row">
+                <input
+                  id="kkr-code"
+                  className={`kkr-input ${error ? 'err' : voucherDetails ? 'ok' : ''}`}
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  value={code}
+                  onChange={(e) => { setCode(e.target.value.toUpperCase()); if (error) setError(''); if (voucherDetails) setVoucherDetails(null); }}
+                  placeholder="XXXX-XXXX-XXXX"
+                  disabled={busy}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'kkr-err' : undefined}
+                  autoFocus
+                />
+                <button type="button" className="kkr-paste" onClick={handlePaste} disabled={busy}>Paste</button>
+              </div>
+
+              <AnimatePresence>
+                {error && (
+                  <motion.p id="kkr-err" className="kkr-error" role="alert"
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                    {error}
+                  </motion.p>
                 )}
-              </div>
+              </AnimatePresence>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <div className="relative">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          value={code}
-                          onChange={(e) => setCode(e.target.value.toUpperCase())}
-                          placeholder="XXXX-XXXX-XXXX"
-                          className="w-full px-4 py-4 text-lg font-medium tracking-wider border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 uppercase transition-colors"
-                          disabled={verifying || loading}
-                          autoFocus
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handlePaste}
-                        className="px-4 py-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 whitespace-nowrap"
-                        disabled={verifying || loading}
-                      >
-                        <FaCopy /> Paste
-                      </button>
-                    </div>
+              <button type="submit" className="kkr-btn go wide" disabled={busy || !code.trim()}>
+                {verifying ? <><span className="kkr-spin" aria-hidden="true" /> Checking code</>
+                  : loading ? <><span className="kkr-spin" aria-hidden="true" /> Adding to cart</>
+                  : voucherDetails ? <>Add to cart <span className="ar" aria-hidden="true">→</span></>
+                  : <>Check code <span className="ar" aria-hidden="true">→</span></>}
+              </button>
 
-                    <AnimatePresence>
-                      {error && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mt-3"
-                        >
-                          <div className="flex items-center gap-2 text-red-600 text-sm">
-                            <FaExclamationTriangle /> {error}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
+              <ul className="kkr-tips">
+                <li>Capital or small letters both work.</li>
+                <li>Watch for look-alikes: 0 and O, 1 and I.</li>
+                <li>Vouchers are valid for 6 months from purchase.</li>
+              </ul>
+            </form>
 
-                <div className="space-y-4">
-                  <button
-                    type="submit"
-                    disabled={verifying || loading || !code.trim()}
-                    className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-3 ${
-                      verifying || loading
-                        ? 'bg-gray-300 cursor-not-allowed'
-                        : voucherDetails
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:opacity-90'
-                    }`}
-                  >
-                    {verifying ? (
-                      <><FaSpinner className="animate-spin" /> Verifying...</>
-                    ) : loading ? (
-                      <><FaSpinner className="animate-spin" /> Adding to Cart...</>
-                    ) : voucherDetails ? (
-                      <><FaShoppingBag /> Add to Cart & Continue <FaArrowRight /></>
-                    ) : (
-                      <><FaSearch /> Verify Voucher</>
-                    )}
-                  </button>
-
-                  <div className="text-center">
-                    <p className="text-gray-500 text-sm mb-3">OR</p>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/vouchers')}
-                      className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      Buy New Vouchers
-                    </button>
-                  </div>
-                </div>
-              </form>
-
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <h4 className="font-medium text-gray-900 mb-3">Tips for success:</h4>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                    Codes are case-insensitive
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                    Check for typos (0 vs O, 1 vs I)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                    Vouchers expire 6 months from purchase
-                  </li>
-                </ul>
-              </div>
+            <div className="kkr-links">
+              <Link to="/vouchers" className="kkr-link"><span><small>Give one</small>Buy a gift voucher</span><span className="ar" aria-hidden="true">→</span></Link>
+              <Link to="/account/vouchers" className="kkr-link"><span><small>Your account</small>My vouchers</span><span className="ar" aria-hidden="true">→</span></Link>
             </div>
           </motion.div>
 
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08, ease: [0.77, 0, 0.18, 1] }}>
+            <AnimatePresence mode="wait">
               {voucherDetails ? (
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-green-200">
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <FaCheckCircle className="text-2xl" />
-                        <div>
-                          <h2 className="text-xl font-bold">Voucher Verified</h2>
-                          <p className="text-sm opacity-90">Ready to redeem</p>
-                        </div>
-                      </div>
-                      <div className="text-sm font-mono bg-white/20 px-3 py-1 rounded-full">
-                        {voucherDetails.code}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      <div className="p-4 bg-green-50 rounded-xl">
-                        <div className="text-lg font-bold text-green-700 mb-1">
-                          {voucherDetails.service_name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Cleaning service included
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <div className="text-sm text-gray-500 mb-1">Value</div>
-                          <div className="text-xl font-bold text-gray-900">
-                            ₵{voucherDetails.value}
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <div className="text-sm text-gray-500 mb-1">Expires</div>
-                          <div className="font-medium text-gray-900">
-                            {formatDate(voucherDetails.valid_until)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                        <div className="flex items-center gap-3">
-                          <FaCheckCircle className="text-blue-500" />
-                          <div>
-                            <div className="font-medium text-blue-800">Valid for redemption</div>
-                            <p className="text-sm text-blue-600 mt-1">
-                              This voucher is ready to be added to your cart
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <motion.section key="ticket" className="kkr-ticket" aria-live="polite"
+                  initial={{ opacity: 0, y: 16, rotate: -1 }} animate={{ opacity: 1, y: 0, rotate: 0 }} exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.5, ease: [0.2, 1.25, 0.3, 1] }}>
+                  <p className="kkr-eyebrow">Verified · ready to use</p>
+                  <h2>{voucherDetails.service_name}</h2>
+                  <div className="kkr-perf" aria-hidden="true" />
+                  <dl className="kkr-facts">
+                    <div><dt>Value</dt><dd className="big">₵{Number(voucherDetails.value || 0).toLocaleString('en-GH')}</dd></div>
+                    <div><dt>Valid until</dt><dd>{formatDate(voucherDetails.valid_until)}</dd></div>
+                    <div><dt>Code</dt><dd style={{ fontFamily: 'ui-monospace,Menlo,Consolas,monospace' }}>{voucherDetails.code}</dd></div>
+                  </dl>
+                  <p className="kkr-ticket-note">
+                    {isAuthenticated
+                      ? 'Add it to your cart, then choose pickup and delivery at checkout. Nothing to pay for the service.'
+                      : "Log in first and it'll be waiting. You'll choose pickup and delivery at checkout."}
+                  </p>
+                </motion.section>
               ) : (
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
-                  <div className="p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <FaKey className="text-xl text-blue-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">How to Redeem</h2>
-                        <p className="text-gray-600">Simple 3-step process</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      {[
-                        { n: 1, title: 'Enter Code', desc: 'Type or paste your unique 12-character voucher code' },
-                        { n: 2, title: 'Verify & Add', desc: "We'll verify your code and add the service to cart" },
-                        { n: 3, title: 'Book Service', desc: 'Complete checkout to schedule your cleaning appointment' },
-                      ].map(({ n, title, desc }) => (
-                        <div key={n} className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 font-bold">
-                            {n}
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
-                            <p className="text-sm text-gray-600">{desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-gray-100">
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
-                        <FaClock className="text-gray-400" />
-                        <span>Most vouchers process instantly</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <motion.section key="how" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <p className="kkr-eyebrow" style={{ marginBottom: 12 }}>How it works</p>
+                  <ol className="kkr-steps">
+                    {[
+                      ['Enter the code', 'Type or paste the code from your voucher email.'],
+                      ['We check it', 'You will see the service it covers and when it expires.'],
+                      ['Book your Klean', 'It goes in your cart at no cost. Pick pickup and delivery at checkout.'],
+                    ].map(([t, d], i) => (
+                      <li key={t}><span className="n">{String(i + 1).padStart(2, '0')}</span><div><h3>{t}</h3><p>{d}</p></div></li>
+                    ))}
+                  </ol>
+                </motion.section>
               )}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-            >
-              <button
-                onClick={() => navigate('/services')}
-                className="p-4 bg-white rounded-xl border border-gray-200 hover:border-green-300 hover:shadow-md transition-all flex items-center justify-center gap-3"
-              >
-                <FaShoppingBag className="text-gray-600" />
-                <div className="text-left">
-                  <div className="font-medium text-gray-900">Browse Services</div>
-                  <div className="text-xs text-gray-500">See all cleaning options</div>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/account/vouchers')}
-                className="p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all flex items-center justify-center gap-3"
-              >
-                <FaGift className="text-purple-600" />
-                <div className="text-left">
-                  <div className="font-medium text-gray-900">My Vouchers</div>
-                  <div className="text-xs text-gray-500">View all your vouchers</div>
-                </div>
-              </button>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-blue-50 border border-blue-100 rounded-xl p-5"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FaUserFriends className="text-blue-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-blue-900">Need Help?</h4>
-                  <p className="text-sm text-blue-700">We're here to assist you</p>
-                </div>
-              </div>
-              <div className="text-sm text-blue-600">
-                <p className="mb-2">Common issues:</p>
-                <ul className="space-y-1 ml-2">
-                  <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-400 rounded-full"></div>Invalid or expired code</li>
-                  <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-400 rounded-full"></div>Already redeemed voucher</li>
-                  <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-400 rounded-full"></div>Technical issues</li>
-                </ul>
-                <p className="mt-3">
-                  Contact:{' '}
-                  <a href="mailto:support@kleankickx.com" className="text-blue-700 font-medium underline">
-                    support@kleankickx.com
-                  </a>
-                </p>
-              </div>
-            </motion.div>
-          </div>
+            </AnimatePresence>
+            <p className="kkr-help">
+              Code not working? Message us on <a href="https://wa.me/233536278834" target="_blank" rel="noreferrer">WhatsApp</a> or
+              email <a href="mailto:support@kleankickx.com">support@kleankickx.com</a> with the code and we'll sort it out.
+            </p>
+          </motion.div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

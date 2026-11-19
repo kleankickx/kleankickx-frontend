@@ -2,14 +2,14 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { GoogleLogin } from '@react-oauth/google';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import logo from "../assets/logo2.png";
 import api from '../api';
+import AuthLayout, { Field, SubmitButton, GoogleButton } from '../components/AuthLayout';
 
 // Forgot Password Modal Component
 const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
@@ -18,17 +18,34 @@ const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  const close = () => {
+    if (loading) return;
+    onClose();
+    setTimeout(() => { setSubmitted(false); setError(''); }, 250);
+  };
+
+  // Esc closes; the page behind doesn't scroll while it's open.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKey = (e) => e.key === 'Escape' && close();
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, loading]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!email) {
-      setError('Please enter your email address');
+      setError('Enter your email address.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
+      setError("That doesn't look like an email address.");
       return;
     }
 
@@ -37,124 +54,102 @@ const ForgotPasswordModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const response = await api.post('/api/users/password/reset/', { email });
-      
       if (response.data.success || response.status === 200) {
         setSubmitted(true);
         onSuccess?.(email);
-        toast.success('Password reset email sent! Check your inbox.');
-        
-        setTimeout(() => {
-          onClose();
-          setSubmitted(false);
-          setEmail('');
-        }, 3000);
       }
     } catch (err) {
+      // Same message either way, so the form never reveals whether an account exists.
       console.error('Password reset error:', err);
       setSubmitted(true);
-      toast.info('If an account exists with this email, you will receive a password reset link.');
-      
-      setTimeout(() => {
-        onClose();
-        setSubmitted(false);
-        setEmail('');
-      }, 3000);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
-      >
-        <div className="bg-gradient-to-r from-primary to-primary/90 p-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Reset Password</h3>
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6">
-          {!submitted ? (
-            <>
-              <p className="text-gray-600 mb-4">
-                Enter your email address and we'll send you a link to reset your password.
-              </p>
-              
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    disabled={loading}
-                    autoFocus
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Sending...
-                    </>
-                  ) : (
-                    'Send Reset Link'
-                  )}
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div className="kka-modal" onClick={close}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <style>{`
+            .kka-modal{--ink:#0A0B0A;--paper:#F7F9F6;--card:#fff;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--green-hi:#4CB84C;--red:#B42318;
+              --display:"Anton","Arial Narrow",Impact,sans-serif;--body:"League Spartan",system-ui,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);
+              position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,11,10,.55);backdrop-filter:blur(3px);
+              font-family:var(--body);color:var(--ink)}
+            .kka-modal-card{width:100%;max-width:460px;background:var(--paper);border:2px solid var(--ink);box-shadow:0 40px 80px -40px rgba(10,11,10,.6)}
+            .kka-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:22px 22px 16px;border-bottom:2px solid var(--ink)}
+            .kka-modal-head h3{margin:6px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:40px;line-height:.92}
+            .kka-modal-x{flex:none;width:42px;height:42px;display:grid;place-items:center;border:2px solid var(--ink);background:none;color:var(--ink);cursor:pointer;
+              transition:background .2s,color .2s,transform .3s var(--spring)}
+            .kka-modal-x:hover{background:var(--ink);color:#fff;transform:rotate(90deg)}
+            .kka-modal-body{padding:20px 22px 22px}
+            .kka-modal-body .kka-sub{margin:0 0 18px}
+            .kka-modal-body .kka-field{margin-bottom:14px}
+            .kka-modal-done{text-align:left}
+            .kka-modal-mark{width:56px;height:56px;display:grid;place-items:center;background:var(--green);color:#fff;margin-bottom:16px}
+            .kka-modal-done h4{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:30px;line-height:.95}
+            .kka-modal-done p{margin:10px 0 0;color:var(--muted);line-height:1.55}
+            .kka-modal-done p b{color:var(--ink);overflow-wrap:anywhere}
+            .kka-modal-row{display:flex;gap:10px;margin-top:20px}
+            .kka-modal-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 16px;border:2px solid var(--ink);border-radius:2px;
+              background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+            .kka-modal-btn:hover{background:var(--ink);color:#fff}
+            .kka-modal-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+            .kka-modal-btn.go:hover{background:var(--ink);border-color:var(--ink)}
+            .kka-modal :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+            @media (max-width:520px){
+              .kka-modal{align-items:flex-end;padding:0}
+              .kka-modal-card{max-width:none;border-width:2px 0 0}
+              .kka-modal-head h3{font-size:34px}
+              .kka-modal-body{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+              .kka-modal-row{flex-direction:column-reverse}
+            }
+          `}</style>
+          <motion.div className="kka-modal-card" role="dialog" aria-modal="true" aria-labelledby="kka-reset-title"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.4, ease: [0.77, 0, 0.18, 1] }}>
+            <div className="kka-modal-head">
+              <div>
+                <p className="kka-eyebrow">Forgot your password?</p>
+                <h3 id="kka-reset-title">{submitted ? 'Check your inbox' : 'Reset it'}</h3>
               </div>
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">Check Your Email</h4>
-              <p className="text-gray-600">
-                We've sent a password reset link to <strong>{email}</strong>
-              </p>
-              <p className="text-gray-500 text-sm mt-2">
-                Didn't receive it? Check your spam folder or try again.
-              </p>
+              <button type="button" className="kka-modal-x" onClick={close} aria-label="Close">
+                <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" /></svg>
+              </button>
             </div>
-          )}
-        </div>
-      </motion.div>
-    </div>
+
+            <div className="kka-modal-body">
+              {!submitted ? (
+                <>
+                  <p className="kka-sub">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
+                  {error && <p className="kka-note err" role="alert">{error}</p>}
+                  <form onSubmit={handleSubmit} noValidate>
+                    <Field id="reset-email" label="Email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+                      value={email} onChange={(e) => { setEmail(e.target.value); if (error) setError(''); }} disabled={loading} autoFocus />
+                    <SubmitButton busy={loading} busyLabel="Sending…">Send reset link</SubmitButton>
+                  </form>
+                </>
+              ) : (
+                <motion.div className="kka-modal-done" role="status"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+                  <span className="kka-modal-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26"><path d="M3 6h18v12H3z M3 6l9 7 9-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
+                  </span>
+                  <h4>Link on its way</h4>
+                  <p>If there's an account for <b>{email}</b>, we've sent a link to reset the password. It can take a minute, so check spam or promotions too.</p>
+                  <div className="kka-modal-row">
+                    <button type="button" className="kka-modal-btn" onClick={() => setSubmitted(false)}>Use a different email</button>
+                    <button type="button" className="kka-modal-btn go" onClick={close}>Back to log in</button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -413,7 +408,6 @@ useEffect(() => {
         ? `Email verified! You can now login with ${email}`
         : 'Email verified successfully! Please login to continue.',
       { 
-        position: 'top-right',
         autoClose: 5000
       }
     );
@@ -589,215 +583,52 @@ useEffect(() => {
     }
   };
 
+  const busy = loading || isMerging;
   return (
     <>
-      <ForgotPasswordModal 
+      <ForgotPasswordModal
         isOpen={showForgotPassword}
         onClose={() => setShowForgotPassword(false)}
-        onSuccess={(email) => console.log('Reset email sent to:', email)}
+        onSuccess={() => {}}
       />
 
-      <div className="bg-[#edf1f4] gap-2 px-4 min-h-screen flex py-8 justify-center items-center flex-col">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <Link to="/">
-            <img src={logo} className="w-[10rem]" alt="KleanKickx Logo" />
-          </Link>
-        </motion.div>
+      <AuthLayout
+        headline="Welcome back"
+        eyebrow="Your account"
+        title="Log in"
+        subtitle="Pick up where you left off: your cart, your orders and every pair we've kleaned."
+      >
+        {message && <p className="kka-note warn" role="status">{message}</p>}
+        {continueUrl?.includes('/vouchers') && (
+          <p className="kka-note" role="status">After you log in, we'll take you back to finish your voucher purchase.</p>
+        )}
+        {isMerging && <p className="kka-note" role="status"><span className="kka-spin" style={{ borderColor: 'rgba(22,77,22,.25)', borderTopColor: '#164D16' }} /> Syncing your cart…</p>}
+        {error && <p className="kka-note err" role="alert">{error}</p>}
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="bg-white rounded-lg shadow-md p-6 lg:w-[30rem] w-full"
-        >
-          <h2 className="text-2xl font-bold text-black mb-2">Login</h2>
-
-          {message && (
-            <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800 text-sm font-medium">{message}</p>
-            </div>
-          )}
-
-          {continueUrl?.includes('/vouchers') && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm font-medium">
-                After login, you'll be redirected to complete your voucher purchase.
-              </p>
-            </div>
-          )}
-
-          {isMerging && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <LoadingSpinner size="h-5 w-5" />
-                <p className="text-green-700 text-sm font-medium">
-                  Syncing your cart...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-red-100 text-red-700 p-4 rounded mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleEmailLogin} className="space-y-4" noValidate>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email address"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-0 text-gray-700 disabled:bg-gray-100"
-                disabled={loading || isMerging}
-              />
-            </div>
-
-            <div className="relative">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading || isMerging}
-                className="w-full pr-10 p-2 text-gray-700 border border-gray-300 rounded-md focus:outline-none focus:ring-0 disabled:bg-gray-100"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[2.7rem] text-gray-500 hover:text-primary transition-colors"
-                disabled={loading || isMerging}
-              >
-                {showPassword ? <EyeSlashIcon className="w-6 h-6" /> : <EyeIcon className="w-6 h-6" />}
-              </button>
-            </div>
-
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-sm text-primary hover:text-primary/80 hover:underline transition"
-                disabled={loading || isMerging}
-              >
-                Forgot Password?
-              </button>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || isMerging}
-              className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <LoadingSpinner size="h-5 w-5" />
-                  <span>Logging in...</span>
-                </>
-              ) : isMerging ? (
-                <>
-                  <LoadingSpinner size="h-5 w-5" />
-                  <span>Syncing cart...</span>
-                </>
-              ) : (
-                'Login'
-              )}
+        <form onSubmit={handleEmailLogin} noValidate>
+          <Field id="email" label="Email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+            value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} />
+          <Field id="password" label="Password" type="password" autoComplete="current-password" placeholder="Your password"
+            value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy}>
+            <button type="button" className="kka-link" style={{ fontSize: 13, letterSpacing: 0, textTransform: 'none' }}
+              onClick={() => setShowForgotPassword(true)} disabled={busy}>
+              Forgot password?
             </button>
-          </form>
+          </Field>
+          <SubmitButton busy={busy} busyLabel={isMerging ? 'Syncing your cart…' : 'Logging in…'}>Log in</SubmitButton>
+        </form>
 
-          <div className="my-6 flex items-center">
-            <hr className="flex-grow border-gray-300" />
-            <span className="mx-4 text-gray-500">or</span>
-            <hr className="flex-grow border-gray-300" />
-          </div>
+        <div className="kka-or">or</div>
+        <GoogleButton label="Continue with Google" onToken={handleGoogleLoginSuccess} onError={setError} disabled={busy} />
 
-          <div className="w-full">
-            <GoogleLogin
-              onSuccess={handleGoogleLoginSuccess}
-              onError={() => {
-                setError('Google login failed. Please try again.');
-                toast.error('Google login failed.');
-              }}
-              width="100%"
-              text="signin_with"
-              shape="rectangular"
-              theme="filled_black"
-              disabled={loading || isMerging}
-            />
-          </div>
-
-          <p className="mt-4 text-center text-sm text-gray-600">
-            Don't have a customer account?{' '}
-            <Link to="/auth/register" className="text-primary hover:underline">
-              Register
-            </Link>
-          </p>
-
-          {/* <div className="mt-4 pt-3">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-2 text-gray-400">For Businesses</span>
-              </div>
-            </div>
-            
-            <p className="mt-3 text-center text-sm">
-              <Link 
-                to="/partner/register" 
-                className="text-primary hover:text-primary/80 font-medium inline-flex items-center gap-1 group"
-              >
-                Apply for Wholesale Partnership
-                <span className="transform transition-transform group-hover:translate-x-1">→</span>
-              </Link>
-            </p>
-          </div>
-
-          {/* Legal Links - Added at the bottom */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-              <Link 
-                to="/legal" 
-                state={{ tab: 'privacy' }}
-                className="text-xs text-gray-400 hover:text-primary transition-colors"
-              >
-                Privacy Policy
-              </Link>
-              <span className="text-gray-300 text-xs">•</span>
-              <Link 
-                to="/legal" 
-                state={{ tab: 'terms' }}
-                className="text-xs text-gray-400 hover:text-primary transition-colors"
-              >
-                Terms of Service
-              </Link>
-              <span className="text-gray-300 text-xs">•</span>
-              <Link 
-                to="/about-us" 
-                className="text-xs text-gray-400 hover:text-primary transition-colors"
-              >
-                About Us
-              </Link>
-            </div>
-          </div>
-        </motion.div>
-      </div>
+        <p className="kka-switch">
+          <span>New to KleanKickx?</span>
+          <Link to="/auth/register" state={location.state}>Create an account <span aria-hidden="true">→</span></Link>
+        </p>
+        <p className="kka-legal">
+          <Link to="/legal" state={{ tab: 'privacy' }}>Privacy Policy</Link> · <Link to="/legal" state={{ tab: 'terms' }}>Terms of Service</Link>
+        </p>
+      </AuthLayout>
     </>
   );
 };

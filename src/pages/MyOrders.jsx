@@ -2,32 +2,11 @@ import React, { useEffect, useState, useContext, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import {
-  FaShoppingCart,
-  FaSpinner,
-  FaExclamationCircle,
-  FaCheckCircle,
-  FaInfoCircle,
-  FaTimesCircle,
-  FaChevronRight,
-  FaChevronLeft,
-  FaBoxOpen,
-  FaSearch,
-  FaBroom,
-  FaTruck,
-  FaCalendarAlt,
-  FaCheckDouble,
-  FaFilter,
-  FaSort,
-  FaClock,
-  FaEllipsisH,
-  FaGift,
-  FaTag
-} from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 import api from '../api';
 import { orderPrice } from '../utils/orderPrice';
+import { orderStatus, STATUS_TAG_CSS } from '../utils/orderStatus';
 
 // --- Constants ---
 const PAGE_SIZE = 10;
@@ -85,7 +64,7 @@ const MyOrders = () => {
         console.error('Error fetching orders:', err);
         const errorMessage = err.response?.data?.detail || 'Failed to load orders. Please try again.';
         setError(errorMessage);
-        toast.error(errorMessage, { position: 'top-right', autoClose: 3000 });
+        toast.error(errorMessage, { autoClose: 3000 });
       })
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);
@@ -124,91 +103,15 @@ const MyOrders = () => {
 
   const displayOrders = orders;
 
-  const getStatusDisplay = (status) => {
-    const statusConfig = {
-      pending: {
-        icon: <FaInfoCircle className="text-blue-500" />,
-        color: 'text-blue-700',
-        bg: 'bg-blue-100',
-        border: 'border-blue-200',
-        displayText: 'Pending'
-      },
-      processing: {
-        icon: <FaSpinner className="animate-spin text-amber-500" />,
-        color: 'text-amber-700',
-        bg: 'bg-amber-100',
-        border: 'border-amber-200',
-        displayText: 'Processing'
-      },
-      pickup: {
-        icon: <FaTruck className="text-indigo-500" />,
-        color: 'text-indigo-700',
-        bg: 'bg-indigo-100',
-        border: 'border-indigo-200',
-        displayText: 'Pickup'
-      },
-      cleaning_ongoing: {
-        icon: <FaBroom className="text-purple-500" />,
-        color: 'text-purple-700',
-        bg: 'bg-purple-100',
-        border: 'border-purple-200',
-        displayText: 'Cleaning Ongoing'
-      },
-      cleaning_completed: {
-        icon: <FaCheckDouble className="text-green-500" />,
-        color: 'text-green-700',
-        bg: 'bg-green-100',
-        border: 'border-green-200',
-        displayText: 'Cleaning Completed'
-      },
-      scheduled_for_delivery: {
-        icon: <FaCalendarAlt className="text-teal-500" />,
-        color: 'text-teal-700',
-        bg: 'bg-teal-100',
-        border: 'border-teal-200',
-        displayText: 'Scheduled for Delivery'
-      },
-      delivered: {
-        icon: <FaCheckCircle className="text-emerald-500" />,
-        color: 'text-emerald-700',
-        bg: 'bg-emerald-100',
-        border: 'border-emerald-200',
-        displayText: 'Delivered'
-      },
-      cancelled: {
-        icon: <FaTimesCircle className="text-rose-500" />,
-        color: 'text-rose-700',
-        bg: 'bg-rose-100',
-        border: 'border-rose-200',
-        displayText: 'Cancelled'
-      },
-      default: {
-        icon: <FaInfoCircle className="text-gray-500" />,
-        color: 'text-gray-700',
-        bg: 'bg-gray-100',
-        border: 'border-gray-200',
-        displayText: 'Unknown'
-      }
-    };
-    const statusKey = status?.toLowerCase().replace(/ /g, '_') || 'default';
-    const config = statusConfig[statusKey] || statusConfig.default;
-    return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${config.bg} ${config.color} ${config.border} border`}>
-        {config.icon}
-        {config.displayText}
-      </span>
-    );
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
+  const formatTime = (dateString) => (dateString
+    ? new Date(dateString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : '');
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const filtering = Boolean(searchTerm || statusFilter !== 'all');
 
   // --- PAGINATION ---
   const PaginationControls = () => {
@@ -229,366 +132,257 @@ const MyOrders = () => {
     const last = Math.min(currentPage * PAGE_SIZE, totalCount);
     const canPrev = requestedPage > 1;
     const canNext = requestedPage < totalPages;
-    const navButton = 'inline-flex items-center gap-2 h-10 px-3 sm:px-4 rounded-lg border text-sm font-medium transition-colors';
-    const navState = (enabled) => (enabled
-      ? 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer'
-      : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed');
 
     return (
-      <nav
-        aria-label="Orders pages"
-        className="mt-8 flex flex-col-reverse sm:flex-row items-center justify-between gap-4"
-      >
-        <p className="text-sm text-gray-500" aria-live="polite">
-          Showing <span className="font-medium text-gray-900">{first}–{last}</span> of{' '}
-          <span className="font-medium text-gray-900">{totalCount}</span> orders
-        </p>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => handlePageChange(requestedPage - 1)}
-            disabled={!canPrev}
-            aria-label="Previous page"
-            className={`${navButton} ${navState(canPrev)}`}
-          >
-            <FaChevronLeft className="w-3 h-3" aria-hidden="true" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-
-          {/* Page numbers on larger screens, "2 / 5" on phones */}
-          <span className="sm:hidden px-3 text-sm text-gray-600">
-            <span className="font-medium text-gray-900">{requestedPage}</span> / {totalPages}
-          </span>
-          <div className="hidden sm:flex items-center gap-1">
-            {pageNumbers.map((page) =>
-              typeof page !== 'number' ? (
-                <span key={page} className="w-8 text-center text-gray-400" aria-hidden="true">
-                  <FaEllipsisH className="inline w-3 h-3" />
-                </span>
-              ) : (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => handlePageChange(page)}
-                  aria-current={page === requestedPage ? 'page' : undefined}
-                  aria-label={`Page ${page}`}
-                  className={`inline-flex items-center justify-center min-w-10 h-10 px-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                    page === requestedPage ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {page === requestedPage && loading ? (
-                    <FaSpinner className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    page
-                  )}
-                </button>
-              )
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handlePageChange(requestedPage + 1)}
-            disabled={!canNext}
-            aria-label="Next page"
-            className={`${navButton} ${navState(canNext)}`}
-          >
-            <span className="hidden sm:inline">Next</span>
-            <FaChevronRight className="w-3 h-3" aria-hidden="true" />
-          </button>
+      <nav aria-label="Orders pages" className="kko-pages">
+        <p aria-live="polite">Showing <b>{first}–{last}</b> of <b>{totalCount}</b></p>
+        <div>
+          <button type="button" className="kko-pg" onClick={() => handlePageChange(requestedPage - 1)} disabled={!canPrev} aria-label="Previous page">←</button>
+          {pageNumbers.map((page) => (typeof page !== 'number' ? (
+            <span key={page} className="kko-pg-gap" aria-hidden="true">…</span>
+          ) : (
+            <button key={page} type="button" onClick={() => handlePageChange(page)}
+              aria-current={page === requestedPage ? 'page' : undefined} aria-label={`Page ${page}`}
+              className={`kko-pg num ${page === requestedPage ? 'on' : ''}`}>
+              {page === requestedPage && loading ? <span className="kko-spin" aria-hidden="true" /> : page}
+            </button>
+          )))}
+          <button type="button" className="kko-pg" onClick={() => handlePageChange(requestedPage + 1)} disabled={!canNext} aria-label="Next page">→</button>
         </div>
       </nav>
     );
   };
 
-  // Skeleton cards while the first page loads
-  const OrderCardSkeleton = () => (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse" aria-hidden="true">
-      <div className="flex justify-between items-center mb-3">
-        <div className="h-5 w-32 bg-gray-200 rounded" />
-        <div className="h-6 w-24 bg-gray-100 rounded-full" />
-      </div>
-      <div className="h-4 w-28 bg-gray-100 rounded mb-5" />
-      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-5">
-        <div className="w-12 h-12 bg-gray-200 rounded-lg" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-3/4 bg-gray-200 rounded" />
-          <div className="h-3 w-1/3 bg-gray-100 rounded" />
-        </div>
-      </div>
-      <div className="flex justify-between items-center border-t border-gray-100 pt-4">
-        <div className="h-4 w-12 bg-gray-200 rounded" />
-        <div className="h-5 w-20 bg-gray-200 rounded" />
-      </div>
-      <div className="h-11 w-full bg-gray-100 rounded-lg mt-4" />
-    </div>
-  );
-
-  // --- REDESIGNED ORDER CARD COMPONENT ---
-  const OrderCard = ({ order }) => {
-    const firstItem = order.items?.[0];
-    const additionalItemsCount = order.items?.length - 1;
+  const OrderRow = ({ order, index }) => {
+    const items = order.items || [];
+    const firstItem = items[0];
+    const pairs = items.reduce((n, item) => n + (Number(item.quantity) || 1), 0);
+    const more = items.length - 1;
     const price = orderPrice(order);
+    const status = orderStatus(order.status, order.is_self_handled);
 
     return (
-      <motion.div
+      <motion.li
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.3 }}
-        className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+        transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.04, ease: [0.77, 0, 0.18, 1] }}
       >
-        <div className="p-5">
-          {/* Order Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-center gap-2 mb-2">
-                <h2 className="text-lg font-bold text-gray-900 truncate">#{order.reference_code}</h2>
-                {getStatusDisplay(order.status)}
-              </div>
-              <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                <FaClock className="text-gray-400" />
-                {formatDateTime(order.created_at)}
-              </div>
-            </div>
-          </div>
-
-          {/* Order Items - Simplified */}
-          <div className="mb-4">
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              {firstItem?.service?.image ? (
-                <img
-                  src={firstItem.service.image}
-                  alt={firstItem.service.name}
-                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                  onError={(e) => { 
-                    e.target.onerror = null; 
-                    e.target.src = 'https://placehold.co/100x100/A0AEC0/ffffff?text=Item'; 
-                  }}
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
-                  <FaBoxOpen className="text-gray-400 text-lg" />
-                </div>
-              )}
-              
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-gray-900 truncate">
-                  {firstItem?.service?.name || 'Service Item'}
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Qty: {firstItem?.quantity || 1}
-                  {additionalItemsCount > 0 && (
-                    <span className="ml-2 text-primary font-medium">
-                      +{additionalItemsCount} more item{additionalItemsCount > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Order total */}
-          <div className="border-t border-gray-100 pt-4">
-            <div className="flex justify-between items-center gap-3">
-              <span className="text-base font-semibold text-gray-900">Total</span>
-              <div className="flex items-center gap-3">
-                {price.was > 0 && (
-                  <span className="text-xs text-gray-400 line-through">₵{price.was.toFixed(2)}</span>
-                )}
-                {price.label ? (
-                  <span className={`inline-flex items-center gap-1.5 text-lg font-bold ${price.voucher ? 'text-green-700' : 'text-amber-700'}`}>
-                    {price.voucher ? <FaGift className="w-4 h-4" aria-hidden="true" /> : <FaTag className="w-4 h-4" aria-hidden="true" />}
-                    {price.label}
-                  </span>
-                ) : (
-                  <span className="text-lg font-bold text-green-700">₵{price.total.toFixed(2)}</span>
-                )}
-              </div>
-            </div>
-            {price.voucher && !price.label && (
-              <p className="mt-1 text-right text-xs text-green-700">Voucher applied</p>
-            )}
-            {price.free && !price.voucher && !price.label && (
-              <p className="mt-1 text-right text-xs text-amber-700">Includes a free signup service</p>
-            )}
-          </div>
-
-          <Link
-            to={`/orders/${order.reference_code}`}
-            className="mt-4 inline-flex items-center justify-center w-full px-4 py-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/70 transition-colors"
-          >
-            View Details
-          </Link>
-        </div>
-      </motion.div>
+        <Link to={`/orders/${order.reference_code}`} className="kko-card">
+          <span className="kko-card-top">
+            <span className={`kk-st ${status.tone}`}>{status.label}</span>
+            <span className="kko-date">{formatDate(order.created_at)} · {formatTime(order.created_at)}</span>
+          </span>
+          <span className="kko-ref">#{order.reference_code}</span>
+          <span className="kko-what">
+            <span className="kko-thumb" aria-hidden="true">
+              {firstItem?.service?.image
+                ? <img src={firstItem.service.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                : <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 15c0-3 2-5 5-5h2l3 3h6c1.7 0 2 1.4 2 2v2H3z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>}
+            </span>
+            <span className="kko-what-text">
+              <span className="kko-svc">{firstItem?.service?.name || 'Sneaker Klean'}{more > 0 && <i> +{more} more</i>}</span>
+              <span className="kko-pairs">{pairs} {pairs === 1 ? 'pair' : 'pairs'}</span>
+            </span>
+          </span>
+          <span className="kko-foot">
+            <span className="kko-total">
+              {price.was > 0 && <s>₵{price.was.toFixed(2)}</s>}
+              {price.label
+                ? <span className={`kko-amt small ${price.voucher ? 'g' : 'a'}`}>{price.label}</span>
+                : <span className="kko-amt">₵{price.total.toFixed(2)}</span>}
+              {!price.label && price.voucher && <span className="kko-note g">Voucher applied</span>}
+              {!price.label && !price.voucher && price.free && <span className="kko-note a">Free signup service</span>}
+            </span>
+            <span className="kko-view">View <span className="kko-ar" aria-hidden="true">→</span></span>
+          </span>
+        </Link>
+      </motion.li>
     );
   };
 
   const statusOptions = [
-    { value: 'all', label: 'All Statuses' },
+    { value: 'all', label: 'All statuses' },
     { value: 'pending', label: 'Pending' },
     { value: 'processing', label: 'Processing' },
     { value: 'pickup', label: 'Pickup' },
-    { value: 'cleaning_ongoing', label: 'Cleaning Ongoing' },
-    { value: 'cleaning_completed', label: 'Cleaning Completed' },
-    { value: 'scheduled_for_delivery', label: 'Scheduled for Delivery' },
+    { value: 'cleaning_ongoing', label: 'Cleaning' },
+    { value: 'cleaning_completed', label: 'Clean' },
+    { value: 'scheduled_for_delivery', label: 'Delivery booked' },
     { value: 'delivered', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' }
   ];
 
   const sortOptions = [
-    { value: 'newest', label: 'Newest First' },
-    { value: 'oldest', label: 'Oldest First' },
-    { value: 'total_high', label: 'Total: High to Low' },
-    { value: 'total_low', label: 'Total: Low to High' }
+    { value: 'newest', label: 'Newest first' },
+    { value: 'oldest', label: 'Oldest first' },
+    { value: 'total_high', label: 'Total: high to low' },
+    { value: 'total_low', label: 'Total: low to high' }
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-8">
-      <div className="px-6 md:px-8 lg:px-24 mb-12">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-              <p className="text-gray-500 mt-2">
-                {totalCount > 0 
-                  ? `Manage and track your laundry orders` 
-                  : 'Your order history will appear here'}
-              </p>
-            </div>
-            
-            <Link
-              to="/services"
-              className="inline-flex items-center justify-center px-5 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white font-medium rounded-lg hover:from-green-500 hover:to-green-500 transition-all shadow-md hover:shadow-lg cursor-pointer"
-            >
-              <FaShoppingCart className="mr-2" />
-              New Order
-            </Link>
-          </div>
+    <div className="kko">
+      <style>{`
+        .kko{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);
+          background:var(--paper);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif;min-height:100vh}
+        ${STATUS_TAG_CSS}
+        .kko-wrap{max-width:1200px;margin:0 auto;padding:0 20px 72px}
+        .kko-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+        .kko-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:48px 0 28px;border-bottom:2px solid var(--ink)}
+        .kko-hero h1{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(56px,8vw,104px);line-height:.88}
+        .kko-count{margin:0;display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none}
+        .kko-count b{font-family:var(--display);font-weight:400;font-size:clamp(56px,8vw,104px);line-height:.88;color:var(--green);font-variant-numeric:tabular-nums}
+        .kko-count span{margin-top:8px;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+        .kko-hero p.sub{margin:12px 0 0;color:var(--muted);font-size:17px}
+        .kko-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 22px;border:2px solid var(--green);border-radius:2px;
+          background:var(--green);color:#fff;font:inherit;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+        .kko-btn .ar{transition:transform .3s var(--spring)}
+        .kko-btn:hover{background:var(--ink);border-color:var(--ink);color:#fff}
+        .kko-btn:hover .ar{transform:translateX(5px)}
+        .kko-btn.ghost{background:transparent;color:var(--ink);border-color:var(--ink)}
+        .kko-btn.ghost:hover{background:var(--ink);color:#fff}
+        .kko-tools{display:flex;flex-wrap:wrap;gap:10px;padding:20px 0}
+        .kko-search{flex:1 1 260px;position:relative}
+        .kko-search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+        .kko-search input,.kko-sel select{width:100%;height:48px;border:1.5px solid var(--line);border-radius:2px;background:#fff;font:inherit;font-size:15px;color:var(--ink);
+          outline:none;transition:border-color .2s,box-shadow .2s}
+        .kko-search input{padding:0 14px 0 42px}
+        .kko-search input:focus,.kko-sel select:focus{border-color:var(--ink);box-shadow:0 3px 0 0 var(--green)}
+        .kko-sel{position:relative;flex:0 1 210px}
+        .kko-sel select{appearance:none;-webkit-appearance:none;padding:0 38px 0 14px;cursor:pointer}
+        .kko-sel::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+        .kko-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;position:relative;transition:opacity .2s}
+        .kko-list > li{min-width:0}
+        .kko-list.paging{opacity:.5;pointer-events:none}
+        .kko-progress{position:absolute;left:0;right:0;top:-12px;height:2px;overflow:hidden}
+        .kko-progress::after{content:"";position:absolute;top:0;bottom:0;width:30%;background:var(--green);animation:kkoSlide 1s var(--swift) infinite}
+        @keyframes kkoSlide{from{left:-30%}to{left:100%}}
+        .kko-card{height:100%;display:flex;flex-direction:column;gap:14px;padding:20px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none;
+          transition:transform .4s var(--spring),border-color .2s,box-shadow .3s}
+        .kko-card:hover{transform:translateY(-4px);border-color:var(--ink);box-shadow:0 18px 40px -28px rgba(10,11,10,.45)}
+        .kko-card:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+        .kko-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+        .kko-date{font-size:13px;color:var(--muted);text-align:right}
+        .kko-ref{font-family:var(--display);font-size:34px;line-height:.95;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .kko-what{display:flex;align-items:center;gap:12px;padding:10px;background:var(--paper);border:1px solid var(--line)}
+        .kko-thumb{flex:none;width:52px;height:52px;display:grid;place-items:center;background:#fff;border:1px solid var(--line);overflow:hidden;color:var(--muted)}
+        .kko-thumb img{width:100%;height:100%;object-fit:cover}
+        .kko-what-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+        .kko-svc{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .kko-svc i{font-style:normal;font-weight:500;color:var(--green)}
+        .kko-pairs{font-size:13px;color:var(--muted)}
+        .kko-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:auto;padding-top:14px;border-top:2px solid var(--ink)}
+        .kko-total{display:flex;flex-direction:column;gap:2px;min-width:0}
+        .kko-total s{font-size:13px;color:var(--muted)}
+        .kko-amt{font-family:var(--display);font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+        .kko-amt.small{font-family:inherit;font-size:15px;font-weight:700}
+        .kko-amt.g,.kko-note.g{color:var(--green)}
+        .kko-amt.a,.kko-note.a{color:#9A5B00}
+        .kko-note{font-size:12px;font-weight:600}
+        .kko-view{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;transition:color .2s}
+        .kko-ar{font-size:18px;transition:transform .3s var(--spring)}
+        .kko-card:hover .kko-view{color:var(--green)}
+        .kko-card:hover .kko-ar{transform:translateX(5px)}
+        .kko-skel{height:250px;border:1px solid var(--line);background:linear-gradient(90deg,#fff 0%,rgba(217,223,215,.6) 50%,#fff 100%);background-size:200% 100%;animation:kkoShim 1.3s linear infinite}
+        @keyframes kkoShim{to{background-position:-200% 0}}
+        .kko-empty{padding:64px 24px;border:2px dashed var(--line);text-align:center;margin-top:20px}
+        .kko-empty h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:44px;line-height:.95}
+        .kko-empty p{margin:12px auto 22px;max-width:42ch;color:var(--muted)}
+        .kko-empty.err h2{color:#B42318}
+        .kko-pages{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-top:24px}
+        .kko-pages p{margin:0;font-size:14px;color:var(--muted)}
+        .kko-pages p b{color:var(--ink)}
+        .kko-pages div{display:flex;align-items:center;gap:6px}
+        .kko-pg{min-width:42px;height:42px;padding:0 10px;display:inline-grid;place-items:center;border:1.5px solid var(--line);border-radius:2px;background:#fff;
+          font:inherit;font-size:15px;font-weight:700;color:var(--ink);cursor:pointer;transition:border-color .2s,background .2s,color .2s}
+        .kko-pg:hover:not(:disabled){border-color:var(--ink)}
+        .kko-pg.on{background:var(--ink);border-color:var(--ink);color:#fff}
+        .kko-pg:disabled{opacity:.35;cursor:default}
+        .kko-pg-gap{width:20px;text-align:center;color:var(--muted)}
+        .kko-spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:kkoSpin .8s linear infinite}
+        @keyframes kkoSpin{to{transform:rotate(360deg)}}
+        @media (max-width:640px){
+          .kko-hero{padding:34px 0 22px}
+          .kko-sel{flex:1 1 calc(50% - 5px)}
+          .kko-list{grid-template-columns:1fr;gap:14px}
+          .kko-card{padding:18px 16px}
+          .kko-ref{font-size:30px}
+          .kko-pages{flex-direction:column-reverse}
+          .kko-pages div{gap:4px}
+          .kko-pg{min-width:34px;height:40px;padding:0 6px;font-size:14px}
+          .kko-pg-gap{width:14px}
+        }
+        @media (prefers-reduced-motion:reduce){.kko-progress::after,.kko-skel{animation:none}}
+      `}</style>
 
-          {/* Filters and Search */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search orders..."
-                  className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary w-full text-sm"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                />
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaFilter className="text-gray-400" />
-                  </div>
-                  <select
-                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary appearance-none text-sm"
-                    value={statusFilter}
-                    onChange={(e) => handleStatusChange(e.target.value)}
-                  >
-                    {statusOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaSort className="text-gray-400" />
-                  </div>
-                  <select
-                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary appearance-none text-sm"
-                    value={sortBy}
-                    onChange={(e) => handleSortChange(e.target.value)}
-                  >
-                    {sortOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+      <div className="kko-wrap">
+        <header className="kko-hero">
+          <div>
+            <p className="kko-eyebrow">Your account</p>
+            <h1>Orders</h1>
+            <p className="sub">{totalCount > 0 ? 'Track every pair, from pickup to fresh.' : 'Your order history will appear here.'}</p>
           </div>
+          {totalCount > 0 && (
+            <p className="kko-count" aria-label={`${totalCount} orders in total`}>
+              <b>{String(totalCount).padStart(2, '0')}</b>
+              <span>{totalCount === 1 ? 'Order' : 'Orders'} total</span>
+            </p>
+          )}
+        </header>
+
+        <div className="kko-tools">
+          <label className="kko-search">
+            <span className="sr-only">Search orders</span>
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M15.5 15.5L21 21" stroke="currentColor" strokeWidth="2" /></svg>
+            <input type="search" placeholder="Search by order number or service" value={searchTerm} onChange={handleSearchChange} />
+          </label>
+          <label className="kko-sel">
+            <span className="sr-only">Status</span>
+            <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value)}>
+              {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          <label className="kko-sel">
+            <span className="sr-only">Sort</span>
+            <select value={sortBy} onChange={(e) => handleSortChange(e.target.value)}>
+              {sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
         </div>
 
-        {/* Content Section */}
         <div ref={ordersContainerRef}>
           {loading && orders.length === 0 && !error ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" aria-busy="true" aria-label="Loading your orders">
-              {Array.from({ length: 6 }, (_, i) => <OrderCardSkeleton key={i} />)}
-            </div>
+            <ul className="kko-list" aria-busy="true" aria-label="Loading your orders">
+              {Array.from({ length: 6 }, (_, i) => <li key={i} className="kko-skel" />)}
+            </ul>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center py-16 space-y-4 bg-white rounded-xl shadow-xs border border-gray-100">
-              <FaExclamationCircle className="text-red-500 text-4xl" />
-              <p className="text-gray-700 max-w-md text-center">{error}</p>
-              <button 
-                onClick={fetchOrders}
-                className="px-5 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-              >
-                Try Again
-              </button>
+            <div className="kko-empty err" role="alert">
+              <h2>Couldn't load orders</h2>
+              <p>{error}</p>
+              <button type="button" className="kko-btn ghost" onClick={fetchOrders}>Try again</button>
             </div>
           ) : displayOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-xs border border-gray-100">
-              <FaBoxOpen className="text-gray-300 text-6xl mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {searchTerm || statusFilter !== 'all' ? 'No orders found' : 'No orders yet'}
-              </h3>
-              <p className="text-gray-500 mb-6 text-center">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'Try adjusting your search or filters'
-                  : 'Get started by placing your first order'}
-              </p>
-              <Link
-                to="/services"
-                className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/70 transition-all"
-              >
-                Place Your First Order
-              </Link>
+            <div className="kko-empty">
+              <h2>{filtering ? 'No matches' : 'No orders yet'}</h2>
+              <p>{filtering ? 'Nothing matches that search or filter. Try another, or clear them.' : 'Book your first Klean and you can follow every step of it here.'}</p>
+              {filtering ? (
+                <button type="button" className="kko-btn ghost" onClick={() => { setSearchTerm(''); handleStatusChange('all'); }}>Clear filters</button>
+              ) : (
+                <Link to="/services" className="kko-btn">Book your first Klean <span className="ar" aria-hidden="true">→</span></Link>
+              )}
             </div>
           ) : (
             <>
-              {/* Orders grid: while another page loads, keep these visible but dimmed */}
-              <div className="relative" aria-busy={isPaging}>
-                {isPaging && (
-                  <div className="absolute inset-x-0 -top-3 h-1 overflow-hidden rounded-full bg-primary/10" aria-hidden="true">
-                    <div className="orders-progress h-full w-1/3 rounded-full bg-primary" />
-                  </div>
-                )}
-                <div
-                  ref={ordersGridRef}
-                  className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 transition-opacity duration-200 ${
-                    isPaging ? 'opacity-50 pointer-events-none select-none' : ''
-                  }`}
-                >
-                  <AnimatePresence>
-                    {displayOrders.map((order) => (
-                      <OrderCard key={order.reference_code} order={order} />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-
-              {/* Pagination */}
+              <ol ref={ordersGridRef} className={`kko-list ${isPaging ? 'paging' : ''}`} aria-busy={isPaging}>
+                {isPaging && <li className="kko-progress" aria-hidden="true" />}
+                {displayOrders.map((order, i) => <OrderRow key={order.reference_code} order={order} index={i} />)}
+              </ol>
               {totalPages > 1 && <PaginationControls />}
             </>
           )}
         </div>
       </div>
-       <Footer />
+      <Footer />
     </div>
   );
 };

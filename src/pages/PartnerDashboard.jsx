@@ -185,7 +185,6 @@ const PartnerDashboard = () => {
       toast.warning(
         messages[partnerStatus] || 'You cannot place orders at this time.',
         {
-          position: 'top-right',
           autoClose: 5000,
         }
       );

@@ -39,7 +39,6 @@ const AuthProvider = ({ children }) => {
         console.log('[AUTH] Token expired - logging out');
         clearAuth();
         toast.info('Your session has expired. Please log in again.', {
-          position: 'top-right',
           autoClose: 5000,
         });
         navigate('/auth/login', { replace: true });
@@ -227,7 +226,9 @@ const AuthProvider = ({ children }) => {
   const googleLogin = async (credentialResponse, referralCode = null) => {
     setAuthLoading(true);
     try {
-      const payload = { token: credentialResponse.credential };
+      const payload = credentialResponse?.access_token
+        ? { access_token: credentialResponse.access_token }
+        : { token: credentialResponse.credential };
       if (referralCode) payload.referral_code = referralCode;
 
       const response = await api.post('/api/users/google-login/', payload);

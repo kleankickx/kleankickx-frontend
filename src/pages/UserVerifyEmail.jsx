@@ -1,355 +1,192 @@
-// src/components/TempVerifyEmail.jsx
+// src/pages/UserVerifyEmail.jsx
+// "Check your email" after sign-up (or when an unverified user is stopped), with resend.
 import { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import { toast } from 'react-toastify';
-import { EnvelopeIcon, ArrowPathIcon, CheckCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-import 'react-toastify/dist/ReactToastify.css';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import logo from "../assets/logo2.png"
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import AuthLayout from '../components/AuthLayout';
 import api from '../api';
 
+export const VERIFY_CSS = `
+  .kkve-mark{width:64px;height:64px;display:grid;place-items:center;margin-bottom:22px;background:var(--ink,#0A0B0A);color:#fff}
+  .kkve-mark.ok{background:var(--green,#1A7A1A)}
+  .kkve-mark.bad{background:var(--red,#B42318)}
+  .kkve-mark svg{width:30px;height:30px}
+  .kkve-mail{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;padding:14px 16px;border:1.5px dashed var(--line,#D9DFD7);background:#fff}
+  .kkve-mail small{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted,#4D564C)}
+  .kkve-mail b{display:block;margin-top:2px;font-size:16px;overflow-wrap:anywhere}
+  .kkve-mail a{flex:none;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink,#0A0B0A)}
+  .kkve-steps{list-style:none;margin:0 0 22px;padding:0;border-top:2px solid var(--ink,#0A0B0A)}
+  .kkve-steps li{display:grid;grid-template-columns:34px 1fr;gap:8px;padding:12px 0;border-bottom:1px solid var(--line,#D9DFD7);font-size:15px;line-height:1.45}
+  .kkve-steps li p{margin:0}
+  .kkve-steps li span{font-family:"Anton","Arial Narrow",Impact,sans-serif;font-size:20px;line-height:1.1;color:var(--green,#1A7A1A)}
+  .kkve-stack{display:grid;gap:10px}
+  .kkve-help{margin:18px 0 0;font-size:14px;line-height:1.55;color:var(--muted,#4D564C)}
+  .kkve-help a{color:var(--ink,#0A0B0A);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  .kkve-help a:hover{color:var(--green,#1A7A1A)}
+  .kkve-bar{height:4px;margin:6px 0 20px;background:var(--line,#D9DFD7);overflow:hidden;position:relative}
+  .kkve-bar::after{content:"";position:absolute;top:0;bottom:0;width:35%;background:var(--green,#1A7A1A);animation:kkveSlide 1.1s cubic-bezier(.77,0,.18,1) infinite}
+  @keyframes kkveSlide{from{left:-35%}to{left:100%}}
+  @media (prefers-reduced-motion:reduce){.kkve-bar::after{animation:none;width:100%;left:0}}
+`;
+
+export const Icon = {
+  mail: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 6h18v12H3z M3 6l9 7 9-7" strokeLinejoin="round" /></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>,
+  cross: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>,
+};
+
 const UserVerifyEmail = () => {
-    const location = useLocation();
-    const { refreshToken, updateTokens, isAuthenticated } = useContext(AuthContext);
-   
-    // Get parameters from URL
-    const urlParams = new URLSearchParams(location.search);
-    const userEmail = urlParams.get('email');
-    const nextPath = urlParams.get('next');
-    const navigate = useNavigate()
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { refreshToken, updateTokens, isAuthenticated } = useContext(AuthContext);
 
-    // Check if the user is coming from a registration/login where they need verification
-    const needsVerification = urlParams.get('isVerified') === 'false'; 
-    const isExpired = urlParams.get('expired') === 'true';
-    const fromLogin = urlParams.get('from') === 'login';
+  const urlParams = new URLSearchParams(location.search);
+  const userEmail = urlParams.get('email');
+  const nextPath = urlParams.get('next');
+  const isExpired = urlParams.get('expired') === 'true';
+  const fromLogin = urlParams.get('from') === 'login';
 
-    // State for managing UI logic
-    const [cooldown, setCooldown] = useState(0);        // seconds remaining for resend
-    const [loading, setLoading] = useState(false);      // API request state
-    const [checkingStatus, setCheckingStatus] = useState(false); // Checking verification status
-    const [isVerified, setIsVerified] = useState(false); // Track if email is verified
-    
-    // Check for email validity early
-    if (!userEmail) {
-        toast.error('No email provided. Please register or log in first.');
-        return null;
+  const [cooldown, setCooldown] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [sentAgain, setSentAgain] = useState(false);
+
+  const refreshSession = async () => {
+    if (!(isAuthenticated && refreshToken && updateTokens)) return;
+    try {
+      const r = await api.post('/api/users/token/refresh/', { refresh: refreshToken });
+      updateTokens(r.data.access, r.data.refresh);
+    } catch (err) {
+      console.error('Failed to refresh token:', err);
     }
+  };
 
-    // Function to check verification status
-    const checkVerificationStatus = async () => {
-        setCheckingStatus(true);
-        try {
-            const response = await api.post('/api/users/check-verification-status/', {
-                email: userEmail
-            });
-            
-            if (response.data?.is_verified) {
-                setIsVerified(true);
-                
-                // If user is already authenticated, refresh token to get updated claims
-                if (isAuthenticated && refreshToken && updateTokens) {
-                    try {
-                        const refreshResponse = await api.post(
-                            '/api/users/token/refresh/', 
-                            { refresh: refreshToken }
-                        );
-                        updateTokens(refreshResponse.data.access, refreshResponse.data.refresh);
-                    } catch (refreshErr) {
-                        console.error("Failed to refresh token:", refreshErr);
-                    }
-                }
-                
-                toast.success('Your email is already verified!');
-            }
-        } catch (err) {
-            console.error("Error checking verification status:", err);
-        } finally {
-            setCheckingStatus(false);
-        }
-    };
-
-    // Check status on mount if needed
-    useEffect(() => {
-        // If we suspect it might be verified (e.g., fromLogin flag), check
-        if (fromLogin) {
-            checkVerificationStatus();
-        }
-    }, [fromLogin]);
-    
-    // Helper function to send the verification email
-    const sendVerificationEmail = async () => {
-        setLoading(true);
-        try {
-            const response = await api.post('/api/users/resend-verification-email/', {
-                email: userEmail,
-                next: nextPath || '/',
-            });
-            const backendStatus = response.data?.status_flag;
-            
-            if (backendStatus === 'SENT') {
-                // Scenario 1: Email was successfully queued for sending
-                setCooldown(30); // Start frontend cooldown timer
-                setIsVerified(false); // Ensure not showing verified state
-                toast.success(response.data?.message || 'Verification email sent!');
-                
-            } else if (backendStatus === 'VERIFIED') {
-                // Scenario 2: Email was already verified
-                setIsVerified(true);
-                
-                if (refreshToken && updateTokens) {
-                    try {
-                        const refreshResponse = await api.post(
-                            '/api/users/token/refresh/', 
-                            { refresh: refreshToken }
-                        );
-                        
-                        console.log("Tokens updated after verification.");
-                        updateTokens(refreshResponse.data.access, refreshResponse.data.refresh);
-                    } catch (refreshErr) {
-                        console.error("Failed to refresh token after verification:", refreshErr);
-                    }
-                }
-                
-                toast.success(response.data?.message || 'Your email is already verified!');
-            }
-            
-        } catch (err) {
-            console.log(err)
-            
-            // 1. Extract the error message from the response data
-            const errorMessage = 
-                err.response?.data?.message || 
-                err.response?.data?.error || 
-                'Failed to send verification email. Try again later.';
-            
-            const status = err.response?.status;
-
-            // 2. Handle specific HTTP 429 (Too Many Requests / Cooldown)
-            if (status === 429) {
-                toast.warn(errorMessage);
-                setCooldown(30); 
-            } else {
-                toast.error(errorMessage);
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // NO AUTO-SEND ON MOUNT - Email is already sent by backend during registration
-
-    // 2. COOLDOWN EFFECT: Countdown timer
-    useEffect(() => {
-        if (!cooldown) return;
-        const id = setInterval(() => setCooldown((c) => c - 1), 1000);
-        return () => clearInterval(id);
-    }, [cooldown]);
-
-    // Handle resend verification email (used by the manual button click)
-    const handleResendVerification = async () => {
-        if (cooldown > 0) return; // Prevent resend if still cooling down
-        await sendVerificationEmail();
-    };
-
-    // Handle login redirect
-    const handleLoginRedirect = () => {
-        navigate('/auth/login', { 
-            state: { 
-                email: userEmail,
-                message: 'Your email is verified! Please log in.',
-                redirectTo: nextPath 
-            } 
-        });
-    };
-
-    // Determine the message to display
-    let mainMessage = null;
-    
-    if (isVerified) {
-        mainMessage = (
-            <div className="space-y-4">
-                <div className="flex items-center justify-center gap-2 text-green-600">
-                    <CheckCircleIcon className="w-8 h-8" />
-                    <span className="text-lg font-semibold">Email Verified!</span>
-                </div>
-                <p className="text-gray-700">
-                    Your email <span className="font-medium text-gray-900">{userEmail}</span> has been successfully verified.
-                    You can now log in to your account.
-                </p>
-            </div>
-        );
-    } else {
-        mainMessage = (
-            <div className="space-y-4">
-                <div className="flex items-center justify-center gap-2 text-green-600">
-                    <EnvelopeIcon className="w-8 h-8" />
-                    <span className="text-lg font-semibold">Check Your Email</span>
-                </div>
-                
-                {isExpired ? (
-                    <p className="text-amber-600 font-medium">
-                        Your verification link has expired.
-                    </p>
-                ) : null}
-                
-                <div className="text-gray-700 space-y-2">
-                    <p>
-                        We've sent a verification link to 
-                        <span className="font-medium text-gray-900"> {userEmail}</span>.
-                    </p>
-                    <p className="text-sm text-gray-500">
-                        Please check your inbox and click the verification link to activate your account.
-                        If you don't see the email, check your spam folder.
-                    </p>
-                </div>
-            </div>
-        );
+  const checkVerificationStatus = async () => {
+    if (!userEmail) return;
+    setCheckingStatus(true);
+    try {
+      const response = await api.post('/api/users/check-verification-status/', { email: userEmail });
+      if (response.data?.is_verified) {
+        setIsVerified(true);
+        await refreshSession();
+      }
+    } catch (err) {
+      console.error('Error checking verification status:', err);
+    } finally {
+      setCheckingStatus(false);
     }
+  };
 
+  useEffect(() => {
+    if (fromLogin) checkVerificationStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromLogin]);
+
+  // Resend countdown
+  useEffect(() => {
+    if (!cooldown) return undefined;
+    const id = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
+
+  // No auto-send on mount: the backend already sent the email at sign-up.
+  const handleResendVerification = async () => {
+    if (cooldown > 0 || loading) return;
+    setLoading(true);
+    try {
+      const response = await api.post('/api/users/resend-verification-email/', { email: userEmail, next: nextPath || '/' });
+      const flag = response.data?.status_flag;
+      if (flag === 'SENT') {
+        setCooldown(30);
+        setIsVerified(false);
+        setSentAgain(true);
+        toast.success(response.data?.message || 'New verification email sent.');
+      } else if (flag === 'VERIFIED') {
+        setIsVerified(true);
+        await refreshSession();
+      }
+    } catch (err) {
+      const message = err.response?.data?.message || err.response?.data?.error || "Couldn't send the email. Try again in a moment.";
+      if (err.response?.status === 429) {
+        toast.warn(message);
+        setCooldown(30);
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoginRedirect = () => {
+    navigate('/auth/login', { state: { email: userEmail, message: 'Your email is verified! Please log in.', redirectTo: nextPath } });
+  };
+
+  if (!userEmail) {
     return (
-        <div className="flex h-full items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
-            
-            
-            <div className="bg-white w-full mt-8 max-w-md shadow-lg rounded-xl p-8 text-center space-y-6">
-                <motion.div 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="flex justify-center items-center"
-                >
-                    <Link to="/">
-                        <img src={logo} className="w-[10rem]" alt="Kleankickx Logo" />
-                    </Link>                  
-                </motion.div>
-                {/* Header - changes based on verification status */}
-                <div className="flex flex-col items-center gap-2">
-                    {isVerified ? (
-                        <CheckCircleIcon className="w-12 h-12 text-green-600" />
-                    ) : (
-                        <EnvelopeIcon className="w-12 h-12 text-green-600" />
-                    )}
-                    <h2 className={`text-2xl font-bold ${isVerified ? 'text-green-600' : 'text-green-700'}`}>
-                        {isVerified ? 'Email Verified!' : 'Verify Your Email'}
-                    </h2>
-                </div>
-
-                {/* Main message */}
-                <div className="text-sm">
-                    {mainMessage}
-                </div>
-
-                {/* Status checking indicator */}
-                {checkingStatus && (
-                    <div className="flex items-center justify-center gap-2 text-gray-500">
-                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Checking verification status...</span>
-                    </div>
-                )}
-
-                {/* Action Buttons - Conditional based on verification status */}
-                <div className="space-y-3">
-                    {isVerified ? (
-                        // Show Login button when verified
-                        <button
-                            onClick={handleLoginRedirect}
-                            className="w-full cursor-pointer flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition"
-                        >
-                            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                            Proceed to Login
-                        </button>
-                    ) : (
-                        // Show Resend button when not verified
-                        <button
-                            onClick={handleResendVerification}
-                            disabled={cooldown > 0 || loading}
-                            className={`w-full cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 px-5 py-2.5 rounded-md
-                                ${cooldown > 0 || loading
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-green-600 text-white hover:bg-green-700 transition'}
-                            `}
-                        >
-                            {loading ? (
-                                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <ArrowPathIcon className="w-5 h-5" />
-                            )}
-                            {loading 
-                                ? 'Sending...' 
-                                : (cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email')}
-                        </button>
-                    )}
-
-                    {/* Already verified link - always visible when not verified */}
-                    {!isVerified && (
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300"></div>
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">or</span>
-                            </div>
-                        </div>
-                    )}
-
-                    {!isVerified && (
-                        <button
-                            onClick={handleLoginRedirect}
-                            className="w-full cursor-pointer flex items-center justify-center gap-2 px-5 py-2.5 rounded-md border-2 border-green-600 text-green-600 hover:bg-green-50 transition"
-                        >
-                            <CheckCircleIcon className="w-5 h-5" />
-                            Already Verified? Log In
-                        </button>
-                    )}
-                </div>
-
-                {/* Additional help text */}
-                {!isVerified && (
-                    <div className="space-y-2 text-xs text-gray-500">
-                        <p>
-                            Didn't get the email? Check your spam folder or{' '}
-                            <button 
-                                onClick={handleResendVerification}
-                                disabled={cooldown > 0 || loading}
-                                className="text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                            >
-                                click here to resend
-                            </button>
-                        </p>
-                        <p>
-                            Wrong email?{' '}
-                            <Link to="/auth/register" className="text-green-600 hover:underline">
-                                Go back to registration
-                            </Link>
-                        </p>
-                    </div>
-                )}
-
-                {/* Login help for verified users */}
-                {isVerified && (
-                    <p className="text-xs text-gray-500">
-                        Having trouble logging in?{' '}
-                        <Link to="/auth/forgot-password" className="text-green-600 hover:underline">
-                            Reset your password
-                        </Link>
-                    </p>
-                )}
-            </div>
-
-            {/* Optional: Redirect countdown for verified users */}
-            {isVerified && (
-                <motion.p 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-sm text-gray-500 mt-2"
-                >
-                    You'll be redirected to login in a moment...
-                </motion.p>
-            )}
+      <AuthLayout eyebrow="Email verification" title="Nothing to verify" subtitle="We couldn't tell which email to check. Sign up or log in, and we'll take it from there.">
+        <style>{VERIFY_CSS}</style>
+        <div className="kkve-stack">
+          <Link to="/auth/register" className="kka-btn">Create an account <span className="ar" aria-hidden="true">→</span></Link>
+          <Link to="/auth/login" className="kka-gbtn">Log in</Link>
         </div>
+      </AuthLayout>
     );
+  }
+
+  if (isVerified) {
+    return (
+      <AuthLayout eyebrow="Email verification" title="You're verified" subtitle="Your email is confirmed. Log in to book your first Klean.">
+        <style>{VERIFY_CSS}</style>
+        <span className="kkve-mark ok" aria-hidden="true">{Icon.check}</span>
+        <div className="kkve-mail"><span><small>Verified email</small><b>{userEmail}</b></span></div>
+        <button type="button" className="kka-btn" onClick={handleLoginRedirect}>Log in <span className="ar" aria-hidden="true">→</span></button>
+        <p className="kkve-help">Can't log in? <Link to="/auth/forgot-password">Reset your password</Link>.</p>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout
+      eyebrow={isExpired ? 'Link expired' : 'One more step'}
+      title="Check your email"
+      subtitle={isExpired
+        ? 'That verification link has expired. Send yourself a new one below.'
+        : 'We sent you a link to confirm your email. Open it to activate your account.'}
+    >
+      <style>{VERIFY_CSS}</style>
+      <span className="kkve-mark" aria-hidden="true">{Icon.mail}</span>
+
+      <div className="kkve-mail">
+        <span><small>Sent to</small><b>{userEmail}</b></span>
+        <Link to="/auth/register">Wrong email?</Link>
+      </div>
+
+      {sentAgain && <p className="kka-note" role="status">New link sent. It can take a minute to arrive.</p>}
+      {checkingStatus && <div className="kkve-bar" role="status" aria-label="Checking verification status" />}
+
+      <ol className="kkve-steps">
+        <li><span>01</span><p>Open the email from KleanKickx. Check spam or promotions if it isn't in your inbox.</p></li>
+        <li><span>02</span><p>Tap <b>Verify email</b>. It opens this site and confirms your account.</p></li>
+        <li><span>03</span><p>Log in and book your first Klean.</p></li>
+      </ol>
+
+      <div className="kkve-stack">
+        <button type="button" className="kka-btn" onClick={handleResendVerification} disabled={cooldown > 0 || loading}>
+          {loading ? <><span className="kka-spin" aria-hidden="true" /> Sending…</>
+            : cooldown > 0 ? `Resend in ${cooldown}s`
+            : <>Resend the email <span className="ar" aria-hidden="true">→</span></>}
+        </button>
+        <button type="button" className="kka-gbtn" onClick={fromLogin ? checkVerificationStatus : handleLoginRedirect} disabled={checkingStatus}>
+          {fromLogin ? "I've verified, check again" : "I've verified, log in"}
+        </button>
+      </div>
+
+      <p className="kkve-help">Still nothing after a few minutes? Message us on <a href="https://wa.me/233536278834" target="_blank" rel="noreferrer">WhatsApp</a> and we'll sort it out.</p>
+    </AuthLayout>
+  );
 };
 
 export default UserVerifyEmail;

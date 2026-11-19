@@ -1,421 +1,154 @@
-// src/components/Register.jsx
+// src/pages/Register.jsx
 import { useState, useContext, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { GoogleLogin } from '@react-oauth/google';
-import { CartContext } from '../context/CartContext';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'; 
-import { AuthContext } from '../context/AuthContext'; // Make sure AuthContext is properly exported from AuthContext.jsx
-import 'react-toastify/dist/ReactToastify.css';
-import { motion } from 'framer-motion';
-import logo from "../assets/logo2.png";
+import { AuthContext } from '../context/AuthContext';
 import { trackEvent } from '../utils/analytics';
+import AuthLayout, { Field, SubmitButton, apiError, GoogleButton } from '../components/AuthLayout';
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
+const validEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const MIN_PW = 8;
 
 const Register = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { googleLogin } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const message = location.state?.message;            // e.g. "Sign up to claim your free Standard Klean."
+  const from = location.state?.from;
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { googleLogin } = useContext(AuthContext);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
-  const [showReferralField, setShowReferralField] = useState(false);
   const [usingReferral, setUsingReferral] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
+  const [error, setError] = useState('');
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Detect referral code from URL on component mount
+  // Referral code from a shared link (?ref=CODE)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const refCode = params.get('ref');
-    if (refCode) {
-      setReferralCode(refCode);
-      setUsingReferral(true);
-    }
-  }, []);
+    const ref = new URLSearchParams(location.search).get('ref');
+    if (ref) { setReferralCode(ref); setUsingReferral(true); }
+  }, [location.search]);
 
-  // backend URL from environment variable
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:10000';
-
-  const navigate = useNavigate();
-
-  const refreshCartTimestamp = () => {
-    try {
-      const storedCart = localStorage.getItem('cart');
-      if (storedCart) {
-        const parsedCart = JSON.parse(storedCart);
-        if (parsedCart.items && parsedCart.timestamp) {
-          parsedCart.timestamp = Date.now();
-          localStorage.setItem('cart', JSON.stringify(parsedCart));
-          console.log('refreshCartTimestamp: Updated cart timestamp');
-        }
-      }
-    } catch (err) {
-      console.error('refreshCartTimestamp: Failed to update timestamp', err);
-    }
+  const trackSignUp = (method) => {
+    try { trackEvent('sign_up', { method }); } catch { /* analytics must never block sign-up */ }
   };
 
-  const validateEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  // Helper function to track sign_up event
-  const trackSignUpEvent = (method, userId = null, userEmail = null) => {
-    try {
-      trackEvent('sign_up', {
-        method: method, // 'email' or 'google'
-      });
-      console.log(`GA4 sign_up event tracked: ${method} method`);
-    } catch (err) {
-      console.error('GA4 sign_up tracking error:', err);
-    }
-  };
+  const pwOk = password.length >= MIN_PW;
 
   const handleEmailRegister = async (e) => {
     e.preventDefault();
-    setError('');
+    setTouched(true);
+    setError(''); setEmailTaken(false);
+    if (!firstName.trim()) return setError('Please enter your first name.');
+    if (!lastName.trim()) return setError('Please enter your last name.');
+    if (!validEmail(email)) return setError('Please enter a valid email address.');
+    if (!pwOk) return setError(`Your password needs at least ${MIN_PW} characters.`);
+
     setLoading(true);
-
-    if (!email || !password) {
-      setError('Please fill in all fields.');
-      setLoading(false);
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address.');
-      setLoading(false);
-      return;
-    }
-   
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log("Ref", referralCode);
-      await axios.post(
-        `${backendUrl}/api/users/register/`,
-        { 
-          email: email, 
-          password: password, 
-          first_name: firstName, 
-          last_name: lastName, 
-          referral_code: referralCode ? referralCode : null 
-        },
-        { withCredentials: true }
-      );
-      
-      // Track SIGN_UP event (EMAIL METHOD)
-      trackSignUpEvent('email', null, email);
-      
-      toast.success('Registration successful! Please check your email to verify.', {
-        position: 'top-right',
-      });
-      navigate('/auth/confirm-email/?email=' + encodeURIComponent(email));
+      await axios.post(`${backendUrl}/api/users/register/`, {
+        email: email.trim(),
+        password,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        referral_code: referralCode || null,
+      }, { withCredentials: true });
+      trackSignUp('email');
+      toast.success('Account created. Check your email to verify it.');
+      navigate('/auth/confirm-email/?email=' + encodeURIComponent(email.trim()));
     } catch (err) {
-      console.error('Registration error:', err.response?.data.email);
-      setError(err.response?.data.email || 'Registration failed. Please try again.');
-      toast.error('Registration failed. Please try again.', { position: 'top-right' });
+      const msg = apiError(err, "We couldn't create your account. Please try again.");
+      setEmailTaken(/already (exists|in use)/i.test(msg));
+      setError(msg);
       setLoading(false);
     }
   };
 
-  const handleGoogleRegisterSuccess = async (credentialResponse) => {
-    setLoading(true);
+  const handleGoogle = async (credentialResponse) => {
+    setLoading(true); setError('');
     try {
       await googleLogin(credentialResponse, referralCode);
-      
-      // Track SIGN_UP event (GOOGLE METHOD)
-      trackSignUpEvent('google');
-      
-      toast.success('Registered with Google!', { position: 'top-right' });
-      navigate('/');
+      trackSignUp('google');
+      toast.success('Welcome to KleanKickx!');
+      navigate(from || '/', { replace: true });
     } catch (err) {
-      console.error('Google registration error:', err.response?.data);
-      setError(err.response?.data?.detail || 'Google registration failed.');
-      toast.error('Google registration failed. Please try again.', { position: 'top-right' });
+      setError(apiError(err, 'Google sign-up failed. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-[#edf1f4] gap-2 py-16 px-4 min-h-screen flex flex-col items-center justify-center">
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className=""
-      >
-        <Link to="/">
-          <img src={logo} className="w-[10rem]" alt="KleanKickx Logo" />
-        </Link> 
-      </motion.div>
-      
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }} 
-        className="lg:w-[30rem] w-full bg-white rounded-lg shadow-md p-6"
-      >
-        {/* Referral Code Banner (only shows if code detected from URL) */}
-        {usingReferral && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4 flex items-center">
-            <svg 
-              className="h-5 w-5 text-green-500 mr-2" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeWidth={2} 
-                d="M5 13l4 4L19 7" 
-              />
-            </svg>
-            <span className="text-green-700">
-              Referral code applied! You'll get a special discount after verification.
-            </span>
-          </div>
-        )}
-
-        <h2 className="text-2xl font-bold text-black mb-6">
-          Register
-        </h2>
-        
-        {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded mb-4">{error}</div>
-        )}
-        
-        <form onSubmit={handleEmailRegister} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email address"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-0 focus:outline-none"
-              aria-label="Email address"
-              disabled={loading}
-            />
-          </div>
-          
-          <div className="relative">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              className="w-full pr-10 p-2 text-gray-700 border border-gray-300 rounded-md focus:ring-0 focus:outline-none"
-              aria-label="Password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[2.7rem] transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-primary focus:outline-none"
-              tabIndex={-1}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? (
-                <EyeSlashIcon className="w-[1.5rem]" />
-              ) : (
-                <EyeIcon className="w-[1.5rem]" />
-              )}
-            </button>
-          </div>
-          
-          <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-              First Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="firstName"
-              type="text"
-              placeholder="Enter your first name"
-              autoComplete="given-name"
-              required
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-0 focus:outline-none"
-              aria-label="First Name"
-              disabled={loading}
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-              Last Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="lastName"
-              type="text"
-              placeholder="Enter your last name"
-              autoComplete="family-name"
-              required
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-0 focus:outline-none"
-              aria-label="Last Name"
-              disabled={loading}
-            />
-          </div>
-
-          {/* Referral Code Field (only shown if manually toggled or has code) */}
-          {(showReferralField || usingReferral) && (
-            <div>
-              <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700">
-                Referral Code
-              </label>
-              <input
-                id="referralCode"
-                type="text"
-                placeholder="Enter referral code"
-                value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-0 focus:outline-none"
-                disabled={usingReferral}
-              />
-            </div>
-          )}
-
-          {/* Toggle button for referral field (hidden if code exists) */}
-          {!usingReferral && (
-            <button
-              type="button"
-              onClick={() => setShowReferralField(!showReferralField)}
-              className="text-sm text-primary hover:underline focus:outline-none mb-4"
-            >
-              {showReferralField ? 'Hide referral code' : 'Have a referral code?'}
-            </button>
-          )}
-          
-          <button
-            type="submit"
-            className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-medium transition duration-200 disabled:opacity-50 cursor-pointer"
-            disabled={loading}
-            aria-label="Register with email and password"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="flex items-center justify-center">
-                  <svg 
-                    className="animate-spin h-5 w-5 text-current" 
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g fill="none" fillRule="evenodd">
-                      <circle 
-                        cx="12" 
-                        cy="12" 
-                        r="10" 
-                        stroke="currentColor" 
-                        strokeOpacity="0.2" 
-                        strokeWidth="4"
-                      />
-                      <path 
-                        d="M12 2a10 10 0 0 1 10 10" 
-                        stroke="currentColor" 
-                        strokeWidth="4" 
-                        strokeLinecap="round"
-                      >
-                        <animateTransform 
-                          attributeName="transform" 
-                          type="rotate" 
-                          from="0 12 12" 
-                          to="360 12 12" 
-                          dur="1s" 
-                          repeatCount="indefinite" 
-                        />
-                      </path>
-                    </g>
-                  </svg>
-                </span>
-                <span>Registering...</span>
-              </span>
-            ) : (
-              'Register'
-            )}
-          </button>
-        </form>
-        
-        <div className="my-6 flex items-center">
-          <hr className="flex-grow border-gray-300" />
-          <span className="mx-4 text-gray-500">or</span>
-          <hr className="flex-grow border-gray-300" />
-        </div>
-        
-        <div className="">
-          <GoogleLogin
-            onSuccess={handleGoogleRegisterSuccess}
-            onError={() => {
-              setError('Google registration failed.');
-              toast.error('Google registration failed. Please try again.', {
-                position: 'top-right',
-              });
-            }}
-            text="signup_with"
-            shape="rectangular"
-            theme="filled_black"
-            width={"100%"}
-          />
-        </div>
-        
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link to="/auth/login" className="text-primary hover:underline">
-            Login
-          </Link>
+    <AuthLayout
+      headline="Fresh pairs start here"
+      eyebrow="Create your account"
+      title="Sign up"
+      subtitle="Book Kleans, track every pair and claim your first Standard Klean free."
+    >
+      {message && <p className="kka-note warn" role="status">{message}</p>}
+      {usingReferral && <p className="kka-note" role="status">Referral code applied. Your discount unlocks once you verify your email.</p>}
+      {error && (
+        <p className="kka-note err" role="alert">
+          <span>
+            {error}
+            {emailTaken && <> <Link to="/auth/login" state={location.state}>Log in instead</Link> or reset your password from the login page.</>}
+          </span>
         </p>
+      )}
 
-        {/* Legal Links - Added inside the card */}
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <Link 
-              to="/legal" 
-              state={{ tab: 'privacy' }}
-              className="text-xs text-gray-400 hover:text-primary transition-colors"
-            >
-              Privacy Policy
-            </Link>
-            <span className="text-gray-300 text-xs">•</span>
-            <Link 
-              to="/legal" 
-              state={{ tab: 'terms' }}
-              className="text-xs text-gray-400 hover:text-primary transition-colors"
-            >
-              Terms of Service
-            </Link>
-            <span className="text-gray-300 text-xs">•</span>
-            <Link 
-              to="/about-us" 
-              className="text-xs text-gray-400 hover:text-primary transition-colors"
-            >
-              About Us
-            </Link>
-          </div>
+      <form onSubmit={handleEmailRegister} noValidate>
+        <div className="kka-grid2">
+          <Field id="firstName" label="First name" autoComplete="given-name" placeholder="Ama"
+            value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading}
+            invalid={touched && !firstName.trim()} />
+          <Field id="lastName" label="Last name" autoComplete="family-name" placeholder="Mensah"
+            value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading}
+            invalid={touched && !lastName.trim()} />
         </div>
-      </motion.div>
+        <Field id="email" label="Email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+          value={email} onChange={(e) => { setEmail(e.target.value); setEmailTaken(false); }} disabled={loading}
+          invalid={touched && !validEmail(email)} />
+        <Field id="password" label="Password" type="password" autoComplete="new-password" placeholder="At least 8 characters"
+          value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading}
+          invalid={touched && !pwOk}
+          hint={(
+            <p className={`kka-hint ${pwOk ? 'ok' : ''}`}>
+              <span className="dot" aria-hidden="true">{pwOk ? '✓' : ''}</span>
+              At least {MIN_PW} characters{password && !pwOk ? ` (${MIN_PW - password.length} to go)` : ''}
+            </p>
+          )} />
 
-      {/* Optional: Additional footer text outside the card */}
-      <div className="text-center mt-4 text-xs text-gray-400">
-        By registering, you agree to our terms and privacy policy.
-      </div>
-    </div>
+        {(showReferral || usingReferral) ? (
+          <Field id="referral" label="Referral code" optional placeholder="e.g. AMA2026"
+            value={referralCode} onChange={(e) => setReferralCode(e.target.value)} disabled={loading || usingReferral} />
+        ) : (
+          <p style={{ margin: '-4px 0 18px' }}>
+            <button type="button" className="kka-link" onClick={() => setShowReferral(true)}>Have a referral code?</button>
+          </p>
+        )}
+
+        <SubmitButton busy={loading} busyLabel="Creating your account…">Create account</SubmitButton>
+        <p className="kka-legal">
+          By creating an account you agree to our <Link to="/legal" state={{ tab: 'terms' }}>Terms</Link> and{' '}
+          <Link to="/legal" state={{ tab: 'privacy' }}>Privacy Policy</Link>.
+        </p>
+      </form>
+
+      <div className="kka-or">or</div>
+      <GoogleButton label="Sign up with Google" onToken={handleGoogle} onError={setError} />
+
+      <p className="kka-switch">
+        <span>Already have an account?</span>
+        <Link to="/auth/login" state={location.state}>Log in <span aria-hidden="true">→</span></Link>
+      </p>
+    </AuthLayout>
   );
 };
 

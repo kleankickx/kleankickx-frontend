@@ -1,42 +1,83 @@
 // src/pages/AccountVouchers.jsx
-import React, { useState, useEffect, useContext } from 'react';
+// The customer's vouchers: ready to use, gifts they sent, and history.
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import {
-  FaGift, FaCopy, FaCheck, FaClock, FaSpinner,
-  FaArrowRight, FaShoppingBag, FaTag,
-} from 'react-icons/fa';
-import { AuthContext } from '../context/AuthContext';
+import { motion } from 'framer-motion';
 import api from '../api';
+import Footer from '../components/Footer';
+
+const ease = [0.77, 0, 0.18, 1];
+const SITE = 'https://kleankickx.com';
+
+const formatDate = (d) => (d
+  ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  : '—');
+
+const daysRemaining = (validUntil) =>
+  Math.max(0, Math.ceil((new Date(validUntil) - new Date()) / 86400000));
+
+const statusOf = (voucher) => {
+  const days = daysRemaining(voucher.valid_until);
+  if (voucher.status === 'REDEEMED') return { key: 'redeemed', label: 'Used', tone: 'done' };
+  if (voucher.status === 'CANCELLED') return { key: 'cancelled', label: 'Cancelled', tone: 'bad' };
+  if (voucher.status === 'EXPIRED' || days <= 0) return { key: 'expired', label: 'Expired', tone: 'off' };
+  if (days <= 14) return { key: 'expiring', label: `${days} day${days === 1 ? '' : 's'} left`, tone: 'wait' };
+  return { key: 'active', label: 'Ready to use', tone: 'live' };
+};
+const isLive = (v) => ['active', 'expiring'].includes(statusOf(v).key);
+
+const shareLink = (v) => {
+  const text = `I got you a ${v.service_name || 'sneaker Klean'} from KleanKickx! Your code is ${v.code}. `
+    + `Redeem it here: ${SITE}/redeem?apply_voucher=${v.code}`;
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+};
 
 const AccountVouchers = () => {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
+  const [legacy, setLegacy] = useState(false);
+  const [historyPage, setHistoryPage] = useState({ results: [], next: null, previous: null, n: 1 });
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const historyRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useContext(AuthContext);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('payment_status') === 'success' && params.get('order')) {
-      toast.success('Payment successful — your vouchers are ready.');
+      toast.success('Payment successful. Your vouchers are ready.');
       window.history.replaceState({}, document.title, '/account/vouchers');
     }
     fetchUserVouchers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
+  // Current vouchers in one go; history one cursor page at a time.
   const fetchUserVouchers = async () => {
+    setFailed(false);
     try {
-      const { data } = await api.get('/api/vouchers/user-vouchers/');
-      setVouchers(data);
+      const [cur, hist] = await Promise.all([
+        api.get('/api/vouchers/user-vouchers/', { params: { scope: 'current' } }),
+        api.get('/api/vouchers/user-vouchers/', { params: { scope: 'history' } }),
+      ]);
+      if (Array.isArray(hist.data)) {
+        // Older API without scopes: both calls return the full list.
+        setLegacy(true);
+        setVouchers(Array.isArray(cur.data) ? cur.data : []);
+      } else {
+        setLegacy(false);
+        setVouchers(Array.isArray(cur.data) ? cur.data : []);
+        setHistoryPage({ results: hist.data.results || [], next: hist.data.next, previous: hist.data.previous, n: 1 });
+      }
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Please sign in to view your vouchers');
-        navigate('/login');
+        navigate('/auth/login?continue=/account/vouchers');
       } else {
-        toast.error('Failed to load vouchers');
+        setFailed(true);
       }
     } finally {
       setLoading(false);
@@ -49,190 +90,295 @@ const AccountVouchers = () => {
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 1800);
     } catch {
-      toast.error('Could not copy code');
+      toast.error('Could not copy the code');
     }
   };
 
-  const formatDate = (d) =>
-    new Date(d).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
-
-  const daysRemaining = (validUntil) =>
-    Math.max(0, Math.ceil((new Date(validUntil) - new Date()) / 86400000));
-
-  const statusOf = (voucher) => {
-    const days = daysRemaining(voucher.valid_until);
-    if (voucher.status === 'REDEEMED') return { key: 'redeemed', label: 'Redeemed' };
-    if (voucher.status === 'EXPIRED' || days <= 0) return { key: 'expired', label: 'Expired' };
-    if (days <= 7) return { key: 'expiring', label: `${days}d left` };
-    return { key: 'active', label: 'Active' };
+  // Follow a cursor link from the API. Only the cursor value is used, so the request
+  // goes through our own API base URL (the link's host/scheme may be the proxy's).
+  const goHistory = async (link, dir) => {
+    const cursor = link ? new URL(link, window.location.origin).searchParams.get('cursor') : null;
+    if (!cursor || historyBusy) return;
+    setHistoryBusy(true);
+    try {
+      const { data } = await api.get('/api/vouchers/user-vouchers/', { params: { scope: 'history', cursor } });
+      setHistoryPage((p) => ({ results: data.results || [], next: data.next, previous: data.previous, n: p.n + dir }));
+      const top = historyRef.current?.getBoundingClientRect().top;
+      if (top !== undefined && top < 0) historyRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      toast.error("Couldn't load more history. Try again.");
+    } finally {
+      setHistoryBusy(false);
+    }
   };
 
-  const activeVouchers = vouchers.filter((v) => statusOf(v).key !== 'redeemed' && statusOf(v).key !== 'expired');
-  const pastVouchers = vouchers.filter((v) => statusOf(v).key === 'redeemed' || statusOf(v).key === 'expired');
+  const ready = vouchers.filter((v) => !v.is_gift && v.bought_by_me !== false && isLive(v));
+  const gifts = vouchers.filter((v) => v.is_gift);
+  const history = legacy ? vouchers.filter((v) => !v.is_gift && !isLive(v)) : historyPage.results;
+  const historyPaged = !legacy && (historyPage.next || historyPage.previous);
 
-  // ── Loading ─────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-        <div className="flex flex-col items-center gap-3 text-neutral-500">
-          <FaSpinner className="animate-spin text-2xl" />
-          <p className="text-sm">Loading your vouchers…</p>
-        </div>
-      </div>
-    );
-  }
+  const Code = ({ v, dark = false }) => (
+    <button type="button" className={`kkav-code ${dark ? 'dark' : ''}`} onClick={() => copyToClipboard(v.code)}
+      aria-label={`Copy voucher code ${v.code}`}>
+      <code>{v.code}</code>
+      <span aria-live="polite">{copiedCode === v.code ? 'Copied' : 'Copy'}</span>
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <div className="kkav">
+      <style>{`
+        .kkav{--ink:#0A0B0A;--paper:#F7F9F6;--line:#D9DFD7;--muted:#4D564C;--green:#1A7A1A;--amber:#9A5B00;--red:#B42318;
+          --display:"Anton","Arial Narrow",Impact,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+          --spring:cubic-bezier(.2,1.25,.3,1);--swift:cubic-bezier(.77,0,.18,1);
+          background:var(--paper);color:var(--ink);font-family:"League Spartan",system-ui,sans-serif;min-height:100vh}
+        .kkav-wrap{max-width:1200px;margin:0 auto;padding:0 20px 72px}
+        .kkav-eyebrow{margin:0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+        .kkav-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:48px 0 24px;border-bottom:2px solid var(--ink)}
+        .kkav-hero h1{margin:8px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:clamp(56px,8vw,104px);line-height:.88}
+        .kkav-hero p.sub{margin:12px 0 0;color:var(--muted);font-size:17px}
+        .kkav-count{margin:0;display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none}
+        .kkav-count b{font-family:var(--display);font-weight:400;font-size:clamp(56px,8vw,104px);line-height:.88;color:var(--green)}
+        .kkav-count span{margin-top:8px;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+        .kkav-actions{display:flex;flex-wrap:wrap;gap:10px;padding:20px 0 4px}
+        .kkav-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:48px;padding:0 20px;border:2px solid var(--ink);border-radius:2px;background:transparent;
+          color:var(--ink);font:inherit;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .25s var(--spring)}
+        .kkav-btn .ar{transition:transform .3s var(--spring)}
+        .kkav-btn:hover{background:var(--ink);color:#fff}
+        .kkav-btn:hover .ar{transform:translateX(5px)}
+        .kkav-btn:active{transform:scale(.98)}
+        .kkav-btn.go{background:var(--green);border-color:var(--green);color:#fff}
+        .kkav-btn.go:hover{background:var(--ink);border-color:var(--ink)}
+        .kkav-btn.sm{height:44px;padding:0 14px;font-size:14px}
+        .kkav :focus-visible{outline:2px solid var(--green);outline-offset:3px}
 
-        {/* ── Header ──────────────────────────────────────────────── */}
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+        .kkav-sec{margin-top:40px}
+        .kkav-sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:2px solid var(--ink);margin-bottom:20px}
+        .kkav-sec-head h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:34px;line-height:1}
+        .kkav-sec-head span{font-size:13px;color:var(--muted)}
+        .kkav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+
+        .kkav-tag{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 9px;border:1px solid currentColor;border-radius:2px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+        .kkav-tag::before{content:"";width:7px;height:7px;background:currentColor}
+        .kkav-tag.live{color:var(--green);background:#E9F4E7}
+        .kkav-tag.wait{color:var(--amber);background:#FFF6E5}
+        .kkav-tag.done{color:var(--ink);background:#fff}
+        .kkav-tag.off{color:var(--muted);background:#fff}
+        .kkav-tag.bad{color:var(--red);background:#FDECEA}
+
+        .kkav-ticket{position:relative;display:flex;flex-direction:column;background:var(--ink);color:#fff;transition:transform .4s var(--spring)}
+        .kkav-ticket:hover{transform:translateY(-4px)}
+        .kkav-ticket-top{padding:20px 20px 18px}
+        .kkav-ticket-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+        .kkav-ticket .kkav-type{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A9B3A7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .kkav-ticket .kkav-tag.live{background:transparent;color:#6FD46F}
+        .kkav-ticket .kkav-tag.wait{background:transparent;color:#F2B544}
+        .kkav-ticket h3{margin:12px 0 0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:38px;line-height:.92}
+        .kkav-ticket .pairs{margin:6px 0 0;color:#C4CCC2;font-size:14px}
+        .kkav-perf{position:relative;height:0;border-top:2px dashed rgba(255,255,255,.28);margin:0 20px}
+        .kkav-perf::before,.kkav-perf::after{content:"";position:absolute;top:-12px;width:22px;height:22px;border-radius:50%;background:var(--paper)}
+        .kkav-perf::before{left:-31px}.kkav-perf::after{right:-31px}
+        .kkav-ticket-bottom{padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px;flex:1}
+        .kkav-meta{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#A9B3A7}
+        .kkav-meta b{display:block;margin-top:2px;font-size:15px;color:#fff}
+        .kkav-meta .val b{font-family:var(--display);font-weight:400;font-size:28px;line-height:1}
+        .kkav-ticket-actions{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:auto}
+        .kkav-ticket .kkav-btn{border-color:#fff;color:#fff}
+        .kkav-ticket .kkav-btn:hover{background:#fff;color:var(--ink)}
+        .kkav-ticket .kkav-btn.go{border-color:var(--green);background:var(--green)}
+        .kkav-ticket .kkav-btn.go:hover{background:#fff;border-color:#fff;color:var(--ink)}
+
+        .kkav-code{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 14px;border:1.5px dashed var(--line);border-radius:2px;
+          background:#fff;color:var(--ink);font:inherit;cursor:pointer;text-align:left;transition:border-color .2s}
+        .kkav-code code{font-family:var(--mono);font-size:17px;font-weight:700;letter-spacing:.12em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .kkav-code span{flex:none;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+        .kkav-code:hover{border-color:var(--ink)}
+        .kkav-code.dark{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.35);color:#fff}
+        .kkav-code.dark span{color:#6FD46F}
+        .kkav-code.dark:hover{border-color:#fff}
+
+        .kkav-gift{display:flex;flex-direction:column;gap:14px;padding:20px;background:#fff;border:1px solid var(--line)}
+        .kkav-gift-to{margin:0;font-size:13px;color:var(--muted)}
+        .kkav-gift-to b{display:block;margin-top:2px;font-size:17px;color:var(--ink);overflow-wrap:anywhere}
+        .kkav-gift h3{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:28px;line-height:.95}
+        .kkav-quote{margin:0;padding-left:12px;border-left:3px solid var(--green);font-size:15px;line-height:1.5;color:var(--ink);font-style:italic}
+        .kkav-gift-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+
+        .kkav-hist{list-style:none;margin:0;padding:0;transition:opacity .2s}
+        .kkav-hist.busy{opacity:.45;pointer-events:none}
+        .kkav-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+        .kkav-pager > span{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+        .kkav-btn:disabled{opacity:.35;cursor:default}
+        .kkav-btn:disabled:hover{background:transparent;color:var(--ink)}
+        .kkav-btn:hover:not(:disabled) .ar.back{transform:translateX(-5px)}
+        .kkav-btn:hover .ar.back{transform:translateX(-5px)}
+        .kkav-hist li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 150px minmax(0,1fr);align-items:center;gap:16px;padding:14px 4px;border-bottom:1px solid var(--line)}
+        .kkav-hist .name{font-weight:700}
+        .kkav-hist .name small{display:block;margin-top:2px;font-weight:500;font-size:13px;color:var(--muted)}
+        .kkav-hist code{font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--muted)}
+        .kkav-hist .when{font-size:14px;color:var(--muted);text-align:right}
+        .kkav-hist .when a{color:var(--ink);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+        .kkav-hist .when a:hover{color:var(--green)}
+
+        .kkav-empty{margin-top:28px;padding:64px 24px;border:2px dashed var(--line);text-align:center}
+        .kkav-empty h2{margin:0;font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:44px;line-height:.95}
+        .kkav-empty p{margin:12px auto 22px;max-width:44ch;color:var(--muted)}
+        .kkav-empty div{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+        .kkav-skel{height:300px;background:linear-gradient(90deg,var(--line) 0%,#EEF2EC 50%,var(--line) 100%);background-size:200% 100%;animation:kkavShim 1.3s linear infinite}
+        @keyframes kkavShim{to{background-position:-200% 0}}
+
+        /* Let cards and their codes shrink instead of pushing past the screen edge */
+        .kkav-grid > *,.kkav-ticket-top,.kkav-ticket-bottom,.kkav-gift{min-width:0}
+        .kkav-code code{min-width:0}
+        .kkav-ticket h3,.kkav-gift h3{overflow-wrap:anywhere}
+        .kkav-gift-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 10px;flex-wrap:wrap}
+        .kkav-gift-head .kkav-gift-to{min-width:0;flex:1 1 180px}
+        .kkav-gift-foot{flex-wrap:wrap}
+        .kkav-hist .when a{white-space:nowrap}
+
+        @media (max-width:900px){
+          .kkav-hist li{grid-template-columns:minmax(0,1fr) auto;row-gap:4px;padding:14px 0}
+          .kkav-hist code{grid-column:1}
+          .kkav-hist .when{grid-column:1 / -1;text-align:left}
+        }
+        @media (max-width:560px){
+          .kkav-wrap{padding:0 16px 56px}
+          .kkav-hero{padding:30px 0 18px;gap:12px}
+          .kkav-hero h1{font-size:clamp(44px,14vw,56px)}
+          .kkav-hero p.sub{font-size:15px}
+          .kkav-count b{font-size:clamp(40px,12vw,52px)}
+          .kkav-count span{font-size:10px;letter-spacing:.12em}
+          .kkav-actions .kkav-btn{flex:1 1 140px}
+          .kkav-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+          .kkav-sec{margin-top:32px}
+          .kkav-sec-head h2{font-size:28px}
+          .kkav-ticket-top{padding:18px 16px 16px}
+          .kkav-ticket-bottom{padding:16px 16px 18px}
+          .kkav-perf{margin:0 16px}
+          .kkav-perf::before{left:-27px}.kkav-perf::after{right:-27px}
+          .kkav-ticket h3{font-size:32px}
+          .kkav-code{padding:11px 12px}
+          .kkav-code code{font-size:15px;letter-spacing:.08em}
+          .kkav-gift{padding:18px 16px}
+          .kkav-gift-foot .kkav-btn{flex:1 1 100%}
+          .kkav-pager .kkav-btn{padding:0 12px}
+        }
+        @media (max-width:360px){
+          .kkav-ticket-row{flex-wrap:wrap}
+          .kkav-ticket-actions{grid-template-columns:1fr}
+          .kkav-meta{flex-direction:column;gap:8px}
+          .kkav-meta span[style]{text-align:left !important}
+        }
+        @media (prefers-reduced-motion:reduce){.kkav-skel{animation:none}}
+      `}</style>
+
+      <div className="kkav-wrap">
+        <header className="kkav-hero">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 tracking-tight">
-              Vouchers
-            </h1>
-            <p className="text-neutral-500 mt-1 text-sm">
-              {vouchers.length === 0
-                ? 'No vouchers yet.'
-                : `${vouchers.length} total · ${activeVouchers.length} active`}
-            </p>
+            <p className="kkav-eyebrow">Your account</p>
+            <h1>Vouchers</h1>
+            <p className="sub">Your codes, the gifts you've sent, and what's been used.</p>
           </div>
-
-          <Link
-            to="/vouchers"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg
-                       bg-neutral-900 text-white text-sm font-medium
-                       hover:bg-neutral-800 transition-colors
-                       self-start sm:self-auto"
-          >
-            <FaGift className="text-xs" />
-            Buy vouchers
-          </Link>
+          {!loading && ready.length > 0 && (
+            <p className="kkav-count" aria-label={`${ready.length} ready to use`}>
+              <b>{String(ready.length).padStart(2, '0')}</b>
+              <span>Ready to use</span>
+            </p>
+          )}
         </header>
 
-        {/* ── Empty state ─────────────────────────────────────────── */}
-        {vouchers.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-200 bg-white py-20 px-6 text-center">
-            <div className="mx-auto w-14 h-14 rounded-full bg-neutral-50 flex items-center justify-center mb-5">
-              <FaGift className="text-neutral-400" size={22} />
+        <div className="kkav-actions">
+          <Link to="/vouchers" className="kkav-btn go">Buy a voucher <span className="ar" aria-hidden="true">→</span></Link>
+          <Link to="/redeem" className="kkav-btn">Redeem a code</Link>
+        </div>
+
+        {loading ? (
+          <div className="kkav-sec">
+            <div className="kkav-grid" aria-busy="true" aria-label="Loading your vouchers">
+              {[0, 1, 2].map((k) => <div key={k} className="kkav-skel" />)}
             </div>
-            <h3 className="text-lg font-medium text-neutral-900 mb-1">No vouchers yet</h3>
-            <p className="text-sm text-neutral-500 max-w-sm mx-auto mb-6">
-              Purchase a voucher to gift a cleaning — or redeem one for yourself.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                to="/vouchers"
-                className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
-              >
-                Browse vouchers
-              </Link>
-              <Link
-                to="/services"
-                className="px-4 py-2 rounded-lg border border-neutral-200 text-neutral-700 text-sm font-medium hover:bg-neutral-50 transition-colors"
-              >
-                Book cleaning
-              </Link>
+          </div>
+        ) : failed ? (
+          <div className="kkav-empty" role="alert">
+            <h2>Couldn't load vouchers</h2>
+            <p>Something went wrong on our side. Try again in a moment.</p>
+            <div><button type="button" className="kkav-btn" onClick={() => { setLoading(true); fetchUserVouchers(); }}>Try again</button></div>
+          </div>
+        ) : vouchers.length === 0 && history.length === 0 ? (
+          <div className="kkav-empty">
+            <h2>No vouchers yet</h2>
+            <p>Give someone a Klean, or treat yourself to a bundle for later. Got a code from a friend? Redeem it and it shows up here.</p>
+            <div>
+              <Link to="/vouchers" className="kkav-btn go">Browse vouchers <span className="ar" aria-hidden="true">→</span></Link>
+              <Link to="/redeem" className="kkav-btn">Redeem a code</Link>
             </div>
           </div>
         ) : (
           <>
-            {/* ── Active vouchers ─────────────────────────────────── */}
-            {activeVouchers.length > 0 && (
-              <section className="mb-12">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
-                    Active
-                  </h2>
-                  <span className="text-xs text-neutral-400">
-                    {activeVouchers.length}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeVouchers.map((voucher) => {
-                    const status = statusOf(voucher);
-                    const isCopied = copiedCode === voucher.code;
-
+            {ready.length > 0 && (
+              <section className="kkav-sec" aria-labelledby="kkav-ready">
+                <div className="kkav-sec-head"><h2 id="kkav-ready">Ready to use</h2><span>{ready.length}</span></div>
+                <div className="kkav-grid">
+                  {ready.map((v, i) => {
+                    const st = statusOf(v);
+                    const pairs = Number(v.pairs) || 0;
                     return (
-                      <article
-                        key={voucher.id}
-                        className="group relative bg-white rounded-xl
-                                   ring-1 ring-neutral-200 hover:ring-neutral-300
-                                   transition-all overflow-hidden"
-                      >
-                        {/* Header row */}
-                        <div className="p-5 pb-4 flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 text-neutral-500 text-xs mb-1">
-                              <FaTag size={9} />
-                              <span className="truncate">{voucher.voucher_type}</span>
-                            </div>
-                            <h3 className="text-base font-medium text-neutral-900 truncate">
-                              {voucher.service_name || 'Cleaning voucher'}
-                            </h3>
+                      <motion.article key={v.id} className="kkav-ticket"
+                        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: i * 0.05, ease }}>
+                        <div className="kkav-ticket-top">
+                          <div className="kkav-ticket-row">
+                            <span className="kkav-type">{v.voucher_type}</span>
+                            <span className={`kkav-tag ${st.tone}`}>{st.label}</span>
                           </div>
-                          <StatusPill status={status} />
+                          <h3>{v.service_name || 'Sneaker Klean'}</h3>
+                          {pairs > 0 && <p className="pairs">{pairs} {pairs === 1 ? 'pair' : 'pairs'}</p>}
                         </div>
-
-                        {/* Code block */}
-                        <div className="px-5 pb-4">
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(voucher.code)}
-                            className="w-full flex items-center justify-between gap-3
-                                       px-3.5 py-2.5 rounded-lg bg-neutral-50
-                                       border border-dashed border-neutral-200
-                                       hover:bg-neutral-100 transition-colors text-left"
-                            aria-label={`Copy voucher code ${voucher.code}`}
-                          >
-                            <code className="font-mono text-sm font-semibold tracking-wider text-neutral-900 truncate">
-                              {voucher.code}
-                            </code>
-                            {isCopied ? (
-                              <FaCheck className="text-emerald-600 shrink-0" size={12} />
-                            ) : (
-                              <FaCopy className="text-neutral-400 group-hover:text-neutral-600 shrink-0 transition-colors" size={12} />
-                            )}
-                          </button>
+                        <div className="kkav-perf" aria-hidden="true" />
+                        <div className="kkav-ticket-bottom">
+                          <Code v={v} dark />
+                          <div className="kkav-meta">
+                            <span className="val">Value<b>₵{Number(v.purchase_price || 0).toLocaleString('en-GH')}</b></span>
+                            <span style={{ textAlign: 'right' }}>Valid until<b>{formatDate(v.valid_until)}</b></span>
+                          </div>
+                          <div className="kkav-ticket-actions">
+                            <button type="button" className="kkav-btn go sm" onClick={() => navigate(`/redeem?apply_voucher=${encodeURIComponent(v.code)}`)}>
+                              Use it now <span className="ar" aria-hidden="true">→</span>
+                            </button>
+                            <a className="kkav-btn sm" href={shareLink(v)} target="_blank" rel="noopener noreferrer" aria-label={`Share voucher ${v.code} on WhatsApp`}>
+                              Share
+                            </a>
+                          </div>
                         </div>
+                      </motion.article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
-                        {/* Dashed divider — ticket feel */}
-                        <div className="relative px-5">
-                          <div className="border-t border-dashed border-neutral-200" />
+            {gifts.length > 0 && (
+              <section className="kkav-sec" aria-labelledby="kkav-gifts">
+                <div className="kkav-sec-head"><h2 id="kkav-gifts">Gifts you sent</h2><span>{gifts.length}</span></div>
+                <div className="kkav-grid">
+                  {gifts.map((v) => {
+                    const st = statusOf(v);
+                    const used = st.key === 'redeemed';
+                    return (
+                      <article key={v.id} className="kkav-gift">
+                        <div className="kkav-gift-head">
+                          <p className="kkav-gift-to">Sent to<b>{v.sent_to}</b></p>
+                          <span className={`kkav-tag ${used ? 'live' : st.tone}`}>{used ? 'Used by them' : st.key === 'active' || st.key === 'expiring' ? 'Not used yet' : st.label}</span>
                         </div>
-
-                        {/* Footer meta + CTA */}
-                        <div className="p-5 pt-4">
-                          <dl className="flex items-center justify-between text-xs text-neutral-500 mb-4">
-                            <div>
-                              <dt className="sr-only">Value</dt>
-                              <dd className="font-medium text-neutral-900 text-sm">
-                                ₵{Number(voucher.purchase_price).toFixed(2)}
-                              </dd>
-                            </div>
-                            <div className="text-right">
-                              <dt className="text-neutral-400">Expires</dt>
-                              <dd>{formatDate(voucher.valid_until)}</dd>
-                            </div>
-                          </dl>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate(`/redeem?apply_voucher=${voucher.code}`)
-                            }
-                            className="w-full inline-flex items-center justify-center gap-2
-                                       py-2.5 rounded-lg bg-neutral-900 text-white
-                                       text-sm font-medium hover:bg-neutral-800
-                                       transition-colors"
-                          >
-                            Redeem
-                            <FaArrowRight size={10} />
-                          </button>
+                        <h3>{v.service_name || v.voucher_type}</h3>
+                        {v.gift_message && <p className="kkav-quote">“{v.gift_message}”</p>}
+                        {isLive(v) && <Code v={v} />}
+                        <div className="kkav-gift-foot">
+                          <span>{used ? `Used ${formatDate(v.redeemed_at)}` : `Valid until ${formatDate(v.valid_until)}`}</span>
+                          {isLive(v) && (
+                            <a className="kkav-btn sm" href={shareLink(v)} target="_blank" rel="noopener noreferrer" style={{ height: 38 }}>
+                              Resend on WhatsApp
+                            </a>
+                          )}
                         </div>
                       </article>
                     );
@@ -241,83 +387,52 @@ const AccountVouchers = () => {
               </section>
             )}
 
-            {/* ── Past vouchers ──────────────────────────────────── */}
-            {pastVouchers.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
-                    Past
-                  </h2>
-                  <span className="text-xs text-neutral-400">{pastVouchers.length}</span>
+            {history.length > 0 && (
+              <section className="kkav-sec" aria-labelledby="kkav-hist" ref={historyRef}>
+                <div className="kkav-sec-head">
+                  <h2 id="kkav-hist">History</h2>
+                  {!historyPaged && <span>{history.length}</span>}
                 </div>
-
-                <div className="bg-white rounded-xl ring-1 ring-neutral-200 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs font-medium text-neutral-500 bg-neutral-50/60">
-                          <th className="px-5 py-3 font-medium">Code</th>
-                          <th className="px-5 py-3 font-medium">Type</th>
-                          <th className="px-5 py-3 font-medium">Status</th>
-                          <th className="px-5 py-3 font-medium hidden sm:table-cell">Valid until</th>
-                          <th className="px-5 py-3 font-medium hidden md:table-cell">Redeemed</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-100">
-                        {pastVouchers.map((voucher) => {
-                          const status = statusOf(voucher);
-                          return (
-                            <tr key={voucher.id} className="hover:bg-neutral-50/60 transition-colors">
-                              <td className="px-5 py-3">
-                                <code className="font-mono text-xs text-neutral-700">
-                                  {voucher.code}
-                                </code>
-                              </td>
-                              <td className="px-5 py-3 text-neutral-700">
-                                {voucher.voucher_type}
-                              </td>
-                              <td className="px-5 py-3">
-                                <StatusPill status={status} />
-                              </td>
-                              <td className="px-5 py-3 text-neutral-500 hidden sm:table-cell">
-                                {formatDate(voucher.valid_until)}
-                              </td>
-                              <td className="px-5 py-3 text-neutral-500 hidden md:table-cell">
-                                {voucher.redeemed_at ? formatDate(voucher.redeemed_at) : '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <ul className={`kkav-hist ${historyBusy ? 'busy' : ''}`} aria-busy={historyBusy}>
+                  {history.map((v) => {
+                    const st = statusOf(v);
+                    return (
+                      <li key={v.id}>
+                        <span className="name">
+                          {v.service_name || v.voucher_type}
+                          <small>{v.bought_by_me === false ? `Gift from ${v.from_name || 'a friend'}` : v.voucher_type}</small>
+                        </span>
+                        <code>{v.code}</code>
+                        <span><span className={`kkav-tag ${st.tone}`}>{st.label}</span></span>
+                        <span className="when">
+                          {st.key === 'redeemed'
+                            ? <>Used {formatDate(v.redeemed_at)}{v.order_reference && <> · <Link to={`/orders/${v.order_reference}`}>Order #{v.order_reference}</Link></>}</>
+                            : `Ended ${formatDate(v.valid_until)}`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {historyPaged && (
+                  <nav className="kkav-pager" aria-label="History pages">
+                    <button type="button" className="kkav-btn sm" onClick={() => goHistory(historyPage.previous, -1)}
+                      disabled={!historyPage.previous || historyBusy}>
+                      <span className="ar back" aria-hidden="true">←</span> Newer
+                    </button>
+                    <span aria-live="polite">{historyBusy ? 'Loading…' : `Page ${historyPage.n}`}</span>
+                    <button type="button" className="kkav-btn sm" onClick={() => goHistory(historyPage.next, 1)}
+                      disabled={!historyPage.next || historyBusy}>
+                      Older <span className="ar" aria-hidden="true">→</span>
+                    </button>
+                  </nav>
+                )}
               </section>
             )}
           </>
         )}
       </div>
+      <Footer />
     </div>
-  );
-};
-
-// ── Small status pill component ────────────────────────────────────────────
-const StatusPill = ({ status }) => {
-  const styles = {
-    active:   { dot: 'bg-emerald-500', text: 'text-emerald-700', ring: 'ring-emerald-200', bg: 'bg-emerald-50' },
-    expiring: { dot: 'bg-amber-500',   text: 'text-amber-700',   ring: 'ring-amber-200',   bg: 'bg-amber-50' },
-    redeemed: { dot: 'bg-neutral-400', text: 'text-neutral-600', ring: 'ring-neutral-200', bg: 'bg-neutral-50' },
-    expired:  { dot: 'bg-neutral-300', text: 'text-neutral-500', ring: 'ring-neutral-200', bg: 'bg-neutral-50' },
-  };
-  const s = styles[status.key] || styles.active;
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full
-                  text-[11px] font-medium ${s.text} ${s.bg} ring-1 ${s.ring} shrink-0`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} aria-hidden="true" />
-      {status.label}
-    </span>
   );
 };
 

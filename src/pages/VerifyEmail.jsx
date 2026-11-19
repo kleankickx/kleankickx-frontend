@@ -1,18 +1,13 @@
-// src/components/VerifyEmail.jsx
+// src/pages/VerifyEmail.jsx
+// Opened from the verification email: confirms the key, then moves the user on.
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import { 
-  CheckCircleIcon, 
-  XCircleIcon, 
-  ExclamationCircleIcon,
-  EnvelopeIcon
-} from '@heroicons/react/24/outline';
-import { FaSpinner } from 'react-icons/fa';
-import logo from "../assets/logo2.png";
 import api from '../api';
+import AuthLayout from '../components/AuthLayout';
+import { VERIFY_CSS, Icon } from './UserVerifyEmail';
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
@@ -44,9 +39,7 @@ const VerifyEmail = () => {
         });
 
         if (cartExpired) {
-          toast.warn('Your cart was cleared due to expiration and synced with the server.', {
-            position: 'top-right',
-          });
+          toast.warn('Your cart was cleared due to expiration and synced with the server.');
         }
 
         const responseStatus = response.data.status;
@@ -74,7 +67,7 @@ const VerifyEmail = () => {
                 ? 'Email verified successfully!'
                 : 'Your email was already verified. Session updated.';
 
-              toast.success(successMessage, { position: 'top-right' });
+              toast.success(successMessage);
 
               // Redirect to the intended page
               setTimeout(() => {
@@ -87,7 +80,7 @@ const VerifyEmail = () => {
               const redirectPath = userEmail 
                 ? `/auth/login?email=${encodeURIComponent(userEmail)}&verified=true` 
                 : '/auth/login?verified=true';
-              toast.success('Email verified! Please log in to complete the process.', { position: 'top-right' });
+              toast.success('Email verified! Please log in to complete the process.');
               setTimeout(() => navigate(redirectPath), 1500);
             }
           } else {
@@ -100,7 +93,7 @@ const VerifyEmail = () => {
               ? 'Email verified successfully! Please log in to continue.'
               : 'This email is already verified. Please log in.';
 
-            toast.success(successMessage, { position: 'top-right' });
+            toast.success(successMessage);
             setTimeout(() => navigate(redirectPath), 1500);
           }
         }
@@ -120,124 +113,61 @@ const VerifyEmail = () => {
     verifyEmail();
   }, [navigate, cartExpired, key, api, refreshToken, updateTokens, userEmail, isAuthenticated]);
 
-  // Handle missing key
+  const retryLink = `/auth/confirm-email/?email=${encodeURIComponent(userEmail || '')}&expired=true`;
+  const linkProblem = /expired|invalid/i.test(error);
+
+  // Missing key: the link was cut off (e.g. copied from the email incompletely)
   if (!key) {
     return (
-      <div className='bg-green-50 min-h-screen'>
-        <div className="flex flex-col items-center h-full justify-center px-4">
-          <div className="">
-            <img src={logo} className="w-[10rem]" alt="Logo" />
-          </div>
-          <div className="bg-white rounded-lg shadow-2xl border border-gray-300 p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-              <XCircleIcon className="w-8 h-8 text-red-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Invalid Verification Link</h2>
-            <p className="text-gray-600 mb-6">
-              The verification link appears to be incomplete or invalid. Please check your email and try again.
-            </p>
-            <button
-              onClick={() => navigate('/auth/login')}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
-            >
-              Return to Login
-            </button>
-          </div>
+      <AuthLayout eyebrow="Email verification" title="Link incomplete" subtitle="This verification link is missing part of it. Open the link from the email again, or send yourself a new one.">
+        <style>{VERIFY_CSS}</style>
+        <span className="kkve-mark bad" aria-hidden="true">{Icon.cross}</span>
+        <div className="kkve-stack">
+          {userEmail && <Link to={retryLink} className="kka-btn">Send a new link <span className="ar" aria-hidden="true">→</span></Link>}
+          <Link to="/auth/login" className={userEmail ? 'kka-gbtn' : 'kka-btn'}>Back to log in</Link>
         </div>
-      </div>
+      </AuthLayout>
+    );
+  }
+
+  if (status === 'success' || status === 'already_verified') {
+    const fresh = status === 'success';
+    return (
+      <AuthLayout eyebrow="Email verification" title={fresh ? "You're verified" : 'Already verified'}
+        subtitle={fresh ? 'Thanks for confirming your email. Taking you on now…' : 'This email was confirmed earlier. Taking you on now…'}>
+        <style>{VERIFY_CSS}</style>
+        <span className="kkve-mark ok" aria-hidden="true">{Icon.check}</span>
+        {userEmail && <div className="kkve-mail"><span><small>Verified email</small><b>{userEmail}</b></span></div>}
+        <div className="kkve-bar" role="status" aria-label="Redirecting" />
+      </AuthLayout>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <AuthLayout eyebrow="Email verification" title={linkProblem ? 'Link expired' : "Couldn't verify"}
+        subtitle={linkProblem ? 'Verification links only work for a while. Send yourself a fresh one and try again.' : 'Something went wrong while confirming your email.'}>
+        <style>{VERIFY_CSS}</style>
+        <span className="kkve-mark bad" aria-hidden="true">{Icon.cross}</span>
+        {error && <p className="kka-note err" role="alert">{error}</p>}
+        <div className="kkve-stack">
+          {(linkProblem || userEmail) && (
+            <button type="button" className="kka-btn" onClick={() => navigate(retryLink)}>Send a new link <span className="ar" aria-hidden="true">→</span></button>
+          )}
+          <button type="button" className={linkProblem || userEmail ? 'kka-gbtn' : 'kka-btn'} onClick={() => navigate('/auth/login')}>Back to log in</button>
+        </div>
+        <p className="kkve-help">Need a hand? Message us on <a href="https://wa.me/233536278834" target="_blank" rel="noreferrer">WhatsApp</a>.</p>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className='bg-green-50 min-h-screen'>
-      <div className="flex flex-col gap-4 items-center h-full justify-center px-4">
-        <div>
-          <img src={logo} className="w-[10rem]" alt="Logo" />
-        </div>
-        <div className="bg-white rounded-lg border border-gray-300 p-8 max-w-md w-full shadow-2xl">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-              <EnvelopeIcon className="w-8 h-8 text-green-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Email Verification</h1>
-          </div>
-
-          {/* Status Content */}
-          <div className="space-y-6">
-            {/* Verifying State */}
-            {status === 'verifying' && (
-              <div className="text-center py-4">
-                <FaSpinner className="animate-spin h-8 w-8 text-green-600 mx-auto mb-4" />
-                <p className="text-gray-600 font-medium">Verifying your email address...</p>
-              </div>
-            )}
-
-            {/* Success State */}
-            {status === 'success' && (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircleIcon className="w-8 h-8 text-green-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-green-700 mb-2">Verification Successful!</h3>
-                <p className="text-gray-600">
-                  Your email has been verified successfully. Redirecting to login...
-                </p>
-              </div>
-            )}
-
-            {/* Already Verified State */}
-            {status === 'already_verified' && (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                  <ExclamationCircleIcon className="w-8 h-8 text-blue-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-blue-700 mb-2">Already Verified</h3>
-                <p className="text-gray-600">
-                  This email address has already been verified. Redirecting to login...
-                </p>
-              </div>
-            )}
-
-            {/* Error State */}
-            {status === 'error' && (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                  <XCircleIcon className="w-8 h-8 text-red-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-red-700 mb-2">Verification Failed</h3>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left">
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-
-                {(error.includes('expired') || error.includes('Invalid')) && (
-                  <div className="space-y-4">
-                    <p className="text-gray-600 text-sm">
-                      Your verification link may have expired or is invalid.
-                    </p>
-                    <button
-                      onClick={() => navigate(`/auth/confirm-email/?email=${encodeURIComponent(userEmail)}&expired=true`)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
-                    >
-                      Request New Verification Link
-                    </button>
-                  </div>
-                )}
-
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <button
-                    onClick={() => navigate('/auth/login')}
-                    className="text-green-600 hover:text-green-700 font-medium transition duration-200"
-                  >
-                    ← Return to Login Page
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <AuthLayout eyebrow="Email verification" title="Verifying…" subtitle="Confirming your email address. This only takes a moment.">
+      <style>{VERIFY_CSS}</style>
+      <span className="kkve-mark" aria-hidden="true">{Icon.mail}</span>
+      <div className="kkve-bar" role="status" aria-label="Verifying your email" />
+      {userEmail && <div className="kkve-mail"><span><small>Email</small><b>{userEmail}</b></span></div>}
+    </AuthLayout>
   );
 };
 

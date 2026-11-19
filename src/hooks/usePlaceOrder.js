@@ -238,6 +238,7 @@ export const usePlaceOrder = (
                 setUseSame(false);
                 setAppliedPromotion(null);
                 localStorage.removeItem('voucher_validation');
+                try { localStorage.removeItem('kk_promo_code'); } catch { /* storage blocked */ }
                 
                 const orderRef = response.data.order_reference_code;
                 

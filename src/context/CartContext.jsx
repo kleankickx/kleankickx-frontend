@@ -24,6 +24,33 @@ export const CartProvider = ({ children }) => {
   const initialLoadDone = useRef(false);
   const loadingRef = useRef(false);
 
+  // Cart changes reach the server one at a time, in the order they were made.
+  // Otherwise "Remove" pressed while an add is still saving would act on an item
+  // the server hasn't created yet, and the item would stay in the cart.
+  const queueRef = useRef(Promise.resolve());
+  const enqueue = useCallback((task) => {
+    const run = queueRef.current.then(task, task);
+    queueRef.current = run.catch(() => {});
+    return run;
+  }, []);
+  const realIds = useRef(new Map());      // placeholder id -> real id once saved
+  const pendingRemovals = useRef(new Set()); // ids removed on screen, delete not done yet
+  // Keep items the customer just removed out of any server reply that predates the delete
+  const withoutPendingRemovals = (data) => {
+    if (!data?.items || !pendingRemovals.current.size) return data;
+    const gone = new Set([...pendingRemovals.current].map((id) => realIds.current.get(id) || id));
+    const dropped = data.items.filter((i) => gone.has(i.id));
+    if (!dropped.length) return data;
+    return {
+      ...data,
+      items: data.items.filter((i) => !gone.has(i.id)),
+      item_count: Math.max(0, (data.item_count || 0) - dropped.reduce((n, i) => n + (i.quantity || 0), 0)),
+      total: Math.max(0, (data.total || 0) - dropped.reduce((n, i) => n + (Number(i.unit_price) || 0) * (i.quantity || 0), 0)),
+    };
+  };
+  const realIdOf = (id) => realIds.current.get(id) || id;
+  const isTemp = (id) => String(id).startsWith("temp-");
+
   const setCart = useCallback((data) => {
     cartRef.current = data;
     setCartData(data);
@@ -39,7 +66,7 @@ export const CartProvider = ({ children }) => {
     try {
       const response = await api.get("/api/cart/");
       if (response.data) {
-        setCart(response.data);
+        setCart(withoutPendingRemovals(response.data));
         setError(null);
       }
       return response.data;
@@ -74,7 +101,7 @@ export const CartProvider = ({ children }) => {
     async (serviceId, quantity = 1, serviceData = null) => {
       if (isPartner) {
         toast.info("Partners order directly from wholesale catalog", {
-          position: "top-right", autoClose: 3000,
+          autoClose: 3000,
         });
         return null;
       }
@@ -91,6 +118,7 @@ export const CartProvider = ({ children }) => {
 
       const qty = Math.max(1, parseInt(quantity, 10) || 1);
       const currentCart = cartRef.current;
+      let tempId = null;
 
       // Guard duplicate voucher in cart
       if (serviceData?.is_voucher_redeem && serviceData?.voucher_code) {
@@ -122,15 +150,16 @@ export const CartProvider = ({ children }) => {
             ...updatedItems[existingIndex],
             quantity: updatedItems[existingIndex].quantity + qty,
           };
-          setCartData({
+          setCart({
             ...currentCart,
             items: updatedItems,
             item_count: (currentCart.item_count || 0) + qty,
             total: (currentCart.total || 0) + price * qty,
           });
         } else {
+          tempId = `temp-${Date.now()}`;
           const tempItem = {
-            id: `temp-${Date.now()}`,
+            id: tempId,
             service_id: serviceId,
             service: serviceData,
             service_name: serviceData.name,
@@ -143,7 +172,7 @@ export const CartProvider = ({ children }) => {
             voucher_value: serviceData.voucher_value,
             original_price: serviceData.original_price,
           };
-          setCartData({
+          setCart({
             ...currentCart,
             items: [...(currentCart.items || []), tempItem],
             item_count: (currentCart.item_count || 0) + qty,
@@ -152,6 +181,7 @@ export const CartProvider = ({ children }) => {
         }
       }
 
+      return enqueue(async () => {
       try {
         const payload = { service_id: serviceId, quantity: qty };
 
@@ -169,7 +199,13 @@ export const CartProvider = ({ children }) => {
         }
 
         const response = await api.post("/api/cart/add/", payload);
-        setCart(response.data);
+        if (tempId) {
+          const real = (response.data.items || []).find(
+            (i) => String(i.service) === String(serviceId) || String(i.service_id) === String(serviceId)
+          );
+          if (real) realIds.current.set(tempId, real.id);
+        }
+        setCart(withoutPendingRemovals(response.data));
 
         if (serviceData) {
           trackEvent("add_to_cart", {
@@ -190,8 +226,9 @@ export const CartProvider = ({ children }) => {
         await loadCart();
         throw err;
       }
+      });
     },
-    [loadCart, setCart, isPartner]
+    [loadCart, setCart, isPartner, enqueue]
   );
 
   const updateQuantity = useCallback(
@@ -211,39 +248,36 @@ export const CartProvider = ({ children }) => {
       const quantityDiff = newQuantity - oldQuantity;
       const newTotal = Math.max(0, oldTotal + quantityDiff * pricePerItem);
 
-      setCartData((prev) => {
-        const updatedItems = [...prev.items];
-        if (newQuantity <= 0) updatedItems.splice(itemIndex, 1);
-        else updatedItems[itemIndex] = { ...oldItem, quantity: newQuantity };
-        return {
-          ...prev,
-          items: updatedItems,
-          total: newTotal,
-          item_count: updatedItems.reduce((s, i) => s + i.quantity, 0),
-        };
+      const updatedItems = [...currentCart.items];
+      if (newQuantity <= 0) updatedItems.splice(itemIndex, 1);
+      else updatedItems[itemIndex] = { ...oldItem, quantity: newQuantity };
+      setCart({
+        ...currentCart,
+        items: updatedItems,
+        total: newTotal,
+        item_count: updatedItems.reduce((s, i) => s + i.quantity, 0),
       });
+      if (newQuantity <= 0) pendingRemovals.current.add(itemId);
 
-      try {
-        if (newQuantity <= 0) {
-          await api.delete(`/api/cart/items/${itemId}/`);
-        } else {
-          await api.put(`/api/cart/items/${itemId}/`, { quantity: newQuantity });
+      return enqueue(async () => {
+        const id = realIdOf(itemId);
+        if (isTemp(id)) { pendingRemovals.current.delete(itemId); return; }  // never saved
+        try {
+          if (newQuantity <= 0) {
+            await api.delete(`/api/cart/items/${id}/`);
+          } else {
+            await api.put(`/api/cart/items/${id}/`, { quantity: newQuantity });
+          }
+        } catch (err) {
+          console.error("Quantity update failed:", err);
+          pendingRemovals.current.delete(itemId);
+          await loadCart();
+        } finally {
+          pendingRemovals.current.delete(itemId);
         }
-        cartRef.current = {
-          ...cartRef.current,
-          items: newQuantity <= 0
-            ? cartRef.current.items.filter((i) => i.id !== itemId)
-            : cartRef.current.items.map((i) =>
-                i.id === itemId ? { ...i, quantity: newQuantity } : i
-              ),
-          total: newTotal,
-        };
-      } catch (err) {
-        console.error("Quantity update failed:", err);
-        await loadCart();
-      }
+      });
     },
-    [loadCart, isPartner]
+    [loadCart, isPartner, setCart, enqueue]
   );
 
   const removeFromCart = useCallback(
@@ -260,20 +294,25 @@ export const CartProvider = ({ children }) => {
       const newTotal = Math.max(0, currentCart.total - lineTotal);
       const newCount = currentCart.item_count - itemToRemove.quantity;
 
-      const optimistic = {
-        ...currentCart, items: updatedItems, total: newTotal, item_count: newCount,
-      };
-      setCartData(optimistic);
+      setCart({
+        ...currentCart, items: updatedItems, total: newTotal, item_count: Math.max(0, newCount),
+      });
+      pendingRemovals.current.add(itemId);
 
-      try {
-        await api.delete(`/api/cart/items/${itemId}/`);
-        cartRef.current = optimistic;
-      } catch (err) {
-        console.error("Remove from cart failed:", err);
-        setCartData(currentCart);
-      }
+      return enqueue(async () => {
+        const id = realIdOf(itemId);
+        if (isTemp(id)) { pendingRemovals.current.delete(itemId); return; }  // never saved
+        try {
+          await api.delete(`/api/cart/items/${id}/`);
+          pendingRemovals.current.delete(itemId);
+        } catch (err) {
+          console.error("Remove from cart failed:", err);
+          pendingRemovals.current.delete(itemId);
+          await loadCart();                // show what the server really has
+        }
+      });
     },
-    [isPartner]
+    [isPartner, setCart, enqueue, loadCart]
   );
 
   const clearCart = useCallback(async () => {

@@ -3,6 +3,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import AppLoader from './AppLoader';
 
 const PartnerRoute = ({ children }) => {
   const { user, partnerData, isPartner, authLoading, refreshUserData } = useContext(AuthContext);
@@ -28,14 +29,7 @@ const PartnerRoute = ({ children }) => {
 
   // Show loading state while checking authentication or loading partner data
   if (authLoading || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking partner access...</p>
-        </div>
-      </div>
-    );
+    return <AppLoader label="Opening your partner account" />;
   }
 
   // Check if user is logged in
@@ -125,7 +119,6 @@ const PartnerRoute = ({ children }) => {
     if (statusInfo.toastId && !toast.isActive(statusInfo.toastId)) {
       toast[statusInfo.toastType](statusInfo.message, {
         toastId: statusInfo.toastId,
-        position: 'top-right',
         autoClose: 5000,
         hideProgressBar: false,
         closeOnClick: true,

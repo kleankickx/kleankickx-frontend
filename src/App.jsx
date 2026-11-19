@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CartProvider } from './context/CartContext';
-import { ToastContainer } from 'react-toastify';
+import AppToasts from './components/AppToasts';
 import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
 import PartnerNavbar from './components/PartnerNavbar';
@@ -13,8 +13,9 @@ import Login from './pages/Login';
 import Checkout from './pages/Checkout';
 import RateAndServices from './pages/RateAndServices';
 import Home from './pages/Home';
-import About from './pages/About';
+import Impact from './pages/Impact';
 import ChangePassword from './pages/ChangePassword';
+import AccountProfile from './pages/AccountProfile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Promotions from './pages/Promotions';
@@ -31,6 +32,9 @@ import AccountVouchers from './pages/AccountVouchers';
 import RedeemVoucher from './pages/RedeemVoucher';
 import VoucherPurchaseSuccess from './pages/VoucherPurchaseSuccess';
 import { useContext, useEffect } from 'react';
+import Seo from './components/Seo';
+import CartNoticeProvider from './components/CartNotice';
+import CartDrawerProvider from './components/CartDrawer';
 import ScrollToTop from './components/ScrollToTop';
 import UserVerifyEmail from './pages/UserVerifyEmail';
 import NotFound from './pages/NotFound';
@@ -42,21 +46,16 @@ import PartnerOrderDetail from './pages/PartnerOrderDetail';
 import PartnerCheckout from './pages/PartnerCheckout';
 import PartnerOrders from './pages/PartnerOrders';
 import PartnerRoute from './components/PartnerRoute';
+import FloatingNav from './components/FloatingNav';
 import PartnerInvoices from './pages/PartnerInvoices';
 import PartnerInvoiceDetail from './pages/PartnerInvoiceDetails';
 import KleanKickxLegal from './pages/KleanKickxLegal';
 import MaintenanceGate from './components/MaintenanceGate';
 
 
-// Loading component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-      <p className="mt-4 text-gray-600">Loading...</p>
-    </div>
-  </div>
-);
+import AppLoader from './components/AppLoader';
+import { toast } from 'react-toastify';
+import { capturePromoCodeFromUrl } from './utils/promoCode';
 
 // Component to conditionally render the appropriate navbar
 const ConditionalNavbar = () => {
@@ -101,6 +100,13 @@ const ConditionalNavbar = () => {
 const AppContent = () => {
   const { authLoading } = useContext(AuthContext);
   const location = useLocation();
+
+  // Promo links (e.g. an influencer's kleankickx.com/?code=KOFI15): remember the code
+  // for checkout, where it's checked and applied.
+  useEffect(() => {
+    const code = capturePromoCodeFromUrl();
+    if (code) toast.success(`Code ${code} saved. It'll be applied at checkout.`, { toastId: 'promo-saved' });
+  }, [location.key]);
   const isAuthPage = location.pathname === '/auth/login' || 
                      location.pathname === '/auth/register' ||
                      location.pathname === '/partner/register' ||
@@ -109,12 +115,13 @@ const AppContent = () => {
   
   // Show loading spinner while auth is initializing (only on non-auth pages)
   if (authLoading && !isAuthPage) {
-    return <LoadingSpinner />;
+    return <AppLoader />;
   }
   
   return (
     <div className="flex flex-col min-h-screen">
       <ConditionalNavbar />
+      <FloatingNav />
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -126,7 +133,9 @@ const AppContent = () => {
           <Route path="/auth/verify-email" element={<VerifyEmail />} />
           <Route path="/auth/confirm-email" element={<UserVerifyEmail />} />
           <Route path="/rate-and-services" element={<RateAndServices />} />
-          <Route path="/about-us" element={<About />} />
+          <Route path="/studio" element={<Navigate to="/" replace />} />
+          <Route path="/impact" element={<Impact />} />
+          <Route path="/about-us" element={<Navigate to="/" replace />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password/:uid/:token" element={<ResetPassword />} />
           <Route path="/legal" element={<KleanKickxLegal />} />
@@ -257,6 +266,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/orders/:orderReferenceCode"
             element={
               <ProtectedRoute>
@@ -308,7 +325,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <AppToasts />
     </div>
   );
 };
@@ -322,8 +339,13 @@ function App() {
         <MaintenanceGate>
           <AuthProvider>
             <CartProvider>
-              <ScrollToTop />
-              <AppContent />
+              <CartDrawerProvider>
+                <CartNoticeProvider>
+                  <ScrollToTop />
+                  <Seo />
+                  <AppContent />
+                </CartNoticeProvider>
+              </CartDrawerProvider>
             </CartProvider>
           </AuthProvider>
         </MaintenanceGate>
