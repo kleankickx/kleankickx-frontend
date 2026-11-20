@@ -75,9 +75,15 @@ const Register = () => {
   const handleGoogle = async (credentialResponse) => {
     setLoading(true); setError('');
     try {
-      await googleLogin(credentialResponse, referralCode);
-      trackSignUp('google');
-      toast.success('Welcome to KleanKickx!');
+      const userData = await googleLogin(credentialResponse, referralCode);
+      if (userData?.isNewUser) {
+        trackSignUp('google');
+        toast.success('Welcome to KleanKickx!');
+      } else {
+        // Signed up with Google but already had an account: just log them in and say so.
+        toast.success("Welcome back! You already had an account, so we've logged you in.", { autoClose: 6000 });
+      }
+      if (userData?.passwordReset) toast.info("For your security, we've switched off this account's old password. You can set a new one any time in Account → Change password.", { autoClose: 10000 });
       navigate(from || '/', { replace: true });
     } catch (err) {
       setError(apiError(err, 'Google sign-up failed. Please try again.'));
