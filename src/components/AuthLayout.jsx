@@ -235,7 +235,6 @@ export default function AuthLayout({ headline, eyebrow, title, subtitle, childre
       </aside>
       <main className="kka-main">
         <motion.div className="kka-form" {...rise(0.1)}>
-          <p className="kka-eyebrow">{eyebrow}</p>
           <h1 className="kka-title">{title}</h1>
           {subtitle && <p className="kka-sub">{subtitle}</p>}
           {children}

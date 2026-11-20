@@ -338,7 +338,6 @@ const KleanKickxLegal = () => {
       <style>{css}</style>
       <div className="kklg-wrap">
         <header className="kklg-hero">
-          <p className="kklg-eyebrow">Legal</p>
           <h1>{DOCS[activeTab].title}</h1>
           <p className="kklg-meta">
             <span>Effective <b>1 February 2026</b></span>

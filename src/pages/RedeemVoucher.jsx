@@ -274,7 +274,6 @@ const RedeemVoucher = () => {
 
       <div className="kkr-wrap">
         <header className="kkr-hero">
-          <p className="kkr-eyebrow">Gift vouchers</p>
           <h1>Redeem a voucher</h1>
           <p className="sub">Got a code from a friend, or bought one for yourself? Enter it here and we'll add the Klean to your cart, already paid for.</p>
         </header>

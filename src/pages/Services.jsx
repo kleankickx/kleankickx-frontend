@@ -630,7 +630,6 @@ const handleAddToCart = async (service) => {
       <div className="kksv-wrap">
         <header className="kksv-hero">
           <div>
-            <p className="kksv-eyebrow">Services & prices</p>
             <h1>Book a Klean</h1>
             <p className="sub">Every Klean is priced per pair. Add what you need, choose pickup or drop-off at checkout, and pay with Mobile Money or card.</p>
             <ul className="kksv-facts">

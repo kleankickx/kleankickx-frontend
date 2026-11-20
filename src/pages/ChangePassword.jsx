@@ -90,7 +90,6 @@ const ChangePassword = () => {
         ) : (<>
         <header className="kkac-hero">
           <div>
-            <p className="kkac-eyebrow">Sign-in</p>
             <h1>{hasPassword ? 'Change password' : 'Set a password'}</h1>
             <p className="sub">
               {hasPassword

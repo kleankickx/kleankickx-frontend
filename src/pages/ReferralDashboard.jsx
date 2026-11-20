@@ -169,7 +169,6 @@ export default function ReferralDashboard() {
       <div className="kkac-wrap">
         <header className="kkrf-hero">
           <div>
-            <p className="kkac-eyebrow">Your account</p>
             <h1>Refer a friend</h1>
             <p className="sub">Share your link. When a friend completes their first order, you get {POINTS_PER_REFERRAL} points. Every {MIN_REDEEM} points becomes a discount.</p>
           </div>
