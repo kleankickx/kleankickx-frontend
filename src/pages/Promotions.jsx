@@ -175,7 +175,6 @@ export default function Promotions() {
     <main className="kkpm">
       <style>{CSS}</style>
       <div className="kkpm-wrap">
-        <p className="kkpm-eyebrow">Offers</p>
         <h1 className="kkpm-h1">Promotions</h1>
         <p className="kkpm-lede">
           What&apos;s on right now. <b>No code needed:</b> the discount comes off automatically when you check out.

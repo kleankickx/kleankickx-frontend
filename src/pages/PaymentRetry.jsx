@@ -77,7 +77,6 @@ const PaymentRetry = () => {
         <div className="kkrs-wrap">
           <header className="kkrs-top" aria-busy="true">
             <Mark>{Icons.card}</Mark>
-            <p className="kkac-eyebrow">Payment</p>
             <h1>Loading order</h1>
             <div className="kkrs-bar" role="status" aria-label="Loading order" />
           </header>
@@ -93,7 +92,6 @@ const PaymentRetry = () => {
         <div className="kkrs-wrap">
           <header className="kkrs-top">
             <Mark tone="bad">{Icons.alert}</Mark>
-            <p className="kkac-eyebrow">Payment</p>
             <h1>Order not found</h1>
             <p className="sub">{error || "We couldn't find this order."}</p>
           </header>
@@ -118,7 +116,6 @@ const PaymentRetry = () => {
       <div className="kkrs-wrap wide">
         <Link to={`/orders/${orderReferenceCode}`} className="kkac-back"><span aria-hidden="true">←</span> Order #{order.reference_code}</Link>
         <header className="kkrs-top" style={{ paddingTop: 18 }}>
-          <p className="kkac-eyebrow">Payment</p>
           <h1>Pay for your order</h1>
           <p className="sub">Your order is saved. Pay now and we'll start on your sneakers as soon as it's confirmed.</p>
         </header>

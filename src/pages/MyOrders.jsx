@@ -318,7 +318,6 @@ const MyOrders = () => {
       <div className="kko-wrap">
         <header className="kko-hero">
           <div>
-            <p className="kko-eyebrow">Your account</p>
             <h1>Orders</h1>
             <p className="sub">{totalCount > 0 ? 'Track every pair, from pickup to fresh.' : 'Your order history will appear here.'}</p>
           </div>

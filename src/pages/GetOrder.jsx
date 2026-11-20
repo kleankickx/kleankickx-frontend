@@ -483,7 +483,6 @@ const GetOrder = () => {
 
                 <header className="kkd-top">
                     <div>
-                        <p className="kkd-eyebrow">{cancelled ? 'Cancelled order' : 'Order'}</p>
                         <h1>#{orderReferenceCode}</h1>
                         {order && (
                             <div className="kkd-meta">

@@ -71,7 +71,6 @@ const FailedOrders = () => {
           <>
             <header className="kkrs-top">
               <Mark tone="wait">{Icons.alert}</Mark>
-              <p className="kkac-eyebrow">Your money is safe</p>
               <h1>Order not finished</h1>
               <p className="sub">Your payment went through, but we couldn't finish saving the order. Try again below, or send us the details and we'll complete it.</p>
             </header>
@@ -93,7 +92,6 @@ const FailedOrders = () => {
           <>
             <header className="kkrs-top">
               <Mark tone="ok">{Icons.check}</Mark>
-              <p className="kkac-eyebrow">All clear</p>
               <h1>Nothing to fix</h1>
               <p className="sub">There's no unfinished order on this device. Your orders are all in your account.</p>
             </header>
