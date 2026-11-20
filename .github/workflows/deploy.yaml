@@ -7,6 +7,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build and Push
+    # The run's own token can push the built site to the 'build' branch of this repo.
+    # (Replaces a personal token that expired and broke deploys on 2026-11-20.)
+    permissions:
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -32,5 +36,5 @@ jobs:
           REPO: self
           BRANCH: build
           FOLDER: dist
-          GITHUB_TOKEN: ${{ secrets.KLEANKICKX_DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MESSAGE: "Build: ({sha}) {msg}"
