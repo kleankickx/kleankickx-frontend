@@ -47,7 +47,6 @@ const Checkout = () => {
   
   // --- Constants ---
   const Maps_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
   const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 }; // Accra coordinates
 
   // State for locations and inputs
@@ -241,7 +240,7 @@ const Checkout = () => {
 
   // Initialize the hook with all necessary dependencies
   const { placing, handlePayment } = usePlaceOrder({
-      user, navigate, logout, api, baseURL, PAYSTACK_PUBLIC_KEY,
+      user, navigate, logout, api, baseURL,
       setAccessToken, setRefreshToken, clearCart,
       setDelivery, setPickup, setDeliveryInputValue, setPickupInputValue,
       setDeliveryRegion, setPickupRegion, setUseSame, setAppliedPromotion,
