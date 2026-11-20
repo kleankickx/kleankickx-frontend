@@ -251,7 +251,9 @@ const AuthProvider = ({ children }) => {
         await fetchPartnerProfile();
       }
 
-      return decoded;
+      // isNewUser: an account was just created. passwordReset: an unverified account's old
+      // password was switched off for safety (the server explains why).
+      return { ...decoded, isNewUser: !!response.data.is_new_user, passwordReset: !!response.data.password_reset };
     } catch (err) {
       console.error('Google login error:', err);
       throw err;
