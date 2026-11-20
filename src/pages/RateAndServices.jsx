@@ -151,7 +151,6 @@ const RateAndServices = () => {
 
       <div className="kkpr-wrap">
         <header className="kkpr-hero">
-          <p className="kkpr-eyebrow">Prices</p>
           <h1>Price list</h1>
           <p className="sub">Every Klean is priced per pair, in cedis. Pickup and delivery are quoted at checkout from your address, or free if you drop off at the studio.</p>
         </header>

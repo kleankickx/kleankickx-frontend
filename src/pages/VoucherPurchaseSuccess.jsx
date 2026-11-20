@@ -50,9 +50,8 @@ const VoucherPurchaseSuccess = () => {
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.77, 0, 0.18, 1] }}>
           <header className="kkrs-top">
             <Mark tone="ok">{Icons.gift}</Mark>
-            <p className="kkac-eyebrow">Payment confirmed{orderNo ? ` · ${orderNo}` : ''}</p>
             <h1>Vouchers ready</h1>
-            <p className="sub">Thank you. Your vouchers are paid for and on their way by email, to you or to the person you're gifting.</p>
+            <p className="sub">Thank you. Your vouchers are paid for and on their way by email, to you or to the person you're gifting.{orderNo ? ` Order ${orderNo}.` : ''}</p>
           </header>
 
           <ol className="kkrs-steps">

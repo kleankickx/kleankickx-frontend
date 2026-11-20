@@ -565,7 +565,6 @@ const VoucherStore = () => {
       <div className="kkv-wrap">
         <header className="kkv-hero">
           <div>
-            <p className="kkv-eyebrow">Gift vouchers</p>
             <h1>Give a fresh pair</h1>
             <p>Gift someone a Klean. Pick a voucher, pay, and it arrives by email, ready to redeem online or at the studio.</p>
             <ul className="kkv-facts">

@@ -96,7 +96,6 @@ export default function AccountProfile() {
       <div className="kkac-wrap">
         <header className="kkac-hero" style={{ paddingTop: 44 }}>
           <div>
-            <p className="kkac-eyebrow">Your account</p>
             <h1>Account details</h1>
             <p className="sub">Your name and phone number, how you sign in, and your referral code.</p>
           </div>

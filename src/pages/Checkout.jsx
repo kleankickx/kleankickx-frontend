@@ -488,7 +488,6 @@ const Checkout = () => {
   }, [paymentView]);
 
   const stepAnimation = direction > 0 ? 'checkout-step-forward' : 'checkout-step-back';
-  const itemCount = cart.reduce((n, item) => n + (item.quantity || 0), 0);
   const Arrow = ({ back = false }) => (
     <svg className={back ? '' : 'fwd'} viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
       <path d={back ? 'M19 12H5m6-6l-6 6 6 6' : 'M5 12h14m-6-6l6 6-6 6'} fill="none" stroke="currentColor" strokeWidth="2.4" />
@@ -535,7 +534,6 @@ const Checkout = () => {
             /* Checkout: one step at a time, summary alongside on large screens */
             <div id="checkout-steps" className="scroll-mt-24 pb-28 lg:pb-0">
               <header className="kkco-top">
-                <p className="kkco-eyebrow">Step {String(step + 1).padStart(2, '0')} of {String(CHECKOUT_STEPS.length).padStart(2, '0')} · {itemCount} {itemCount === 1 ? 'pair' : 'pairs'}</p>
                 <h1>Checkout</h1>
                 <p className="sub">{CHECKOUT_STEPS[step].hint}</p>
               </header>

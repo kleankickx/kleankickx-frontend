@@ -79,7 +79,6 @@ const PaymentStatus = () => {
         {loading ? (
           <header className="kkrs-top" aria-busy="true">
             <Mark>{Icons.card}</Mark>
-            <p className="kkac-eyebrow">Payment</p>
             <h1>Checking payment</h1>
             <p className="sub">Confirming your payment with Paystack. This only takes a moment.</p>
             <div className="kkrs-bar" role="status" aria-label="Checking payment" />
@@ -88,7 +87,6 @@ const PaymentStatus = () => {
           <>
             <header className="kkrs-top">
               <Mark tone="bad">{Icons.alert}</Mark>
-              <p className="kkac-eyebrow">Payment</p>
               <h1>Couldn't load order</h1>
               <p className="sub">{error} Reference: <b>{reference}</b>.</p>
             </header>
@@ -101,7 +99,6 @@ const PaymentStatus = () => {
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
             <header className="kkrs-top">
               <Mark tone={copy.tone}>{copy.icon}</Mark>
-              <p className="kkac-eyebrow">{copy.eyebrow}</p>
               <h1>{copy.title}</h1>
               <p className="sub">{copy.sub}</p>
             </header>

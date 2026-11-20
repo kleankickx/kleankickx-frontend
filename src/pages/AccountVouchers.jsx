@@ -275,7 +275,6 @@ const AccountVouchers = () => {
       <div className="kkav-wrap">
         <header className="kkav-hero">
           <div>
-            <p className="kkav-eyebrow">Your account</p>
             <h1>Vouchers</h1>
             <p className="sub">Your codes, the gifts you've sent, and what's been used.</p>
           </div>
