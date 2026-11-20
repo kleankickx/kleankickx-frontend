@@ -469,7 +469,10 @@ useEffect(() => {
       setIsMerging(false);
     }
 
-    toast.success('Logged in successfully!', { autoClose: 2000 });
+    toast.success(userData?.isNewUser
+      ? "Welcome! We've created your KleanKickx account with Google."
+      : 'Logged in successfully!', { autoClose: userData?.isNewUser ? 5000 : 2000 });
+    if (userData?.passwordReset) toast.info("For your security, we've switched off this account's old password. You can set a new one any time in Account → Change password.", { autoClose: 10000 });
     
     // Role-based redirect - use the value from userData
     console.log('[Login] Redirecting based on partner status:', isPartnerUser);
@@ -573,7 +576,9 @@ useEffect(() => {
     } catch (err) {
       console.error('[Login] Google login error:', err);
       
-      if (err.response?.status === 401) {
+      if (err.response?.status === 403 && err.response?.data?.error) {
+        setError(err.response.data.error); // e.g. a deactivated account
+      } else if (err.response?.status === 401) {
         setError('Google login failed. Please try again.');
         toast.error('Google authentication failed.');
       } else {
