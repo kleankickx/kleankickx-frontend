@@ -4,11 +4,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import REGION_CONFIG from '../utils/regionConfig';
 import { toast } from 'react-toastify';
 import api from '../api';
+import OutOfAreaNotice from './OutOfAreaNotice';
 
 const AVAILABLE_REGIONS = Object.keys(REGION_CONFIG);
 
-// Allowed regions for fallback mode
-const ALLOWED_FALLBACK_REGIONS = ['Accra', 'Greater Accra', 'Kasoa'];
+// Address suggestions favour the area we serve (the studio at Golf Hills, Accra).
+const STUDIO = { lat: 5.632553, lng: -0.224377 };
 
 // Track if fallback warning has been shown
 let fallbackWarningShown = false;
@@ -32,6 +33,7 @@ const PlaceAutocompleteElementWrapper = ({
   const [loading, setLoading] = useState(false);
   const [usingFallbackMode, setUsingFallbackMode] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [outOfArea, setOutOfArea] = useState(null); // { city, address, lat, lng, message }
   
   // Check if Google Maps is loaded
   useEffect(() => {
@@ -53,12 +55,16 @@ const PlaceAutocompleteElementWrapper = ({
     };
   }, []);
   
-  // Check if region is allowed for fallback
-  const isRegionAllowedForFallback = (regionName) => {
-    if (!regionName) return false;
-    return ALLOWED_FALLBACK_REGIONS.some(allowed => 
-      regionName.toLowerCase().includes(allowed.toLowerCase())
-    );
+  // Is this spot one we pick up from / deliver to? The server decides (and enforces it
+  // again at checkout). If the check itself fails we don't block: checkout will say.
+  const checkServiceArea = async (lat, lng) => {
+    try {
+      const { data } = await api.get('/api/delivery/service-area/', { params: { lat, lng }, timeout: 10000 });
+      return data;
+    } catch (error) {
+      console.error('Service area check failed:', error);
+      return { served: true };
+    }
   };
 
   // Fetch Zippy pickup times (proxied by the backend, which holds the Zippy credentials)
@@ -142,6 +148,7 @@ const PlaceAutocompleteElementWrapper = ({
       try {
         setLoading(true);
         setPickupTime(null);
+        setOutOfArea(null);
 
         const place = await placePrediction.toPlace();
         await place.fetchFields({
@@ -157,12 +164,17 @@ const PlaceAutocompleteElementWrapper = ({
         }
 
         let detectedRegion = region;
+        let detectedCity = '';
         const lat = place.location.lat();
         const lng = place.location.lng();
         
         try {
           const geocodeResults = await geocodeLocation(lat, lng);
           
+          for (const result of geocodeResults) {
+            const cityComp = result.address_components.find((comp) => comp.types.includes('locality'));
+            if (!detectedCity && cityComp) detectedCity = cityComp.long_name;
+          }
           for (const result of geocodeResults) {
             const adminAreaLevel1 = result.address_components.find((comp) =>
               comp.types.includes('administrative_area_level_1')
@@ -196,6 +208,18 @@ const PlaceAutocompleteElementWrapper = ({
           console.error('Geocoding error:', geocodeError);
         }
 
+        // Outside the area we serve: stop here, explain, and offer "notify me".
+        const area = await checkServiceArea(lat, lng);
+        if (area && area.served === false) {
+          setSelectedLocation(null);
+          setPickupTime(null);
+          onPlaceSelect(null, type);
+          setOutOfArea({ city: detectedCity || detectedRegion || '', address: place.formattedAddress, lat, lng,
+                         message: area.message });
+          setLoading(false);
+          return;
+        }
+
         // Fetch pickup times from Zippy (may return null for fallback)
         const pickupTimeResult = await fetchZippyPickupTimes();
         
@@ -210,18 +234,6 @@ const PlaceAutocompleteElementWrapper = ({
             fallbackWarningShown = true;
           }
           
-          // Validate region for fallback mode
-          if (!isRegionAllowedForFallback(detectedRegion)) {
-            toast.error(
-              `Sorry, delivery is currently only available in Accra and Kasoa. Selected region: ${detectedRegion || 'Unknown'}`,
-              { autoClose: 6000 }
-            );
-            setSelectedLocation(null);
-            setPickupTime(null);
-            onPlaceSelect(null, type);
-            setLoading(false);
-            return;
-          }
         } else {
           setUsingFallbackMode(false);
         }
@@ -278,7 +290,8 @@ const PlaceAutocompleteElementWrapper = ({
 
     const autocomplete = new window.google.maps.places.PlaceAutocompleteElement({
       types: ['address'],
-      includedRegionCodes: ['gh']
+      includedRegionCodes: ['gh'],
+      locationBias: { center: STUDIO, radius: 40000 }, // suggest Accra addresses first
     });
     
     autocompleteElementRef.current = autocomplete;
@@ -310,6 +323,7 @@ const PlaceAutocompleteElementWrapper = ({
   }, [googleMapsLoaded, handlePlaceSelect, currentInputValue, initialLocation, placeholder]);
 
   const clearSelection = () => {
+    setOutOfArea(null);
     setSelectedLocation(null);
     setPickupTime(null);
     onPlaceSelect(null, type);
@@ -445,12 +459,9 @@ const PlaceAutocompleteElementWrapper = ({
               onClear={clearSelection}
             />
             {shouldShowPickupTimeInfo() && renderPickupTimeInfo()}
-            {selectedLocation.usingFallback && (
-              <motion.p className="kkco-note warn" style={{ marginTop: 8 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                We currently pick up and deliver in <strong>Accra and Kasoa</strong> only. More areas soon.
-              </motion.p>
-            )}
           </>
+        ) : outOfArea ? (
+          <OutOfAreaNotice key="out-of-area" place={outOfArea} onDismiss={clearSelection} />
         ) : (
           <motion.p
             key="placeholder"
